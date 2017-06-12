@@ -1,0 +1,2 @@
+82d2ef4b1f HHH-6025 - Remove cglib dependencies
+34c2839dcc HHH-5616 - Switch to Gradle for builds

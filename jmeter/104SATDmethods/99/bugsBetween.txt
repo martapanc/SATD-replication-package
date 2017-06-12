@@ -1,0 +1,3 @@
+63c750cac Bug 57114 - Performance : Functions that only have values as instance variable should not synchronize execute Remove old TODO Bugzilla Id: 57114
+f03a8bdbe Bug 57114 - Performance : Functions that only have values as instance variable should not synchronize execute Bugzilla Id: 57114
+ea92414e2 Bug 54199 - Move to Java 6 add @Override Bugzilla Id: 54199

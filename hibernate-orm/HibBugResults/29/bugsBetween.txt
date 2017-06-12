@@ -1,0 +1,2 @@
+97fef96b98 HHH-5765 : Integrate LogicalConnection into ConnectionManager
+34c2839dcc HHH-5616 - Switch to Gradle for builds

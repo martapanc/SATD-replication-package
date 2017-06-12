@@ -1,0 +1,1 @@
+f74c5a7fa5 HHH-2879 Apply hibernate code templates and formatting

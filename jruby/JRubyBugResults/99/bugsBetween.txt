@@ -1,0 +1,2 @@
+b19d79dff7 Damian's fixes for applets in JRUBY-477
+b390103c28 Damn the torpedos...full steam ahead! Committing fixes for JRUBY-408 to get them out in the wild. There are remaining fixes to be made, but ant test passes, gems install, rails starts, handles requests, and generates.

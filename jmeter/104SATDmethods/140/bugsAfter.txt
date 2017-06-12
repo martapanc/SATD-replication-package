@@ -1,0 +1,3 @@
+9eaec178d Bug 56939 - Parameters are not passed with OPTIONS HTTP Request Bugzilla Id: 56939
+7266caa52 Bug 54525 Search Feature : Enhance it with ability to replace Bugzilla Id: 54525
+81c34bafc Bug 60564 - Migrating LogKit to SLF4J - Replace logkit loggers with slf4j ones with keeping the current logkit binding solution

@@ -1,0 +1,2 @@
+47a3b5144 PR 56747 Document which options exit in help output, submitted by Ville Skyttä
+834d0d120 configurable User-Agent for <get>. PR 55489. Submitted by André-John Mas

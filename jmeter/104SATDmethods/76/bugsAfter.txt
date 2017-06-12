@@ -1,0 +1,3 @@
+ea7682133 Bug 60564 - Migrating LogKit to SLF4J - core/testelement,threads,util,visualizers package Contributed by Woonsan Ko This closes #273 Bugzilla Id: 60564
+463871336 Bug 60530 - Add API to create JMeter threads while test is running Fix tests failure Bugzilla Id: 60530
+bd3b94bb5 Bug 60530 - Add API to create JMeter threads while test is running Based on a contribution by Logan Mauzaize & Maxime Chassagneux Bugzilla Id: 60530

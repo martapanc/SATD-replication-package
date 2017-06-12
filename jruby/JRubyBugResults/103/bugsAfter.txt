@@ -1,0 +1,8 @@
+a4bf4b8d4f Fix JRUBY-6383
+3b00c39404 Correctly fix Scala-like method name $bslash. Includes spec. This should fix JRUBY-6327.
+d2f2686e1b Fix for JRUBY-6043, JRUBY-6058.
+a94f6c5fa0 Fix for JRUBY-5132: java.awt.Component.instance_of?() expects 2 args
+ec8d280eb6 Fix for JRUBY-4799: Uncaught AccessibleObject.setAccessible fails on App Engine
+aeef9422cb Fix JRUBY-4198: Cannot call a method called "public" on a Java object
+4351ad0e48 Fixes for JRUBY-4724 and JRUBY-4725
+7c4139b5eb Fix for JRUBY-4505: Restore __method versions of Java methods we don't bind directly

@@ -1,0 +1,1 @@
+6e4c3d38f4 StringIO#read of frozen string should not raise. Fixes #1008.

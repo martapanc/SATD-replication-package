@@ -1,0 +1,8 @@
+c3ba77727 Bug 43294 - XPath Extractor namespace problems First part: Put in XPathUtil everything related to XPath computations
+524e51555 Bug 51876 - Functionnality to search in Samplers TreeView Changed implementation to: - Add ability to search with regexp - Add ability to search in case sensitive and insentive modes - Plug additional search implementations
+6572ccd24 Bug 51876 - Functionnality to search in Samplers TreeView
+30860c40e Bug 51876 - Functionnality to search in Samplers TreeView
+de4b08524 Bug 51885 - Allow a JMeter Variable as input to XPathExtractor part 2 of fix
+2d9559c43 Bug 48331 - XpathExtractor does not return XML string representations for a Nodeset
+a447f2272 Bug 47338 - XPath Extractor forces retrieval of document DTD
+b436cd1b7 Bug 43382 - configure Tidy output (warnings, errors) for XPath Assertion and Post-Processor

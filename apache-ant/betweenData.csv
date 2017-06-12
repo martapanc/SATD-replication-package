@@ -1,0 +1,267 @@
+1;/1/Between/add remote opti 80d45d8db_diff.java;0;0;0;0;0;0;0
+10
+11;/11/Between/according to th 3ef6daa0c_diff.java;0;0;0;0;0;0;0
+11;/11/Between/Add a Location  33ac6bc3c_diff.java;0;0;0;0;0;0;0
+11;/11/Between/Add antlib xml  f3e3462d8_diff.java;0;0;0;0;0;0;0
+11;/11/Between/allow targets t bd52e7b9b_diff.java;0;0;0;0;0;0;0
+11;/11/Between/Allways create  3d66f4ef9_diff.java;0;0;0;0;0;0;0
+11;/11/Between/check for same  0a36bf20e_diff.java;0;0;0;0;0;0;0
+11;/11/Between/Do not set ant. 583cfae0e_diff.java;0;0;0;0;0;0;0
+11;/11/Between/don't warn abou 2c468c212_diff.java;0;0;0;0;0;0;0
+11;/11/Between/DynamicConfigur 476678d4a_diff.java;0;0;0;0;0;0;0
+11;/11/Between/extension-point 13941782f_diff.java;0;0;0;0;0;0;0
+11;/11/Between/Fix for executi 1c48e016c_diff.java;0;0;0;0;0;0;0
+11;/11/Between/fix for Target  51ce8fac7_diff.java;0;0;0;0;0;0;0
+11;/11/Between/fix if build fi 8a5186ec7_diff.java;0;0;0;0;0;0;0
+11;/11/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+11;/11/Between/remove some dep 0c43380c1_diff.java;0;0;0;0;0;0;0
+11;/11/Between/set target's na dfaca18fc_diff.java;0;0;0;0;0;0;0
+11;/11/Between/Set the locatio 0e1abe82d_diff.java;0;0;0;0;0;0;0
+11;/11/Between/use the configu 6a02f4483_diff.java;0;0;0;0;0;0;0
+12;/12/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+13
+14;/14/Between/according to th 3ef6daa0c_diff.java;0;0;0;0;0;0;0
+14;/14/Between/Add a Location  33ac6bc3c_diff.java;0;0;0;0;0;0;0
+14;/14/Between/Add antlib xml  f3e3462d8_diff.java;0;0;0;0;0;0;0
+14;/14/Between/allow targets t bd52e7b9b_diff.java;0;0;0;0;0;0;0
+14;/14/Between/Allways create  3d66f4ef9_diff.java;0;0;0;0;0;0;0
+14;/14/Between/check for same  0a36bf20e_diff.java;0;0;0;0;0;0;0
+14;/14/Between/Do not set ant. 583cfae0e_diff.java;0;0;0;0;0;0;0
+14;/14/Between/don't warn abou 2c468c212_diff.java;0;0;0;0;0;0;0
+14;/14/Between/DynamicConfigur 476678d4a_diff.java;0;0;0;0;0;0;0
+14;/14/Between/extension-point 13941782f_diff.java;0;0;0;0;0;0;0
+14;/14/Between/Fix for executi 1c48e016c_diff.java;0;0;0;0;0;0;0
+14;/14/Between/fix for Target  51ce8fac7_diff.java;0;0;0;0;0;0;0
+14;/14/Between/fix if build fi 8a5186ec7_diff.java;0;0;0;0;0;0;0
+14;/14/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+14;/14/Between/remove some dep 0c43380c1_diff.java;0;0;0;0;0;0;0
+14;/14/Between/set target's na dfaca18fc_diff.java;0;0;0;0;0;0;0
+14;/14/Between/Set the locatio 0e1abe82d_diff.java;0;0;0;0;0;0;0
+14;/14/Between/use the configu 6a02f4483_diff.java;0;0;0;0;0;0;0
+15;/15/Between/add xmlcatalog  1ddab2c14_diff.java;0;0;0;0;0;0;0
+15;/15/Between/PR:	17195 Submi cdd1db5a9_diff.java;0;0;0;0;0;0;0
+15;/15/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+16
+17
+18
+19;/19/Between/Add java1.5 sys b31c3d79f_diff.java;0;0;0;0;0;0;0
+19;/19/Between/Add make's keep b7c2f5f64_diff.java;0;0;0;0;0;0;0
+19;/19/Between/ant -p swallows a38273bbf_diff.java;0;0;0;0;0;0;0
+19;/19/Between/At least try to 99529fd6c_diff.java;0;0;0;0;0;0;0
+19;/19/Between/change command  94da71c76_diff.java;0;0;0;0;0;0;0
+19;/19/Between/Make -projecthe eaa5e6610_diff.java;0;0;0;0;0;0;0
+19;/19/Between/microoptimizati 5f20b9914_diff.java;0;0;0;0;0;0;0
+19;/19/Between/normalize build 7ea420955_diff.java;0;0;0;0;0;0;0
+19;/19/Between/PR 47830 : impl df121a6cf_diff.java;0;0;0;0;0;0;0
+19;/19/Between/reinstate prefi f67b8649e_diff.java;0;0;0;0;0;0;0
+19;/19/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+19;/19/Between/resolve propert 3f4cb68de_diff.java;0;0;0;0;0;0;0
+19;/19/Between/Restore System. 2a2141bcb_diff.java;0;0;0;0;0;0;0
+2;/2/Between/Fixed javadoc f 5e4cb9c6e_diff.java;0;0;0;0;0;0;0
+2;/2/Between/Flush output of 987c943d0_diff.java;0;0;0;0;0;0;0
+2;/2/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+2;/2/Between/removing enum v 9434671ef_diff.java;0;0;0;0;0;0;0
+20;/20/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+21;/21/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+22;/22/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+23;/23/Between/add casesensiti ae0dd4dca_diff.java;1;1;2;0;0;0;0
+23;/23/Between/explicitly guar 3f609f977_diff.java;0;0;0;0;0;0;0
+23;/23/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+24;/24/Between/[PATCH] Misspel 98c3a0ea1_diff.java;0;0;0;0;0;0;0
+24;/24/Between/add original ex 92ff24a7e_diff.java;0;0;0;0;0;0;0
+24;/24/Between/DynamicConfigur 476678d4a_diff.java;0;0;0;0;0;0;0
+24;/24/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+24;/24/Between/remove deprecat aa5fccfbe_diff.java;0;0;0;0;0;0;0
+24;/24/Between/use the configu 6a02f4483_diff.java;0;0;0;0;0;0;0
+25;/25/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+26;/26/Between/Add a new cvsve 5ec7e1db1_diff.java;0;0;0;0;0;0;0
+26;/26/Between/Make port attri 0140d366b_diff.java;0;0;0;0;0;0;0
+26;/26/Between/microoptimizati 5f20b9914_diff.java;2;1;3;0;0;0;0
+26;/26/Between/Pr 43330, suppr 228efb0ef_diff.java;0;0;0;0;0;0;0
+26;/26/Between/Prevent Abstrac 236873d6e_diff.java;15;0;15;0;0;0;0
+26;/26/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+26;/26/Between/support modules d85c862e9_diff.java;0;0;0;0;0;0;0
+27
+28
+29;/29/Between/<apply> differe 0e2cfd51d_diff.java;0;0;0;0;0;0;0
+29;/29/Between/Allow <sync> to 28d39b09a_diff.java;0;0;0;0;0;0;0
+29;/29/Between/Be a little mor cc9f4f71f_diff.java;0;0;0;0;0;0;0
+29;/29/Between/do not scan nee 6ff7df960_diff.java;0;0;0;0;0;0;0
+29;/29/Between/Eliminate possi 0777fa853_diff.java;0;0;0;0;0;0;0
+29;/29/Between/Not 100% sure t 2fbb2e62a_diff.java;0;0;0;0;0;0;0
+29;/29/Between/Optimize Direct 787728897_diff.java;0;0;0;0;0;0;0
+29;/29/Between/Optimize scanni 9a7f8d24f_diff.java;0;0;0;0;0;0;0
+29;/29/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+3
+30;/30/Between/<zip> update ig 782e45115_diff.java;0;0;0;0;0;0;0
+30;/30/Between/add filename to 5dc8a1418_diff.java;0;0;0;0;0;0;0
+30;/30/Between/Add support of  8d72468ce_diff.java;0;0;0;0;0;0;0
+30;/30/Between/Added level att 1225a5a84_diff.java;0;0;0;0;0;0;0
+30;/30/Between/better use the  ba12ac85f_diff.java;0;0;0;0;0;0;0
+30;/30/Between/close streams p 8aaa00583_diff.java;0;0;0;0;0;0;0
+30;/30/Between/create parent d f2d99c202_diff.java;0;0;0;0;0;0;0
+30;/30/Between/Don't delete ex b56144731_diff.java;0;0;0;0;0;0;0
+30;/30/Between/don't trust per 549fc1f68_diff.java;0;0;0;0;0;0;0
+30;/30/Between/Improve fix for 02305cfec_diff.java;0;0;0;0;0;0;0
+30;/30/Between/JDK 1.2 is EOL  32f2e37a9_diff.java;0;0;0;0;0;0;0
+30;/30/Between/Make it possibl 6e7294106_diff.java;0;0;0;0;0;0;0
+30;/30/Between/Make Solaris de de95ac9a0_diff.java;0;0;0;0;0;0;0
+30;/30/Between/make sure log m ee0fc90c1_diff.java;0;0;0;0;0;0;0
+30;/30/Between/Minor updates b 0df2b1de3_diff.java;0;0;0;0;0;0;0
+30;/30/Between/More robust cle 6b62a56cc_diff.java;0;0;0;0;0;0;0
+30;/30/Between/NPE when adding ab3f80589_diff.java;0;0;0;0;0;0;0
+30;/30/Between/On second thoug a18bd3310_diff.java;0;0;0;0;0;0;0
+30;/30/Between/prevent empty a 54d0543e1_diff.java;0;0;0;0;0;0;0
+30;/30/Between/Push fix for PR 1efa389be_diff.java;0;0;0;0;0;0;0
+30;/30/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+30;/30/Between/removing enum v 9434671ef_diff.java;0;0;0;0;0;0;0
+30;/30/Between/try to make Zip dd92def3a_diff.java;0;0;0;0;0;0;0
+30;/30/Between/zip's whenempty ee4aa0108_diff.java;0;0;0;0;0;0;0
+31;/31/Between/[PATCH] Misspel 98c3a0ea1_diff.java;0;0;0;0;0;0;0
+31;/31/Between/Fix NPE, PR: 24 eba9a3c2d_diff.java;0;0;0;0;0;0;0
+31;/31/Between/JDependTask did e160d8323_diff.java;0;0;0;0;0;0;0
+31;/31/Between/provide a Map b ff41336fc_diff.java;0;0;0;0;0;0;0
+31;/31/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+32;/32/Between/microoptimizati 5f20b9914_diff.java;2;1;3;0;0;0;0
+32;/32/Between/Next try for PR 6650efb10_diff.java;7;11;18;0;0;0;0
+32;/32/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+33
+34;/34/Between/-breakiterator  44564adf2_diff.java;3;1;4;0;0;0;0
+34;/34/Between/Add a new attri a9831bdca_diff.java;0;0;0;0;0;0;0
+34;/34/Between/Add attributes  f1a903928_diff.java;1;0;1;0;0;0;0
+34;/34/Between/javadoc fails i 5f81fd801_diff.java;0;0;0;0;0;0;1
+34;/34/Between/microoptimizati 5f20b9914_diff.java;0;0;0;0;0;0;3
+34;/34/Between/post-process ge 7bc745a28_diff.java;1;0;1;0;0;0;0
+35;/35/Between/Add Windows 200 1b72f9a64_diff.java;9;15;24;0;0;0;0
+35;/35/Between/Close process s 08fc13867_diff.java;0;0;0;0;0;0;0
+35;/35/Between/Move Process st c25de7702_diff.java;0;0;0;0;0;0;0
+35;/35/Between/PR 52706: allow abec7e48e_diff.java;4;4;8;0;0;0;0
+35;/35/Between/provide a Map b ff41336fc_diff.java;0;0;0;0;0;0;0
+35;/35/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+35;/35/Between/Remove direct c 3396e7c32_diff.java;0;0;0;0;0;0;0
+35;/35/Between/The user.dir tr 8e7167b58_diff.java;0;0;0;0;0;0;0
+36
+37;/37/Between/allow targets t bd52e7b9b_diff.java;0;0;0;0;0;0;0
+37;/37/Between/Avoid Concurren 11b928d06_diff.java;0;0;0;0;0;0;0
+37;/37/Between/JDK 1.2 is EOL  32f2e37a9_diff.java;0;0;0;0;0;0;0
+37;/37/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+38;/38/Between/allow targets t bd52e7b9b_diff.java;0;0;0;0;0;0;0
+38;/38/Between/Avoid Concurren 11b928d06_diff.java;0;0;0;0;0;0;0
+38;/38/Between/JDK 1.2 is EOL  32f2e37a9_diff.java;0;0;0;0;0;0;0
+38;/38/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+38;/38/Between/removing enum v 9434671ef_diff.java;0;0;0;0;0;0;0
+39;/39/Between/Validate system da4edf3f9_diff.java;2;0;2;0;0;0;0
+4;/4/Between/Fix a NPE that  509ae3e1f_diff.java;0;0;0;0;0;0;0
+4;/4/Between/PR35852: Commit ef415543d_diff.java;0;0;0;0;0;0;0
+4;/4/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+40
+41;/41/Between/deprecate rever d8922d6d2_diff.java;0;0;0;0;0;0;0
+41;/41/Between/make log more u b6aa5cb51_diff.java;1;1;2;0;0;0;0
+41;/41/Between/only add classp e0d63af0c_diff.java;3;1;4;0;0;0;0
+41;/41/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+41;/41/Between/Remove direct c 3396e7c32_diff.java;7;7;14;0;0;0;0
+42;/42/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+43
+44;/44/Between/Optionally enab abe974363_diff.java;0;0;0;0;0;0;0
+44;/44/Between/Support wildcar 3ac732f3f_diff.java;0;0;0;0;0;0;0
+45
+46
+47
+48
+49;/49/Between/add casesensiti ae0dd4dca_diff.java;1;1;2;0;0;0;0
+49;/49/Between/explicitly guar 3f609f977_diff.java;0;0;0;0;0;0;0
+49;/49/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+5;/5/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+50;/50/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+50;/50/Between/Remove direct c 3396e7c32_diff.java;0;0;0;0;0;0;0
+51
+52;/52/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+53;/53/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+54;/54/Between/Add initialSite f2d32ac66_diff.java;0;0;0;0;0;0;0
+54;/54/Between/Added a testcas 1c3832c2f_diff.java;0;0;0;0;0;0;0
+54;/54/Between/Issue a warning 24f9da26b_diff.java;0;0;0;0;0;0;0
+54;/54/Between/Merge from ANT_ d3f03ad75_diff.java;0;0;0;0;0;0;0
+54;/54/Between/Optimize scanni 9a7f8d24f_diff.java;0;0;0;0;0;0;0
+55
+56
+57
+58;/58/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+59;/59/Between/Add nested mapp 6dbabcb77_diff.java;0;0;0;0;0;0;0
+59;/59/Between/finish off the  1a5276fbb_diff.java;0;0;0;0;0;0;0
+59;/59/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+59;/59/Between/Unit test for P a1634b420_diff.java;0;0;0;0;0;0;0
+59;/59/Between/unit test for P f39da1b5b_diff.java;0;0;0;0;0;0;0
+6
+60;/60/Between/[PATCH] Misspel 98c3a0ea1_diff.java;0;0;0;2;2;4;0
+60;/60/Between/Fix NPE, PR: 24 eba9a3c2d_diff.java;0;0;0;5;1;6;0
+60;/60/Between/JDependTask did e160d8323_diff.java;0;0;0;83;72;155;0
+60;/60/Between/provide a Map b ff41336fc_diff.java;0;0;0;7;12;19;0
+60;/60/Between/remove authors  c885f5683_diff.java;0;0;0;1;3;4;0
+61;/61/Between/merge fix for P 969aeca23_diff.java;0;0;0;0;0;0;0
+61;/61/Between/microoptimizati 5f20b9914_diff.java;0;0;0;0;0;0;0
+62;/62/Between/Adapt Ant to us ce53f734e_diff.java;0;0;0;0;0;0;0
+62;/62/Between/Add initialSite f2d32ac66_diff.java;0;0;0;0;0;0;0
+62;/62/Between/Add logging of  11f0a8954_diff.java;0;0;0;0;0;0;0
+62;/62/Between/Add two new att ad1b099b2_diff.java;0;0;0;0;0;0;0
+62;/62/Between/allow ftp remot a0e5b158c_diff.java;0;0;0;0;0;0;0
+62;/62/Between/Allow selectors a4e5c13b8_diff.java;0;0;0;0;0;0;8
+62;/62/Between/Change so that  22bdc578f_diff.java;0;0;0;0;0;0;0
+62;/62/Between/ftp download fa 92663dfd6_diff.java;0;0;0;0;0;0;0
+62;/62/Between/FTP getTimeDiff 17841320a_diff.java;0;0;0;0;0;0;0
+62;/62/Between/Issue a warning 24f9da26b_diff.java;0;0;0;0;0;0;0
+62;/62/Between/make ftp task c b38b45047_diff.java;0;0;0;0;0;0;0
+62;/62/Between/Merge from ANT_ d3f03ad75_diff.java;0;0;0;0;0;0;0
+62;/62/Between/microoptimizati 5f20b9914_diff.java;0;0;0;0;0;0;0
+62;/62/Between/More robust cle 6b62a56cc_diff.java;0;0;0;0;0;0;0
+62;/62/Between/Optimize scanni 9a7f8d24f_diff.java;0;0;0;0;0;0;3
+62;/62/Between/pr 41724: FTP t 02fce032e_diff.java;0;0;0;0;0;0;0
+62;/62/Between/PR: 28797 e5dd10d19_diff.java;0;0;0;0;0;0;0
+62;/62/Between/PR: 33770 2d1c5924e_diff.java;0;0;0;0;0;0;0
+62;/62/Between/pr33969: tempfi 7e05b3d98_diff.java;0;0;0;0;0;0;0
+62;/62/Between/Prevent NPE in  a679a5bbc_diff.java;0;0;0;0;0;0;0
+62;/62/Between/refactored <ftp d72413184_diff.java;0;0;0;0;0;0;0
+62;/62/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+62;/62/Between/resolve files s 0bd649e56_diff.java;0;0;0;0;0;0;0
+62;/62/Between/send the filena d9068e8df_diff.java;0;0;0;0;0;0;0
+62;/62/Between/When changing d 4a288273a_diff.java;0;0;0;0;0;0;0
+63;/63/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+64;/64/Between/Next try for PR 6650efb10_diff.java;7;11;18;0;0;0;0
+64;/64/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+65
+66
+67;/67/Between/Validate system da4edf3f9_diff.java;2;0;2;0;0;0;0
+68;/68/Between/[PATCH] Misspel 98c3a0ea1_diff.java;0;0;0;0;0;0;0
+68;/68/Between/Fix NPE, PR: 24 eba9a3c2d_diff.java;0;0;0;0;0;0;0
+68;/68/Between/JDependTask did e160d8323_diff.java;82;71;153;0;0;0;0
+68;/68/Between/provide a Map b ff41336fc_diff.java;0;0;0;0;0;0;0
+68;/68/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+69
+7;/7/Between/try to make OOM 313479bb3_diff.java;0;0;0;0;0;0;0
+7;/7/Between/unconditionally f8f45e9f0_diff.java;0;0;0;0;0;0;0
+7;/7/Between/use a better ap 9cde786c6_diff.java;0;0;0;0;0;0;0
+70;/70/Between/allow access to 26f846b83_diff.java;0;0;0;0;0;0;0
+70;/70/Between/don't add the s 59f1d6794_diff.java;0;0;0;0;0;0;0
+70;/70/Between/embrace java.ut b33d33d75_diff.java;0;0;0;0;0;0;0
+70;/70/Between/Generate proper 55c133cec_diff.java;0;0;0;0;0;0;0
+70;/70/Between/Impossible to u 8fdf27262_diff.java;0;0;0;1;0;1;0
+70;/70/Between/make AntClassLo 021d52822_diff.java;0;0;0;0;0;0;3
+70;/70/Between/override getRes 8ebe808f7_diff.java;0;0;0;0;0;0;0
+70;/70/Between/Pr: 42259 inspi 758a6bcb9_diff.java;0;0;0;0;0;0;0
+70;/70/Between/properly set Co c8e91147e_diff.java;0;0;0;0;0;0;0
+70;/70/Between/reduce performa 3e2cbab6b_diff.java;0;0;0;0;0;0;0
+70;/70/Between/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+70;/70/Between/report name of  329f6d356_diff.java;0;0;0;0;0;0;0
+70;/70/Between/solve problem r 44cf7f076_diff.java;0;0;0;0;0;0;0
+70;/70/Between/use the same lo 44b6fcc18_diff.java;0;0;0;1;0;1;0
+8;/8/Between/<unzip> and <un b977b55da_diff.java;0;0;0;1;1;2;0
+8;/8/Between/an archive with 80e8b2977_diff.java;0;0;0;0;0;0;0
+8;/8/Between/clean up Inflat c4c9d2552_diff.java;0;0;0;0;0;0;0
+8;/8/Between/fail early if Z 9b4b922d2_diff.java;0;0;0;0;0;0;0
+8;/8/Between/fix a bunch of  817fd3199_diff.java;0;0;0;0;0;0;0
+8;/8/Between/JDK 1.2 is EOL  32f2e37a9_diff.java;0;0;0;0;0;0;0
+8;/8/Between/Made up my mind 7d174c342_diff.java;1;0;1;2;2;4;0
+8;/8/Between/Make sure ZIP a 601cdf67b_diff.java;0;0;0;0;0;0;0
+8;/8/Between/Parse central d 6cd0de102_diff.java;0;0;0;0;0;0;0
+8;/8/Between/Support more mo 3cb22aa1c_diff.java;0;0;0;0;0;0;0
+8;/8/Between/use nio for dec 8264511a2_diff.java;0;0;0;0;0;0;0
+9

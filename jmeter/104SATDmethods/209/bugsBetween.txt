@@ -1,0 +1,5 @@
+e5c108478 Bug 47474 - View Results Tree support for plugin renderers
+dd20f3a41 Bug 36726 - add search function to Tree View Listener
+447cb7f46 Bug 47137 - Labels in View Results Tree aren't I18N
+6f9771e84 Bug 43450 - add save/restore of error count; fix Calculator to use error count
+e09e4965b Bug 42582 - JSON pretty printing in Tree View Listener

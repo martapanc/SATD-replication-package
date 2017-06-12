@@ -1,0 +1,3 @@
+e7cdf2296 Bug 60299 - Thread Group with Scheduler : Weird behaviour when End-Time is in the past Bugzilla Id: 60299
+7f629396b Bug 57193: Correctly close ol tag in javadoc Bugzilla Id: 57193
+534034cb8 Bug 53975 - Variables replacement doesn't work with option "Delay thread creation until needed" Bugzilla Id: 53975

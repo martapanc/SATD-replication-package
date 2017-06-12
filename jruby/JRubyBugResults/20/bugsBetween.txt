@@ -1,0 +1,2 @@
+bf56a4c459 Fix for JRUBY-3615: Fiber.yield crahes if called without arguments
+d5edd038a6 Fix for JRUBY-1812, load should accept a "wrap" parameter that causes it to load in a new top self.

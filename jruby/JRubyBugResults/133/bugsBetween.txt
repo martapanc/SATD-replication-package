@@ -1,0 +1,1 @@
+97f8fddfe6 fixes JRUBY-4836: [1.9] Symbol with empty string is allowed

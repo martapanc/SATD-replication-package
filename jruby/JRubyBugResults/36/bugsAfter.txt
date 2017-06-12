@@ -1,0 +1,4 @@
+60de9aa097 Fix #238.
+f38b8e5a35 Kinda sorta fix JRUBY-6674
+066c2f03a0 Fix JRUBY-6721
+6c3ca3f9f9 Fix JRUBY-6337.

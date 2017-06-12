@@ -1,0 +1,31 @@
+55c374086d Fix JRUBY-6489
+e4b8742829 Fix JRUBY-5960: Something in rails causes File#each to throw InvalidByteSequenceError in 1.9 mode
+a3e44c8417 Fix JRUBY-5627: JRuby flock silently converts LOCK_EX to LOCK_SH on read-only files
+3037c5e6f5 Fix JRUBY-5634: File.new (and related paths) unconditionally calling to_int on first arg
+15832d3b4d Fix JRUBY-5514: Errno::EBADF is sometimes raised instead of IOError when TCPSocket#readline is called after TCPSocket#close
+891409e4b2 Improve and expand fix for JRUBY-5406 and centralize encoding lookup logic in EncodingService.
+da71cdc017 Fix JRUBY-5276: FileTest methods not showing up in File.singleton_methods
+d60304cf18 Fix for JRUBY-5193: a File named "classpath:/path" uses ByteList's classloaders
+2816396568 fix JRUBY-5286: taint failure in Dir.pwd and File#path
+e2dbc57a01 fix JRUBY-5282: File#mtime should raise error if called on closed object
+231a3b3d67 Fix for JRUBY-5167: __FILE__ set to symlink target during load or require
+b11215e24f Fix by Aman Gupta for JRUBY-5144: Tempfile#path should return nil after #delete
+5165bbb979 fix JRUBY-4983: FileUtils's cp_r and rm_r bugs out with directory containing non ascii characters
+1e7d8dc241 fix JRUBY-4921: File.expand_path incorrectly resolves paths relative to an in-jar path
+8ca33733dd fixes JRUBY-4899: unable to install gems in 1.9 mode
+eaeafa4881 Fix for JRUBY-4879
+71aa55d7c0 fixes JRUBY-4859: File.delete doesn't throw an error when deleting a directory
+77c5115dbf fixes JRUBY-4770: File#size for 1.9.2
+1a004d74f7 Fix for JRUBY-4760: File.open throws Errno::ENOENT when file inside jar is accessed using ".." (doubledot) in the path
+431e8ce7db Fix for JRUBY-4537: File.open raises Errno::ENOENT instead of Errno::EACCES
+678497f039 Fix for JRUBY-4536: Duplicated error message in SystemCallError#message
+9c7afd4209 Fixes JRUBY-3922: File.basename doesn't cope with UTF8 strings
+2571d5d5b4 Fix for JRUBY-3806: Encoding problems with File.expand_path after JRUBY-3576 fix for Macroman issue
+bac8e8274b Fix by Hiro Asari for JRUBY-3388: RubySpec: File.open opens the file when passed mode, num and permissions
+caef981504 Fix for JRUBY-3142 and JRUBY-3660: Dir.pwd correctly displays dirs with unicode characters in them
+5c58a30248 Fix for JRUBY-1606: File.expand_path does not work as expected
+9f7152a55f Fix for JRUBY-2542: DATA.flock causes ClassCastException
+543651da13 Fix for JRUBY-1470: FileTest methods only work with string arguments
+5b038df440 Fix or JRUBY-3050: File/IO broken with special characters in filenames
+bc75f2d33b Fix for JRUBY-3025: File.truncate errors with "No such file or directory" when the file exists.
+8ca2b03c28 Various fixes for JRUBY-2677, problems opening filenames or passing arguments with unicode characters.

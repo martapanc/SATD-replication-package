@@ -1,0 +1,3 @@
+3f609f977 explicitly guard against nul values, mark to and from attributes as required.  PR 44790.
+ae0dd4dca add casesensitive and handledirchar to globmapper and regexpmapper PR: 16686 and 32487
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof

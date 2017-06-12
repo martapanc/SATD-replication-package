@@ -1,0 +1,3 @@
+8beaccc7eb HHH-5616 - Switch to Gradle for builds .. infinispan
+abc165eaba [HHH-4520] (Infinispan second level cache integration can cache stale collection data) Ported fix. testManyUsers has been disabled while ISPN-277 gets fixed. Finally, Infinispan version has been upgraded to 4.0.0.CR2.
+ec31e277ec [HHH-4519] (Hibernate/Infinispan integration doesn't property handle Entity/CollectionRegionAccessStrategy evictAll) Fixed and got provider to work with forthcoming Infinispan 4.0.0.CR2 which has been just tagged but the maven repo has not been updated yet.

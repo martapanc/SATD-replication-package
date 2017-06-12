@@ -1,0 +1,31 @@
+9eaec178d Bug 56939 - Parameters are not passed with OPTIONS HTTP Request Bugzilla Id: 56939
+7266caa52 Bug 54525 Search Feature : Enhance it with ability to replace Bugzilla Id: 54525
+81c34bafc Bug 60564 - Migrating LogKit to SLF4J - Replace logkit loggers with slf4j ones with keeping the current logkit binding solution
+297622a69 Bug 54525 - Search Feature : Enhance it with ability to replace Implement feature for Sampler subclasses Bugzilla Id: 54525
+0bf26f41b Bug 60423 - Drop Monitor Results listener Part 1 Bugzilla Id: 60423
+f4f92dac0 Bug 53039 - HTTP Request : Be able to handle responses which size exceeds 2147483647 bytes Fix bug as per Felix Schumacher review, thx Bugzilla Id: 53039
+caaf9e666 Bug 53039 - HTTP Request : Be able to handle responses which size exceeds 2147483647 bytes Bugzilla Id: 53039
+7ffb94bb3 Bug 60084 - JMeter 3.0 embedded resource URL is silently encoded Bugzilla Id: 60084
+5f87f3092 Bug 59882 - Reduce memory allocations for better throughput Based on PR 217 contributed by Benoit Wiart (b.wiart at ubik-ingenierie.com)
+09cce647f Bug 59382 - More realistic default value for httpsampler.max_redirects Bugzilla Id: 59382
+a5d656bd5 Bug 59249 - Http Request Defaults : Add "Source address" and "Save responses as MD5" Oups forgot 1 class Bugzilla Id: 59249
+a7705d5d5 [Bug 52073] Embedded Resources Parallel download : Improve performances by avoiding shutdown of ThreadPoolExecutor at each sample Based on PR by Benoit Wiart + the addition (blame me) of JMeterPoolingClientConnectionManager  (see mailing list mail I will send) Bugzilla Id: 52073
+b93b3328d Bug 59033 - Parallel Download : Rework Parser classes hierarchy to allow pluging parsers for different mime types Bugzilla Id: 59033
+374063362 Bug 59008 - Fix Infinite recursion SampleResult on frame depth limit reached Bugzilla Id: 59008
+f9cbd6162 Bug 59034 - Parallel downloads connection management is not realistic Bugzilla Id: 59034
+2bc066acb Bug 59023 - HttpSampler UI : rework the embedded resources labels and change default number of parallel downloads to 6 Fix effectively the issue (thanks sebb for the note) Bugzilla Id: 59023
+89d0fa45b Bug 57577 - HttpSampler : Retrieve All Embedded Resources should only compute size or hash by default Take into account sebb notes Bugzilla Id: 57577
+fc21f0dd2 Bug 59023 - HttpSampler UI : rework the embedded resources labels and change default number of parallel downloads to 6 Bugzilla Id: 59023
+1e1fceeb6 Bug 57577 - HttpSampler : Retrieve All Embedded Resources should only compute size or hash by default #resolve #127 Bugzilla Id: 57577
+302012293 Bug 57696 HTTP Request : Improve responseMessage when resource download fails Bugzilla Id: 57696
+3b7e03d0f Bug 58705 - Make org.apache.jmeter.testelement.property.MultiProperty iterable #resolve #48 Bugzilla Id: 58705
+195fe4c25 Bug 58137: Warn about urls that had to be escaped. Bugzilla Id: 58137
+3f62343c9 Bug 58137: Don't escape file protocol urls Bugzilla Id: 58137
+bd765acb3 Bug 58137 - JMeter fails to download embedded URLS that contain illegal characters in URL (it does not escape them) Bugzilla Id: 58137
+74c6ad8b0 Bug 57696 - HTTP Request : Improve responseMessage when resource download fails Oups : Fix test failure Bugzilla Id: 57696
+b94669a7e Bug 57696 - HTTP Request : Improve responseMessage when resource download fails Bugzilla Id: 57696
+6cbf639dd Bug 57613 - HTTP Sampler : Added CalDAV verbs (REPORT, MKCALENDAR) Bugzilla Id: 57613
+74f9d98ee Bug 57606 - HTTPSamplerBase#errorResult changes the sample label on exception Bugzilla Id: 57606
+28c1ce150 Bug 57579 - NullPointerException error is raised on main sample if "RETURN_NO_SAMPLE" is used (default) and "Use Cache-Control / Expires header..." is checked in HTTP Cache Manager Bugzilla Id: 57579
+591c1512b Bug 57193: Add param and return tags to javadoc Bugzilla Id: 57193
+ee0c987ff Bug 57193: Add param and return tags to javadoc Bugzilla Id: 57193

@@ -1,0 +1,3 @@
+3a813dcbb4 HHH-11646 revert errant after -> afterQuery search and replace
+aa3f913857 HHH-11194 - Add setting to allow enabling legacy 4.x LimitHandler behavior (removed delegation).
+eec01edcca HHH-10876 - DefaultIdentifierGeneratorFactory does not consider the hibernate.id.new_generator_mappings setting

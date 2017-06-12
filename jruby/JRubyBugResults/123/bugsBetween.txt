@@ -1,0 +1,3 @@
+e422b1f86f Fixes #1940
+8c31952769 Fixes #1936
+a10942ea38 JRubyClassloader seems to have a problem with file urls pointing to jar within a jar. converting them into jar:file: do work - fixes #1850

@@ -1,0 +1,1 @@
+80d45d8db add remote option to use rlog instead of log to cvschangelog.  Submitted by Rob van Oostrum.  PR 27419.

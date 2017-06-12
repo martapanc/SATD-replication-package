@@ -1,0 +1,3 @@
+1e4a1ca55 Bug 60842 - jmeter chokes on newline Optimize by using static Pattern Factor our code in base class Use code in JSoup based implementation Add Junit tests for it Bugzilla Id: 60842
+3ff0e6095 Bug 60564 - Migrating LogKit to SLF4J - Replace logkit loggers with slf4j ones with keeping the current logkit binding solution
+b93b3328d Bug 59033 - Parallel Download : Rework Parser classes hierarchy to allow pluging parsers for different mime types Bugzilla Id: 59033

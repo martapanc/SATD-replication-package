@@ -1,0 +1,16 @@
+bcc26747f5 Use RubyModule.JavaClassKindOf fixes jruby/jruby#614
+6480caa597 Fix #497 by using nearest class's name for anon inspect prefix.
+7152c1834a Passing no args to Module#undef_method and Module#remove_method should be noop. Fixes #327.
+0931687127 Fix JRUBY-6885
+bef3b7040c Fix JRUBY-6865
+22cd6f9ac7 Fixes JRUBY-6658
+cc6e09f4b3 Fix JRUBY-6753
+eee38a6d48 Fix JRUBY-6238
+404c280fc7 Fix JRUBY-6224
+c6e2447cdb Fix JRUBY-6201: File reading performance regression
+2c6781ef4e Fix JRUBY-928: Java arrays don't inherit from java.lang.Object in Rubified Java class hierarchy
+f636731047 Fix JRUBY-5729: Process.respond_to?(:fork) must return false
+1a1864332f Fix JRUBY-5674: Cannot override Fixnum operators
+209a77e3f2 Re-fix JRUBY-5624: Class.new { p eval("self", binding) }
+86ce4a82af Fix JRUBY-5376: singleton_class.define_method creates private methods
+94913c828e fix JRUBY-5304: [1.9] Module.const_defined? and Module.const_get accept a second parameter to look up into the ancestors

@@ -1,0 +1,20 @@
+60ee4df22 Bug 57107 - Patch proposal: Add DAV verbs to HTTP Sampler Bugzilla Id: 57107
+ee7db54f9 Bug 54778 - HTTP Sampler should not return 204 when resource is found in Cache Bugzilla Id: 54778
+74d599b35 Bug 56772 - Handle IE Conditional comments when parsing embedded resources Commit missing class and handle null UA Bugzilla Id: 56772
+e554711a8 Bug 55023 - SSL Context reuse feature (51380) adversely affects non-ssl request performance/throughput Fixed regression on 51380 introduced by fix Bugzilla Id: 55023
+e1c5c20a4 Bug 54129 - Search Feature does not find text although existing in elements Bugzilla Id: 54129
+472da1514 Bug 53765 - Switch to commons-lang3-3.1 Bugzilla Id: 53765
+de6a0a763 Bug 53145 - HTTP Sampler - function in path evaluated too early
+ed3fd9629 Bug 53042 - Introduce a new Interface to be implemented by AbstractSampler to allow Sampler to decide wether a config element applies to Sampler
+255f2d509 Bug 44301 - Enable "ignore failed" for embedded resources
+59553bf42 Bug 52409 - HttpSamplerBase#errorResult modifies sampleResult passed as parameter; fix code which assumes that a new instance is created (i.e. when adding a sub-sample)
+9de8dfd38 Bug 49374 - Encoding of embedded element URLs depend on the file.encoding property Now using SampleResult#getDataEncodingWithDefault() to avoid relying on file.encoding of the JVM. Modified HTMLParserTestFile_2.xml to take into account the impact of encoding change.
+3d11fe9b9 Bug 52310 - variable in IPSource failed HTTP request if "Concurrent Pool Size" is enabled Fix by making child get context of the parent.
+ef3452255 Bug 52221 - Nullpointer Exception with use Retrieve Embedded Resource without HTTP Cache Manager
+42a20fb88 Bug 52137 - Problems with HTTP Cache Manager
+524e51555 Bug 51876 - Functionnality to search in Samplers TreeView Changed implementation to: - Add ability to search with regexp - Add ability to search in case sensitive and insentive modes - Plug additional search implementations
+279de7c33 Bug 51919 - Random ConcurrentModificationException or NoSuchElementException in CookieManager#removeMatchingCookies when using Concurrent Download
+4b9cb415a Bug 51861 - Improve HTTP Request GUI to better show parameters without name (GWT RPC requests for example)
+6572ccd24 Bug 51876 - Functionnality to search in Samplers TreeView
+30860c40e Bug 51876 - Functionnality to search in Samplers TreeView
+3dd627dcf Bug 51876 - Functionnality to search in Samplers TreeView

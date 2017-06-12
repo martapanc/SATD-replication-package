@@ -1,0 +1,1 @@
+a78db1a702 Fix for JRUBY-1641 from Vladimir; safely check privileged system properties, since blowing up there kills JRuby.

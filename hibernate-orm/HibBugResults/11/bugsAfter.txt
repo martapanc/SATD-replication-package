@@ -1,0 +1,2 @@
+b6bfb72da6 HHH-4028 - Move current cache-jbosscache2 module content to cache-jbosscache
+eb60160109 [HHH-3817] Don't cache stale data via putFromLoad [HHH-3818] Handle evictAll "without regard for transactions"

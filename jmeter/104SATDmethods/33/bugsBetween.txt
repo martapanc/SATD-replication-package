@@ -1,0 +1,4 @@
+87b67eb18 Bug 56539 - Mail reader sampler: When Number of messages to retrieve is superior to 1, Number of samples should only show 1 not the number of messages retrieved Bugzilla Id: 56539
+d7fdf5ad2 Bug 53042 - Introduce a new Interface to be implemented by AbstractSampler to allow Sampler to decide wether a config element applies to Sampler
+3dbd39d86 Bug 51011 - Mail Reader: upon authentication failure, tell what you tried
+91e79e3ed Bug 49603 - Allow accepting expired certificates on Mail Reader Sampler

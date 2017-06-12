@@ -1,0 +1,9 @@
+87e3f0fd28 HHH-10664 - Prep 6.0 feature branch - merge hibernate-entitymanager into hibernate-core (first sucessful full compile of consolidated hibernate-core)
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers
+611f8a0e1c HHH-9803 - Checkstyle fix ups
+cd590470c0 HHH-8741 - More checkstyle cleanups
+1825a4762c HHH-8211 Checkstyle and FindBugs fix-ups
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+ff74ceaaa4 HHH-6155 - Migrate o.h.impl package to o.h.internal
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes
+34c2839dcc HHH-5616 - Switch to Gradle for builds

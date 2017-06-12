@@ -1,0 +1,2 @@
+4e6078d711 Fix JRUBY-6623: In IRB, backslashes are gobbled in the eval loop Prevent jline2 from expanding \\ into commands. This may prevent some useful expansions, but if it does, we will deal with it later.
+db5cdb6964 Fix JRUBY-6605. jline.console.history.MemoryHistory$EntryImpl now overrides toString().

@@ -1,0 +1,13 @@
+87e3f0fd28 HHH-10664 - Prep 6.0 feature branch - merge hibernate-entitymanager into hibernate-core (first sucessful full compile of consolidated hibernate-core)
+2731fe541a HHH-100084 - Refactor Identity Column support methods into IdentityColumnSupport interface
+11ae0f72c8 HHH-9166 handle nested exceptions with TemplatedViolatedConstraintNameExtracter
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers
+ae43670290 HHH-9724 - More complete "temp table" coverage and allow Dialects to influence which strategy is used
+06b6135a11 HHH-9724 - More complete "temp table" coverage and allow Dialects to influence which strategy is used - initial work
+4615ae1018 - HHH-9324: Avoids creation of LimitHandler instances for every query.
+5fc70fc5ab HHH-8159 - Apply fixups indicated by analysis tools
+49c8a8e4f0 HHH-7797 Finished auditing dialects.  Cleanup and javadocs.  Completed uniqueness test.
+5081861dd8 HHH-6944 : Update Dialects to return SQLExceptionConversionDelegate
+a806626a27 HHH-6199 - Split org.hibernate.exception package into api/spi/internal
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

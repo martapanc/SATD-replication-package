@@ -1,0 +1,2 @@
+3402ba3a67 HHH-6028 - Remove o.h.classic.Session/Validatable
+34c2839dcc HHH-5616 - Switch to Gradle for builds

@@ -1,0 +1,24 @@
+ee4aa0108 zip's whenempty doesn't look at non-filesets at all.  PR 50115
+ba12ac85f better use the full potential of a Hashtable.  PR 48755.  Submitted by Marc Bevand.
+dd92def3a try to make ZipExtraField change in zip backwards compatible for subclasses that override zipFile.  PR 48541
+f2d99c202 create parent directory of archive in <zip> and <tar> if needed.  PR 45377.  Based on patch by Remie Bolte
+ee0fc90c1 make sure log messages to get emmitted twice in double-pass mode.  PR 39426.
+8aaa00583 close streams passed in to zipFile(InputStream, ...).  PR 42632.
+549fc1f68 don't trust permissions read from another ZIP file blindly.  PR 42122.
+0df2b1de3 Minor updates based on the input of Dave Brosius pr: 39320
+32f2e37a9 JDK 1.2 is EOL and documentation is no more available. Point to JDK 5 API PR: 37203
+de95ac9a0 Make Solaris detect Ant jar files as jar files, PR: 32649
+ab3f80589 NPE when adding comment to zip file that is not there PR: 33779
+a18bd3310 On second thought, this seems to be the real fix for PR: 33412
+782e45115 <zip> update ignored defaultexcludes, PR 33412
+1225a5a84 Added level attribute to zip & subclasses. PR: 25513
+8d72468ce Add support of zip comment. PR: 22793 Obtained from: Larry Shatzer
+6e7294106 Make it possible to create manifest only jars with the option duplicate="preserve" PR: 32802
+54d0543e1 prevent empty archive in zip if whenempty is set to skip, PR: 22865
+1efa389be Push fix for PR#17934 to 1.6.2
+b56144731 Don't delete existing file when trying to update a read-only archive, PR: 28419
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof
+5dc8a1418 add filename to errormessage if unable to rename file in zip task PR: 24945 Obtained from: Bart Vanhaute
+6b62a56cc More robust cleanup of temporary files, PR 17512
+9434671ef removing enum variable PR: 22345 Obtained from: Submitted by: Reviewed by:
+02305cfec Improve fix for PR: 19449.

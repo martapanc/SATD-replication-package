@@ -1,0 +1,9 @@
+bea36bbd2 don't assume File#isDirectory == !File#isFile - i.e. explicitly test and drop objects that are neither files nor directories.  PR 56149
+e46fd219c removeNotFollowedSymlinks='true' might be deleting too eagerly.  PR 53959
+379895a02 synchronize access to default excludes.  PR 52188.
+d85d2da8e restrict impact of fix for PR 50295 on 'good' VMs to an additional syscall for empty directories rather than an additional call for every directory
+17d4b3461 Make DirectoryScanner work on buggy JVMs where File.list() returns an empty array rather than null for files.  PR 50295.  Submitted by Daniel Smith
+43de42a38 add Git, Mercurial and Bazaar files/dirs to defaultexcludes.  Submitted by Ville Skyttä.  PR 49624
+6a87b53fc don't scan directories that are excluded recursively - this used to be done everywhere except for the (most common) case where the directory itself was not explicitly included.  PR 49420
+1d3ca73f3 don't run into infinite lopps caused by symbolic links.  PR 45499.
+446436982 honor followsymlinks on a fileset's dir as well.  PR 45741.

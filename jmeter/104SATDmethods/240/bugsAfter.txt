@@ -1,0 +1,6 @@
+7ebfa083a Bug 60564 - Migrating LogKit to SLF4J - check log level in non-error logging if method invoked in params Contributed by Woonsan Ko This closes #267 Bugzilla Id: 60564
+9033e6208 Bug 60710 - XPath Extractor : When content on which assertion applies is not XML, in View Results Tree the extractor is marked in Red and named SAXParseException Bugzilla Id: 60710
+b1cca8cc9 Bug 60564 - Migrating LogKit to SLF4J - Replace logkit loggers with slf4j ones with keeping the current logkit binding solution Contributed by Woonsan Ko This closes #264 Bugzilla Id: 60564
+c53bafaee Bug 60602 - XPath Extractor : Add Match No. to allow extraction randomly, by index or all matches Bugzilla Id: 60602
+4a087408e Bug 55694 - Assertions and Extractors : Avoid NullPointerException when scope is variable and variable is missing Bugzilla Id: 55694
+e1c5c20a4 Bug 54129 - Search Feature does not find text although existing in elements Bugzilla Id: 54129

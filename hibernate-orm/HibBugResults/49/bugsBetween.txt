@@ -1,0 +1,15 @@
+66ce8b7fb5 HHH-9466 - Drop metamodel package from source
+9938937fe7 HHH-8637 - Downcasting with TREAT operator should also filter results by the specified Type
+ba0d14546c HHH-8276 - Integrate LoadPlans into UniqueEntityLoader (PoC)
+dc7cdf9d88 HHH-8276 - Integrate LoadPlans into UniqueEntityLoader (PoC)
+9fc22a49be HHH-7214 - Validation of duplicated discriminator values
+1cd8db2ac3 HHH-2394 Got filters working with secondary tables
+ef22e31068 HHH-6974 Adding hooks into NaturalIdRegionAccessStrategy
+11ef3e0765 HHH-4881: Keep track of the actual value used for the discriminator
+dc7feab061 HHH-6498 HHH-6337 : Updates to support single-table inheritance using new metamodel
+e540089783 HHH-6480 - Develop component binding for new metamodel
+9ec53fa1f8 HHH-6472 - Implementing EntityDiscriminator and discriminator match value
+486352eaa9 HHH-6471 - Redesign how EntityBinding models hierarchy-shared information
+46102a2be3 HHH-6471 - Redesign how EntityBinding models hierarchy-shared information
+acc93a3d8c HHH-6447 - Develop shared binding creation approach
+24edf42c04 HHH-6371 - Develop metamodel binding creation using a push approach

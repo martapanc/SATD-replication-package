@@ -1,0 +1,11 @@
+2f1445af01 Use jnr-constants for signal values.  Fixes JRUBY-5696.
+5d094dbf5c Fix JRUBY-5688: Process::Status#pid is missing
+78835628f2 Fix JRUBY-5687: Process::Status#exitstatus does not return correct exit status
+35a1935d2d Fix JRUBY-5531: Process.spawn("ruby") gives garbage PID
+d76f6369e7 Fix JRUBY-4469: Process.spawn seems to be completely broken
+7c7ecc5cdb Fix JRUBY-5463: Process.getpriority should raise an error with an invalid process type
+3f5f461e62 Improve on the previous fix for JRUBY-4468, so that we can handle the cases where 'kill' sets errno to something other than ESRCH.
+42b0fa9bc0 Fix JRUBY-4468: Process.kill doesn't return a correct value
+b643acda37 Fix for JRUBY-2795: Process.setpriority failure in rubyspecs on Mac OS X, Soylatte
+2ebc903a20 Fix for JRUBY-2353: Process.kill breaks up JRuby, while works in MRI on Windows
+bc381827af Fix JRUBY-2796 Missing constant in Process::Constants on Mac OS X (darwin)

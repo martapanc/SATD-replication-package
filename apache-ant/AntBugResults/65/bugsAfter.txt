@@ -1,0 +1,3 @@
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof
+85b203207 changed email address of Rob van Oostrum to rob at springwellfarms dot ca PR: 14709
+202be1f5e Adds functionality that makes jboss element look for jbosscmp-jdbc.xml descriptor if ejbjar has cmpversion="2.0" set PR: 14709 Submitted by: Rob van Oostrum (rvanoo at xs4all dot nl)

@@ -1,0 +1,3 @@
+d7cc102b00 HHH-6069 - Escape entity fields name
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

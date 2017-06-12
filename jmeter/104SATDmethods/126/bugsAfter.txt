@@ -1,0 +1,2 @@
+efc2f7569 Bug 60744 - GUI elements are not cleaned up when reused during load of Test Plan which can lead them to be partially initialized with a previous state for a new Test Element Bugzilla Id: 60744
+eba38b513 Bug 58699 : Workbench changes neither saved nor prompted for saving upon close #resolve #45 Bugzilla Id: 58699

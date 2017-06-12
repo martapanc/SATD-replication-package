@@ -1,0 +1,1 @@
+dd7f8b74be Fix #2205: All (except top-level) scopes have PUBLIC visibility by default

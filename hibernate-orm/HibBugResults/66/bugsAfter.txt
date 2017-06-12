@@ -1,0 +1,7 @@
+3a813dcbb4 HHH-11646 revert errant after -> afterQuery search and replace
+87e3f0fd28 HHH-10664 - Prep 6.0 feature branch - merge hibernate-entitymanager into hibernate-core (first sucessful full compile of consolidated hibernate-core)
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers
+23794bf294 HHH-9792 - Clean up missed Configuration methods
+a92ddea9ca HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc) - Gunnar's feedback
+027840018b HHH-8191 Support Teradata 14.0
+63a0f03c5a HHH-9654 - Adjust envers for 5.0 APIs + JAXB

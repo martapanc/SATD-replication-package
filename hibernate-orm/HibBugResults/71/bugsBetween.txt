@@ -1,0 +1,3 @@
+f93d1412a4 HHH-6033 - Migrate stats to api/spi/internal split
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

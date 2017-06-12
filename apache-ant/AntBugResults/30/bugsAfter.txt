@@ -1,0 +1,4 @@
+234c1d9ff weed out race-condition in mkdirs calls inspired by PR 55290 and Matthias Bhend's suggestion
+ef4c94df7 Provide more control over Zip64 features, in particilar turn them off in <jar> by default - this might fix bugzilla issue 54762
+0282d8fe2 PR 54026 Zip task on <mappedresources> that excludes certain files by way of the mapper results in a NullPointerException
+5f20b9914 microoptimizations.  PR 50716

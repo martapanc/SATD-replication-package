@@ -1,0 +1,5 @@
+3fb51fc00 Bug 60813 - JSR223 Test element : Take into account JMeterStopTestNowException, JMeterStopTestException and JMeterStopThreadException Bugzilla Id: 60813
+ea7682133 Bug 60564 - Migrating LogKit to SLF4J - core/testelement,threads,util,visualizers package Contributed by Woonsan Ko This closes #273 Bugzilla Id: 60564
+2e36b4f4d Bug 59945 For all JSR223 elements, if script language has not been chosen on the UI, the script will be interpreted as a groovy script A getXXX method should not change state, so read every time and default (slight performance loss) Add javadocs Drop unused log field Increment serialVersionId
+4f208f5c5 Bug 56554 : the script cache key is now automatically generated #resolve #83 Bugzilla Id: 56554
+f023972db Bug 57193: Add param and return tags to javadoc Bugzilla Id: 57193

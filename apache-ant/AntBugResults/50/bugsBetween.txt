@@ -1,0 +1,2 @@
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof
+3396e7c32 Remove direct call to deprecated project, location, tasktype Task field, replaced by an accessor way into tasks. Remove too some unused variable declaration and some unused imports. PR: 22515 Submitted by: Emmanuel Feller ( Emmanuel dot Feller at free dot fr)

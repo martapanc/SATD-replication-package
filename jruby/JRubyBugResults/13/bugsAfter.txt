@@ -1,0 +1,12 @@
+5f83b908f7 Fixes #4328. Literal rational syntax does not support Bignum.
+18cde0df7f Separate varargs and specific-arity names in JIT. Fixes #4482
+4e4935ed6f Fixes #4319.  JRuby can not interpret keyword argument when placed after positional argument in block Fixes #2485. proc with extra args incorrectly binds wrong post args
+cf2df89ba6 Disable the AddLocalVarLoadStore pass to fix #3891.
+5861b1b9c6 Fix __FILE__ in JIT. Fixes #3410.
+c9c2390744 Fixes #3046. Shellescaped utf-8 string misbehaving in backticks
+0825e699fb fix GH-2591 on master. keeps encoding of symbol name.
+d211f19382 Fix #2409: Unbreak JIT
+29371d9354 Fix #2409: Splat --> BuildSplatInstr + Splat (for use in call args)
+89f548ea9b Fixes #2172: Symbols need to support UTF-8 names
+6da2fed17a Revert to uncached super logic to fix #2092.
+c3b80aa0f9 Fix defined?(::Object) logic in JIT. Partial fix for #2090.

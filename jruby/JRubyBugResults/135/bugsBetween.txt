@@ -1,0 +1,9 @@
+1c02ca0e64 Fixes for JRUBY-734, along with a first run at cleaning up IRubyObject.
+9fa4acdd46 Fix for JRUBY-461: trim off dir before searching for extension.
+dbdef38090 Fix for JRUBY-429, and also make filenames more like MRI in backtraces.
+8d7f2f4f78 Fix for JRUBY-412: Make File::Stat a good citizen of the new allocator world.
+57504d74a1 Initial fixes for JRUBY-408. Added ObjectAllocator and code to consume it throughout the MetaClass hierarchy.
+4825bbbd45 Fix for JRUBY-396: Adds File#ctime and File.ctime
+542415f6bc Fix for JRUBY-301, make symlink? work by comparing canonical and absolute paths
+59c5d204bf Fix for JRUBY-333, Rails 1.2 needs File#extname
+aa567ca8c6 Fix for JRUBY-224, File.rename() should throw error when renaming to file in nonexistant directory

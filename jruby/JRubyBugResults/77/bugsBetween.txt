@@ -1,0 +1,3 @@
+3487bba2fa Fixed JRUBY-4116 and JRUBY-3950 (IRB in Applet and WebStart environments).
+703b764c7f Fix for JRUBY-3420: Added basic_word_break_characters method to Readline
+a020c04888 Fix up a problem with my re-initializing logic for JRUBY-2988; only reinitialize if we have the bad IOException.

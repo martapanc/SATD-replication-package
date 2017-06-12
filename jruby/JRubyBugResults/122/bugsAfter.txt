@@ -1,0 +1,2 @@
+ed560a8ca7 Fix JRUBY-6198: When calling dup on file open in binmode the new object does not respect binmode
+0b7aed72d4 Alternative fix for JRUBY-5114: provide an autoclose flag on all IO objects that will allow turning off the close-on-finalize behavior. Also modified the "to_io" impls for InputStream, OutputStream, and Channel to take an :autoclose option.

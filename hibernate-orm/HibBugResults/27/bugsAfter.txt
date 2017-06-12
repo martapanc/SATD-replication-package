@@ -1,0 +1,3 @@
+1e44e7420b HHH-10267 - Support defining lazy attribute fetch groups
+750d6fb090 HHH-9857 - Reuse of EntityEntry for bytecode enhanced read-only reference cached entities
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers

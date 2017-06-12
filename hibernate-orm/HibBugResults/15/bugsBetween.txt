@@ -1,0 +1,4 @@
+7308e14fed HHH-9803 - Checkstyle fix ups
+4a4f636caf HHH-6330 - Remove entity mode switching capability
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+34c2839dcc HHH-5616 - Switch to Gradle for builds

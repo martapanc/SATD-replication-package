@@ -1,0 +1,333 @@
+Hack in to replace usual readline with this
+SSS FIXME: Do we need to check if l is same as whatever popped?,src/org/jruby/compiler/ir/IR_ExecutionScope.java,dc0b3a049,8dff5b2a5
+FIXME: Consider fixing node_assign itself rather than single case,truffle/src/main/java/org/jruby/truffle/parser/parser/RubyParser.java,fa938c4c7,8b6eec17d
+// FIXME: I think we need these pushed somewhere?
+// if body is a rescue node, inspect its pieces separately to avoid it disabling all optz
+// TODO: Make DynamicMethod immutable
+// Must be called from main thread (it is currently
+// TODO: Only used by interface implementation,src/org/jruby/javasupport/util/RuntimeHelpers.java,132d0a520,bb98e4b8d
+// SSS FIXME: Should I have a reference to the IR_loop that is being retried?
+// FIXME: No, I don't like it.,src/org/jruby/runtime/CallbackFactory.java,b14d1b95c,4a8330815
+// TODO: confirm expected args are IRubyObject (or similar)
+// SSS FIXME: Can this return anything other than nil?,src/org/jruby/compiler/ir/IRBuilder.java,f9c3ccc4a,214b11c51
+FIXME: finalizer should be dupped here,src/org/jruby/RubyObject.java,fa021e635,fd0fa789b
+// using IOOutputStream may not be the most performance way
+// FIXME: bit of a kludge here (non-interface classes assigned to both,core/src/main/java/org/jruby/javasupport/binding/ClassInitializer.java,be3134444,55927e21e
+// This is a fairly specific hack for empty string
+// TODO: decompose getJavaPackageModule so we don't parse fullName
+// The following three methods must be defined fast
+// TODO: turn off the negative? will return -0.0 in lax mode
+// TODO: why are we duplicating the constants here,src/org/jruby/RubyFile.java,cd64ee383,00633ae67
+// FIXME we want to eliminate these type casts when possible
+// TODO: This probably isn't the best hack,src/org/jruby/runtime/ThreadContext.java,d5917ab01,fd0fa789b
+// SSS FIXME: Is this correct?,core/src/main/java/org/jruby/ir/IRScope.java,ce466f285,cba0983f0
+// FIXME: Determine if a real allocator is needed here. Do people want to extend,jruby/core/src/main/java/org/jruby/java/addons/ClassJavaAddons.java,f9b28c47d,14226fded
+// TODO: Determine whether we should perhaps store non-singleton class,src/org/jruby/internal/runtime/methods/DynamicMethod.erb,f9b01edcd,885e23521
+// TODO: get rid of this (lax returns 0.0
+// SSS FIXME: Does int suffice
+// FIXME: This table will get moved into POSIX library so we can get all actual supported,src/org/jruby/RubyProcess.java,c3af7f127,2f1445af0
+// hack to get right style for input
+// TODO: make this an array so it's not as much class metadata,src/org/jruby/java/MiniJava.java,ba40f9ccd,02b8e01b4
+// FIXME: shouldn't need @__java_ovrd_methods
+// FIXME: If true array is common enough we should pre-allocate and stick somewhere,src/org/jruby/RubyObject.java,8868926c9,6eb8df5bd
+// TODO: eliminate?
+// Workaround for a bug in Sun's JDK 1.5.x,src/org/jruby/ext/socket/RubySocket.java,eb1f44e4b,606bd2e15
+// Object#to_a is obsolete. We match Ruby's hack until to_a goes away. Then we can,truffle/src/main/java/org/jruby/truffle/parser/Helpers.java,fa938c4c7,277af88f8
+// TODO? I think this ends up propagating from normal Java exceptions,src/org/jruby/RubyIO.java,66b024fed,b97e02246
+Process streams get Channel.newChannel()ed into FileChannel but are not actually
+// FIXME: Remove this from grammars.
+FIXME: any good reason to have two identical methods? (same as remove_class_variable),src/org/jruby/RubyModule.java,95c346df5,632441f33
+// SSS FIXME: Are we guaranteed that we splats dont head to multiple-assignment nodes!,src/org/jruby/compiler/ir/IRBuilder.java,f9c3ccc4a,2ceae0f24
+// TODO: This isn't an exact port of MRI's pipe behavior, so revisit
+// FIXME: these descriptions should probably be moved out
+// TODO: don't bother passing when fcall or vcall,core/src/main/java/org/jruby/ir/targets/JVMVisitor.java,25fdaa3bb,96034ed2a
+// TODO: Make callCoerced work in block context...then fix downto
+// TODO: just adding first one right now...add in signature-guessing logic
+// TODO: not sure that we should skip calling join() altogether
+but its much safer for COW (it prevents not shared Strings with begin != 0)
+// TODO: proper algorithm to set the precision
+// Reset value map if this instruction is the start/end of a basic block,src/org/jruby/compiler/ir/IR_ScopeImpl.java,ddaf4c565,de4bbdb33
+// FIXME: This is copied code from RubyArray. Both RE, Struct, and Array should share one imp
+// We always prepend an org.jruby.proxy package to the beginning
+// we should try to make LoadPath a special array object.
+// TODO: People extending GzipWriter/reader will break. Find better way here.
+// TODO: catch exception if constant is already set by other,core/src/main/java/org/jruby/javasupport/binding/ConstantField.java,5755383a4,55927e21e
+// FIXME: Somehow I'd feel better if this could get the appropriate var index from the ArgumentNode,src/org/jruby/compiler/ASTCompiler19.java,20225f17b,37355c58e
+// small hack to save a cast later on,core/src/main/java/org/jruby/javasupport/binding/NamedInstaller.java,be3134444,55927e21e
+// FIXME: We should really not be creating the dynamic scope for the root,truffle/src/main/java/org/jruby/truffle/parser/parser/ParserConfiguration.java,fa938c4c7,8b6eec17d
+// TODO: no java stringity,src/org/jruby/RubyThread.java,c4c035bee,ba93d1ae0
+SSS FIXME: Used anywhere? I don't see calls to this anywhere,src/org/jruby/compiler/ir/IRBuilder.java,f9c3ccc4a,69a019ddc
+// FIXME: I use a for block to implement END node because we need a proc which captures
+// these extra arrays are really unfortunate
+// TODO: This is almost RubyModule#instance_methods on the metaClass. Perhaps refactor.,src/org/jruby/RubyObject.java,31d6374bd,6eb8df5bd
+// FIXME: We should be getting this from the runtime rather than assume none?,src/org/jruby/ast/EncodingNode.java,898124198,52192272b
+// FIXME: This is pretty gross
+// FIXME: this should go somewhere more generic -- maybe IdUtil,truffle/src/main/java/org/jruby/truffle/util/IdUtil.java,92c1ab5a7,cd313f38a
+// temporary hack to handle non-Ruby values
+// SSS FIXME: Where is this set up? How is this diff from ClassVarDeclNode??,src/org/jruby/compiler/ir/IRBuilder.java,f9c3ccc4a,ef2e37f2f
+// FIXME: I don't like the null checks here,src/org/jruby/RubyIO.java,66b024fed,83c50c049
+// modules are included with a shim class,truffle/src/main/java/org/jruby/truffle/parser/Helpers.java,fa938c4c7,277af88f8
+// FIXME: Don't allow multiple threads to do this at once
+// FIXME: Clearing read buffer here...is this appropriate?,src/org/jruby/util/io/ChannelStream.java,66b024fed,aa4ffa1be
+// SSS FIXME: Should this be Operand or CompoundString?,src/org/jruby/compiler/ir/DynamicSymbol.java,86e7fc928,6a3bf2b58
+// this covers the rare case of lower-case class names (and thus will
+// TODO: number formatting here
+// If variables were added then we may need to grow the dynamic scope to match the static,truffle/src/main/java/org/jruby/truffle/parser/TranslatorDriver.java,27da7b11f,8b6eec17d
+// FIXME: Can get optimized for IEqlNode,src/org/jruby/ast/WhenOneArgNode.java,d7361b88d,75f48785f
+// This is a dummy scope,src/org/jruby/runtime/MethodBlock.java,cdb1c7f5d,0e0ffe2e5
+// TODO: NOT_ALLOCATABLE_ALLOCATOR may be ok here,src/org/jruby/RubyStruct.java,b390103c2,87404f0e1
+// SSS FIXME: Deprecated! Going forward,src/org/jruby/compiler/ir/IR_ExecutionScope.java,dc0b3a049,8dff5b2a5
+// TODO: we should be able to optimize this quite a bit post-1.0. JavaClass already,src/org/jruby/javasupport/proxy/JavaProxyClassFactory.java,0b9733a01,165ec891f
+// FIXME: set up a call configuration for this
+// TODO: It would be nice to throw a better error for this
+// this is a rather ugly hack, but similar to MRI. See hash.c:ruby_setenv and similar in MRI
+// don't bother to check if final method,src/org/jruby/javasupport/JavaMethod.java,52343aa0f,fe8302dcd
+// We clone dynamic scope because this will be a new instance of a block. Any previously,src/org/jruby/runtime/Interpreted19Block.java,bf8db0bc4,0e0ffe2e5
+// FIXME: ConstDecl could be two seperate classes (or done differently since constNode and name
+// TODO: what about n arg?
+// FIXME: what should this really be? assert x instanceof RubyComplex
+// SSS FIXME: This should never get called for constant svalues,src/org/jruby/compiler/ir/operands/SValue.java,d7e29b3be,3be4b70e0
+// FIXME: This doesn't actually support anything but String
+// FIXME: figure out why we get null sometimes
+// TODO: Consider a better way of synchronizing
+// up to ten, stuff into tmp locals
+// FIXME: needs to be rethought,src/org/jruby/javasupport/JavaSupport.java,1dbbe1a37,41d1cea1e
+// FIXME: only starting after required args,src/org/jruby/compiler/impl/StackBasedVariableCompiler.java,9b6d602f9,ff9baab4a
+// TODO: do above but not below for additional newline nodes
+// FIXME: Not sure what the semantics of transfer are,src/org/jruby/libraries/FiberLibrary.java,c187d01e4,c2f126a48
+// using IOInputStream may not be the most performance way
+// SSS FIXME: Maybe this is not really a concern after all …
+// FIXME weakref.rb also does caller(2) here for the backtrace
+// TODO: Is this behavior really desirable? /mov
+// TODO: this method is not present in MRI!
+// Yow...this is still ugly,core/src/main/java/org/jruby/ext/stringio/RubyStringIO.java,e14ea63ba,95db8a8ba
+// SSS FIXME: This method (at least in the context of multiple assignment) is a little weird,src/org/jruby/compiler/ir/instructions/JRubyImplCallInstr.java,5fade4a7c,ffae98852
+// TODO: Generalize this type-checking code into IRubyObject helper.,src/org/jruby/RubyObject.java,a679fc6a6,6eb8df5bd
+// FIXME: Total hack to get flash in Rails marshalling/unmarshalling in session ok...We need
+// index for the item // this could probably be more efficient
+// SSS FIXME: Token can be final for a method -- implying that the token is only for this particular implementation of the method,src/org/jruby/compiler/ir/IRMethod.java,5a08b5476,4bc398477
+// TODO: this is kinda gross,truffle/src/main/java/org/jruby/truffle/parser/Helpers.java,fa938c4c7,277af88f8
+// TODO: need to get this back into the method signature...now is too late...,src/org/jruby/compiler/ir/targets/JVM.java,aa0f8552a,80603cf52
+// FIXME: This is a gross way to figure it out,src/org/jruby/compiler/ir/IR_Builder.java,dfa3f8635,b6fc0556a
+// this could probably be more efficient,src/org/jruby/compiler/WhileNodeCompiler.java,cc895edd6,14282e03f
+// TODO: is this correct ?,src/org/jruby/RubyArray.java,bb20e69fc,105217d34
+// TODO: // MRI behavior: Call "+" or "add"
+// end hack,src/org/jruby/RubyObject.java,f16e305fc,da0b65ceb
+// This is for JRUBY-2988,src/org/jruby/ext/Readline.java,0f9880c5a,a00e27808
+// FIXME: I think this chunk is equivalent to MRI id2name (and not our public method
+// FIXME: Get rid of laziness and handle restricted access elsewhere
+// FIXME we should probably still be dyncalling 'write' here
+FIXME: Should this be renamed to match its ruby name?,src/org/jruby/RubyObject.java,7404d16eb,6eb8df5bd
+// TODO: protected methods. this is going to require a rework,core/src/main/java/org/jruby/javasupport/JavaClass.java,ef97a3045,be3134444
+constructing a bignum just for dumping?
+// need to reexamine this
+// SSS FIXME: Is this correctly placed ... at the end of the loop iteration?,src/org/jruby/compiler/ir/IRBuilder.java,f9c3ccc4a,a78e818b9
+// HACK: force clinit to be created,src/org/jruby/compiler/impl/InvokeDynamicInvocationCompiler.java,e26ff6b58,bf1632f6c
+// FIXME: this not being in a finally is a little worrisome,src/org/jruby/java/MiniJava.java,07e838b13,02b8e01b4
+// SSS FIXME: What happens to the add class in this case??,src/org/jruby/compiler/ir/IR_Builder.java,fc6ff5062,15d7d44d7
+// if we don't have opt args,src/org/jruby/compiler/impl/StackBasedVariableCompiler.java,55d5329d1,ff9baab4a
+// FIXME: NOT_ALLOCATABLE_ALLOCATOR is probably not right here, since we might
+// so we must do all this (the next 70 lines of code),truffle/src/main/java/org/jruby/truffle/core/format/format/FormatFloatNode.java,364473d04,8b6eec17d
+// TODO: Ruby does not seem to care about invalid numeric mode values,src/org/jruby/util/io/ModeFlags.java,66b024fed,aa4ffa1be
+// FIXME: the code below is a copy of RubyIO.puts
+// TODO should this be deprecated ? (to be efficient
+// FIXME: This is gross. Don't do this.,src/org/jruby/runtime/BlockBody.erb,a0ea820f4,45658ca9d
+// this seems unlikely to happen unless it's a totally bogus fileno
+// TODO: protected methods. this is going to require a rework of some of the mechanism.,core/src/main/java/org/jruby/javasupport/JavaClass.java,5755383a4,be3134444
+// XXX This constructor is a hack to implement the __END__ syntax.
+// SSS FIXME: Where does this go?,src/org/jruby/compiler/ir/IRBuilder.java,f9c3ccc4a,43a2178da
+// TODO: choose narrowest method by continuing to search,src/org/jruby/javasupport/JavaMethod.java,05c37a91a,c4e6f18a4
+// TODO: At least ParserSupport.attrset passes argsNode as null. ImplicitNil is wrong magic for
+// SSS FIXME: I could make IR_Loop a scope too ... Semantically
+// SSS FIXME: Receiver -- this is the class meta object basically?,src/org/jruby/compiler/ir/IR_Builder.java,52d2b6c7b,a9819ccf0
+// TODO: NOT_ALLOCATABLE_ALLOCATOR is probably ok here. Confirm. JRUBY-415
+// TODO: This is actually now returning the scope of whoever called Method#to_proc,src/org/jruby/runtime/MethodBlock.java,cdb1c7f5d,fd0fa789b
+// CON FIXME: I don't know how to make case be an expression...does that,src/org/jruby/compiler/ir/IRBuilder.java,f9c3ccc4a,214b11c51
+// FIXME: Big fat hack here,src/org/jruby/ast/executable/AbstractScript.java,0b01fd39c,04602b8b0
+// There's not a compelling reason to keep JavaClass instances in a weak map,src/org/jruby/java/proxies/MapBasedProxyCache.java,9d9271b8d,f5850a515
+// TODO: This filtering is kind of gross...it would be nice to get some parser help here,src/org/jruby/compiler/ir/IR_Builder.java,dfa3f8635,89eb209a5
+// TODO: set our metaclass to target's class (i.e. scary!)
+// TODO: newTypeError does not offer enough for ruby error string...,src/org/jruby/RubyObject.java,a679fc6a6,6eb8df5bd
+shouldn't happen. TODO: might want to throw exception instead.,src/org/jruby/javasupport/Java.java,7e8f96040,1dbbe1a37
+// FIXME: Obvious issue that not all platforms can display all attributes. Ugly hacks
+// ruby constants for strings (should this be moved somewhere else?),truffle/src/main/java/org/jruby/truffle/parser/lexer/RubyLexer.java,e37c0ad22,8b6eec17d
+// not intended to be called directly by users (private),src/org/jruby/javasupport/JavaInterfaceTemplate.java,18d03923f,557c40cd6
+// TODO: Figure out how this can happen and possibly remove
+// see note below re: 2-field kludge,core/src/main/java/org/jruby/javasupport/binding/ClassInitializer.java,be3134444,55927e21e
+// The implementations of these are all bonus (see TODO above) I was going
+// it would be nice (and logical!) if exponent form,truffle/src/main/java/org/jruby/truffle/core/format/format/FormatFloatNode.java,364473d04,8b6eec17d
+// bit risky if someone changes completor
+// SSS FIXME: Correct? Where does closure arg come from?,src/org/jruby/compiler/ir/instructions/YieldInstr.java,4733ec035,2ceae0f24
+// TODO: Only setAccessible to account for pattern found by,src/org/jruby/javasupport/JavaField.java,e40beaae6,beaaeb89b
+// FIXME: null check is removable once we figure out how to assign to unset named block args
+// using IOChannel may not be the most performant way, but it's easy.
+// TODO: check for Java reserved names and raise exception if encountered
+// FIXME: this probably belongs in a different package.
+// from DUP_SETUP // rb_copy_generic_ivar from DUP_SETUP here ...unlikely..
+// TODO: cache?
+// TODO: list.subList(from, to).clear() is supposed to clear the sublist from the list
+// TODO: public only?,src/org/jruby/javasupport/JavaClass.java,beaaeb89b,48d04419e
+// TODO: wire into new exception handling mechanism,src/org/jruby/runtime/ThreadContext.java,3fa144ebb,efd8a3df5
+//TODO: ary_sort_check should be done here
+// we might need to perform a DST correction
+// TODO: rounding mode should not be hard-coded. See #mode.
+but Java API's aren't ISO 8601 compliant at all
+Fixme: This does not have exact same semantics as RubyArray.join,src/org/jruby/runtime/builtin/meta/FileMetaClass.java,7574ed61f,bac69eda7
+// FIXME: set up a CallConfiguration for this
+// TODO: remove,truffle/src/main/java/org/jruby/truffle/nodes/core/TruffleInteropNodes.java,9f228b9ac,5f14842c0
+// FIXME: legal here? may want UnsupportedOperationException,src/org/jruby/IncludedModuleWrapper.java,95c346df5,6f159fe5d
+// TODO: specifying soft refs
+// FIXME: when the only autoconversions are primitives
+// TODO: reads/writes from frame
+// ignore...bean doesn't get registered
+// we're depending on the side effect of the load, which loads the class but does not turn it into a script,core/src/main/java/org/jruby/runtime/load/LibrarySearcher.java,613673ae6,066aa2fef
+// TODO: Split this into two sub-classes so that name and constNode can be specified seperately.
+// This is perhaps innefficient timewise? Optimal spacewise
+we should probably raise an error
+// FIXME: This is temporary since the variable compilers assume we want,core/src/main/java/org/jruby/compiler/ASTCompiler.java,4e87bc6e1,ed54aab18
+// FIXME: Added this because marshal_spec seemed to reconstitute objects without calling dataWrapStruct
+TODO: This version is better than the hackish previous one. Windows
+// FIXME: potentially could just use ByteList here?
+// TODO: This version differs from ioctl by checking whether fcntl exists
+// TODO: top-level upper-case package was supported in the previous (Ruby-based)
+// ENEBO: Totally weird naming (in MRI is not allocated and is a local var name),truffle/src/main/java/org/jruby/truffle/parser/parser/ParserSupport.java,fa938c4c7,8b6eec17d
+// SSS FIXME: Verify that this is correct,src/org/jruby/compiler/ir/IRBuilder19.java,668e937e7,6740d62fb
+// XXX: This check previously used callMethod("==") to check for equality between classes
+// TODO: don't bother passing when fcall or vcall, and adjust callsite appropriately,core/src/main/java/org/jruby/ir/targets/JVMVisitor.java,25fdaa3bb,96034ed2a
+proxy doesn't match. Replace
+// XXX: Again, screwy evaling under previous frame's scope
+// Workaround for JRUBY-4149
+// FIXME: How much more obtuse can this be?
+// We're not setting the provider or anything, but it seems that BouncyCastle does some internal things in its
+// FIXME: do we really want 'declared' methods? includes private/protected, and does _not_,jruby/core/src/main/java/org/jruby/java/addons/ClassJavaAddons.java,f9b28c47d,14226fded
+// FIXME: we should also support orgs that use capitalized package,src/org/jruby/javasupport/Java.java,e705f6ca4,bb9cd0753
+// TODO: callback for value would be more efficient
+// SSS FIXME: Move this code to some utils area .. or probably there is already a method for this in some jruby utils class
+// FIXME: what should these really be? Numeric?
+// Simplify the variables too -- to keep these variables in sync with what is actually used in the when clauses
+// FIXME: This should probably do some translation from Ruby priority levels to Java priority levels (until we have green threads)
+// SSS FIXME: 1. Is the ordering correct? (poll before next),src/org/jruby/compiler/ir/IRBuilder.java,f9c3ccc4a,2ccee8d80
+// SSS FIXME: These should get normally compiled or initialized some other way …
+// TODO: for now
+// method has more than 500 lines
+// if body is a rescue node
+// TODO: Implement tty? and isatty. We have no real capability to,src/org/jruby/runtime/builtin/meta/IOMetaClass.java,ae3178fbb,bac69eda7
+// TODO: NOT_ALLOCATABLE_ALLOCATOR is probably ok here, since we don't intend for people to monkey with,jruby/core/src/main/java/org/jruby/java/addons/ClassJavaAddons.java,f9b28c47d,14226fded
+// FIXME: We shouldn't use the current scope if it's not actually from the same hierarchy of static scopes,src/org/jruby/javasupport/util/RuntimeHelpers.java,7af96b98d,bb98e4b8d
+// TODO: is this right?,src/org/jruby/compiler/ir/IRBuilder.java,f9c3ccc4a,9071ce26f
+// TODO: WRONG - get interfaces from class,src/org/jruby/javasupport/JavaInterfaceTemplate.java,18d03923f,557c40cd6
+// TODO: better algorithm to set precision needed
+// TODO: Should frozen error have its own distinct class? If not should more share?,src/org/jruby/exceptions/FrozenError.java,61a7ba7ca,36ec84bb4
+// TODO: handle writing into original buffer better
+// TODO: better error handling
+FIXME: lose syntactical elements here (and others like this),truffle/src/main/java/org/jruby/truffle/parser/parser/RubyParser.java,fa938c4c7,8b6eec17d
+// FIXME: possible to make handles do the superclass call?
+// we basically ignore protocol. let someone report it...
+// TODO: Make this more intelligible value,src/org/jruby/util/io/ModeFlags.java,66b024fed,e04c88bdf
+// FIXME: wtf is this? Why would these use the class?,src/org/jruby/javasupport/Java.java,48a55e65c,70cf58217
+// TODO: Bleeding runtime into parser. Arity may be should be in parser (to keep bleeding oneway)
+ENEBO: Lots of optz in 1.9 parser here,truffle/src/main/java/org/jruby/truffle/parser/parser/RubyParser.java,fa938c4c7,8b6eec17d
+// FIXME: This is almost entirely duplicated from Main.java,src/org/jruby/util/NailMain.java,58d67c3af,20ff6278c
+// TODO: This is also defined in the MetaClass too...Consolidate somewhere.,src/org/jruby/RubyFile.java,0a56a8280,d055a0ea0
+FIXME: Resolve what the hell is going on,src/org/jruby/parser/Ruby19Parser.java,bf8db0bc4,84ac6052e
+// FIXME: This is currently only here because of some problems with IOOutputStream writing to a "bare" runtime without a proper scope
+// HACK: in order to have stdout/err act like ttys and flush always
+FIXME: This version is faster than the previous
+// TODO: no need for this to be a full
+// optional args
+// TODO: Why does that bother me?
+// FIXME: This is probably not very efficient
+// FIXME: do we really want 'declared' methods? includes private/protected,jruby/core/src/main/java/org/jruby/java/addons/ClassJavaAddons.java,f9b28c47d,14226fded
+FIXME: Whis is this named "push_m"?,src/org/jruby/RubyArray.java,e1a1b4740,719bc20ab
+FIXME convert to enum ?,src/org/jruby/runtime/Iter.java,1c1c85534,24befe5cf
+// Not sure how well this works
+// FIXME: Is this ok?
+// FIXME: If NativeException is expected to be used from Ruby code,src/org/jruby/NativeException.java,b390103c2,725be6439
+// TODO this should entry into error handling somewhere,src/org/jruby/util/io/ChannelStream.java,66b024fed,aa4ffa1be
+// TODO: make this do specific-arity calling,src/org/jruby/java/MiniJava.java,70cf58217,02b8e01b4
+// TODO: It's perhaps just a coincidence that all the channels for,core/src/main/java/org/jruby/util/io/PosixShim.java,ecc42a6c1,16c989010
+// FIXME: There's some code duplication here with RubyObject#inspect
+// TODO: callback for value would be more efficient, but unlikely to be a big cost (constants are rarely assigned)
+// TODO: the rest of this...seeking to same position is unnecessary since we share a channel
+// lame generics issues: making Segment class static and manually
+// TODO: should probably apply the null object pattern for a
+// FIXME This whole thing could probably be implemented as a module and
+// TODO: exec should replace the current process,src/org/jruby/RubyKernel.java,8548cc7b0,0bf233162
+when MET choose CET timezone to work around Joda,src/org/jruby/RubyTime.java,55f03b637,0a93732b7
+//TODO: Should next and return also catch here?
+// We use a highly uncommon string to represent the paragraph delimiter (100% soln not worth it),src/org/jruby/util/io/Stream.java,66b024fed,9d57dbc3b
+// SSS FIXME: Should this be a string literal or a string?,src/org/jruby/compiler/ir/IRScript.java,f9c3ccc4a,e41ed6a4c
+// TODO: this could be further optimized,src/org/jruby/runtime/callback/InvocationCallbackFactory.java,9251dc201,ed0a495c6
+// FIXME: This is an ugly hack to resolve JRUBY-1381,src/org/jruby/RubyObject.java,f16e305fc,da0b65ceb
+// FIXME: This isn't right for within ensured/rescued code,src/org/jruby/compiler/impl/StandardASMCompiler.java,fc09ed420,148883daa
+// TODO: These were missing, so we're not handling them elsewhere?,src/org/jruby/RubyFile.java,bac69eda7,00633ae67
+// FIXME: Ideally JavaObject instances should be marshallable
+wipe out the SoftReference (this could be done with a reference queue)
+// FIXME: move out of this class!
+// Let's only generate methods for those the user may actually
+// FIXME: JRUBY-3188 ends up with condition returning null...quick fix until I can dig into it
+since conditional calling #inherited doesn't fit standard ruby semantics
+// Sometimes the value can be retrieved at "compile time". If we succeed, nothing like it!,src/org/jruby/compiler/ir/IRScopeImpl.java,f9c3ccc4a,d8c290d98
+// FIXME: This worries me a bit,src/org/jruby/util/io/ChannelStream.java,66b024fed,aa4ffa1be
+// TODO: is this the right thing to do?,src/org/jruby/RubyIO.java,043df6006,fb60a5baf
+// FIXME moved this here to get what's obviously a utility method out of IRubyObject,src/org/jruby/Ruby.java,0aa32bd5b,47fd4acb7
+// SSS FIXME: I added this in. Is this correct?,src/org/jruby/compiler/ir/IR_Builder.java,5d57a44ab,022d5284f
+// TODO: Ruby reuses this logic for other "write" behavior by checking if it's an IO and calling write again
+// XXX: const lookup can trigger const_missing,src/org/jruby/compiler/ir/IR_Builder.java,dfa3f8635,a7b4c64e6
+// SSS FIXME: What is the difference between ClassVarAsgnNode & ClassVarDeclNode,src/org/jruby/compiler/ir/IR_Builder.java,3eb979fe1,8dff5b2a5
+// FIXME: This determine module is in a strange location and should somehow be in block,core/src/main/java/org/jruby/ir/interpreter/Interpreter.java,a8c5cfe34,8e7062232
+// Hacky: Advance position to eat newline here....,src/org/jruby/ext/ripper/RipperLexer.java,3351729b9,3b519ff75
+// TODO need to abstract this setup behind another compiler interface,src/org/jruby/compiler/impl/StandardASMCompiler.java,4934ed56b,4fa52b39b
+// TODO: make more efficient by not creating IRubyArray[]
+// FIXME: Maybe not best place,src/org/jruby/runtime/BlockBody.erb,a0ea820f4,45658ca9d
+// FIXME: this really ought to be in clinit, but it doesn't matter much,src/org/jruby/compiler/impl/StandardASMCompiler.java,362877f03,3849128d6
+// Fixme: Do we need the check or does Main.java not call this...they should consolidate
+// TODO: factor this chunk as in MRI/YARV GETASTER
+// FIXME: Why was this using a FullFunctionCallbackMethod before that did callSuper?
+// FIXME: In order for Thread to play well with the standard 'new' behavior
+// FIXME: We should not be regenerating this over and over
+// rb_copy_generic_ivar from DUP_SETUP here ...unlikely..
+// FIXME: I don't like this,core/src/main/java/org/jruby/ir/targets/JVMVisitor.java,2877eda42,389b7657b
+// TODO: This is probably BAD...,src/org/jruby/runtime/callback/InvocationCallbackFactory.java,9251dc201,ed0a495c6
+// TODO: protected methods. this is going to require a rework of some of the mechanism.,core/src/main/java/org/jruby/javasupport/JavaClass.java,5755383a4,be3134444
+// FIXME: This is currently only here because of some problems with IOOutputStream writing to a "bare" runtime without a proper scope
+// TODO: factor this chunk as in MRI/YARV GETASTER
+// FIXME: what should this really be? assert x instanceof RubyComplex
+// FIXME: This isn't right for within ensured/rescued code,src/org/jruby/compiler/impl/StandardASMCompiler.java,fc09ed420,148883daa
+// SSS FIXME: Token can be final for a method -- implying that the token is only for this particular implementation of the method,src/org/jruby/compiler/ir/IRMethod.java,5a08b5476,4bc398477
+// TODO: It would be nice to throw a better error for this
+// TODO: make this an array so it's not as much class metadata,src/org/jruby/java/MiniJava.java,ba40f9ccd,02b8e01b4
+// TODO: It would be nice to throw a better error for this
+// TODO: newTypeError does not offer enough for ruby error string...,src/org/jruby/RubyObject.java,a679fc6a6,6eb8df5bd
+// SSS FIXME: I added this in. Is this correct?,src/org/jruby/compiler/ir/IR_Builder.java,5d57a44ab,022d5284f
+// TODO: top-level upper-case package was supported in the previous (Ruby-based)
+// TODO: wire into new exception handling mechanism,src/org/jruby/runtime/ThreadContext.java,3fa144ebb,efd8a3df5
+// TODO: This is also defined in the MetaClass too...Consolidate somewhere.,src/org/jruby/RubyFile.java,0a56a8280,d055a0ea0
+// FIXME: ConstDecl could be two seperate classes (or done differently since constNode and name
+// TODO: NOT_ALLOCATABLE_ALLOCATOR is probably ok here, since we don't intend for people to monkey with,jruby/core/src/main/java/org/jruby/java/addons/ClassJavaAddons.java,f9b28c47d,14226fded
+FIXME: finalizer should be dupped here,src/org/jruby/RubyObject.java,fa021e635,fd0fa789b
+// TODO: number formatting here
+// TODO: need to get this back into the method signature...now is too late...,src/org/jruby/compiler/ir/targets/JVM.java,aa0f8552a,80603cf52
+// FIXME: possible to make handles do the superclass call?
+// TODO: better error handling
+// SSS FIXME: Should this be Operand or CompoundString?,src/org/jruby/compiler/ir/DynamicSymbol.java,86e7fc928,6a3bf2b58
+// FIXME: We should really not be creating the dynamic scope for the root,truffle/src/main/java/org/jruby/truffle/parser/parser/ParserConfiguration.java,fa938c4c7,8b6eec17d
+// TODO: wire into new exception handling mechanism,src/org/jruby/runtime/ThreadContext.java,3fa144ebb,efd8a3df5
+// TODO: not sure that we should skip calling join() altogether
+// hack to get right style for input
+// If variables were added then we may need to grow the dynamic scope to match the static,truffle/src/main/java/org/jruby/truffle/parser/TranslatorDriver.java,27da7b11f,8b6eec17d
+// SSS FIXME: This method (at least in the context of multiple assignment) is a little weird,src/org/jruby/compiler/ir/instructions/JRubyImplCallInstr.java,5fade4a7c,ffae98852
+// FIXME: potentially could just use ByteList here?
+// FIXME: This is currently only here because of some problems with IOOutputStream writing to a "bare" runtime without a proper scope
+FIXME: Consider fixing node_assign itself rather than single case,truffle/src/main/java/org/jruby/truffle/parser/parser/RubyParser.java,fa938c4c7,8b6eec17d
+// This is perhaps innefficient timewise? Optimal spacewise
+// end hack,src/org/jruby/RubyObject.java,f16e305fc,da0b65ceb
+// FIXME: Is this ok?
+// TODO: proper algorithm to set the precision
+// TODO: exec should replace the current process,src/org/jruby/RubyKernel.java,8548cc7b0,0bf233162
+// Sometimes the value can be retrieved at "compile time". If we succeed, nothing like it!,src/org/jruby/compiler/ir/IRScopeImpl.java,f9c3ccc4a,d8c290d98
+// FIXME: NOT_ALLOCATABLE_ALLOCATOR is probably not right here, since we might
+Workaround for JRUBY-2326 (MRI does not enter this production for some reason),truffle/src/main/java/org/jruby/truffle/parser/parser/RubyParser.java,fa938c4c7,8b6eec17d
+// if body is a rescue node, inspect its pieces separately to avoid it disabling all optz
+// TODO: This is probably BAD...,src/org/jruby/runtime/callback/InvocationCallbackFactory.java,9251dc201,ed0a495c6
+// FIXME: do we really want 'declared' methods? includes private/protected, and does _not_,jruby/core/src/main/java/org/jruby/java/addons/ClassJavaAddons.java,f9b28c47d,14226fded

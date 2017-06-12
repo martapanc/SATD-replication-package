@@ -1,0 +1,3 @@
+725be6439d Fix JRUBY-6103: allocator undefined for NativeException by providing a simple allocator for NativeException.
+9aae35a881 fix JRUBY-4923: Bad stacktraces when a ExceptionInInitializerError occurs in a java class
+b1aa3d456f Simple fix for NativeException to avoid a continually growing backtrace. JRUBY-940.

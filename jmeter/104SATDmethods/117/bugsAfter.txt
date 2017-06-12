@@ -1,0 +1,3 @@
+c6a82dfad Bug 60564 - Migrating LogKit to SLF4J - core/gui package (2/2) Contributed by Woonsan Ko This closes #272 Bugzilla Id: 60564
+c93177faa Bug 60266 - Usability/ UX : It should not be possible to close/exit/Revert/Load/Load a recent project or create from template a JMeter plan or open a new one if a test is running Bugzilla Id: 60266
+40b3221e7 Bug 57605 - When there is an error loading Test Plan, SaveService.loadTree returns null leading to NPE in callers Bugzilla Id: 57605

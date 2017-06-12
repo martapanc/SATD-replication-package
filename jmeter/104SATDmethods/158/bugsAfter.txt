@@ -1,0 +1,3 @@
+567f75d50 Bug 60564 - Migrating LogKit to SLF4J - Replace logkit loggers with slf4j ones with keeping the current logkit binding solution Use slf4j parameterized messages Bugzilla Id: 60564
+188d41207 Bug 60585 - JMS Publisher and JMS Subscriber : Allow reconnection on error and pause between errors Based on PR 240  from by Logan Mauzaize (logan.mauzaize at gmail.com) and Maxime Chassagneux (maxime.chassagneux at gmail.com).
+a44c6efe5 Bug 53039 - HTTP Request : Be able to handle responses which size exceeds 2147483647 bytes Fix deprecated calls to setBytes(int) Bugzilla Id: 53039

@@ -1,0 +1,2 @@
+4bba125ed4 Fix JRUBY-6906: error message for Process.kill 'EXIT' is wrong
+f636731047 Fix JRUBY-5729: Process.respond_to?(:fork) must return false

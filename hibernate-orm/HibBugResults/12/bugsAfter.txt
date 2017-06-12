@@ -1,0 +1,4 @@
+87e3f0fd28 HHH-10664 - Prep 6.0 feature branch - merge hibernate-entitymanager into hibernate-core (first sucessful full compile of consolidated hibernate-core)
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers
+7308e14fed HHH-9803 - Checkstyle fix ups
+cd590470c0 HHH-8741 - More checkstyle cleanups

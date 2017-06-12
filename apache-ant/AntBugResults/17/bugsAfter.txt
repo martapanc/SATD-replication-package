@@ -1,0 +1,8 @@
+43844a7e6 PR 56748 Spelling fixes, submitted by Ville Skyttä
+f0565366f Allow params of XSLT to be optionally typed.  PR 21525.  Submitted by František Kučera
+5f20b9914 microoptimizations.  PR 50716
+53db3a260 Add support for Xalan2 Traces.  PR 36670.
+a0c1be104 add an option to suppress processor warnings.  PR 18897.
+58069d347 Try to load TraX factory via configured classpath.  PR 46172
+0df2b1de3 Minor updates based on the input of Dave Brosius pr: 39320
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof

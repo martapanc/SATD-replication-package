@@ -1,0 +1,17 @@
+3c61b5450 Bug 58980 - JMS Subscriber will return successful as long as 1 message is received. #resolve #111 Bugzilla Id: 58980
+dd30d6171 Bug 57193: Add param and return tags to javadoc Bugzilla Id: 57193
+3f7c5f507 Bug 57193: Self-closing br element is not allowed in javadoc Bugzilla Id: 57193
+d3e00524c Bug 52265 - Code:Transient fields not set by deserialization Bugzilla Id: 52265
+b25b73c10 Bug 54182 - Support sending of ByteMessage for JMS Publisher. Bugzilla Id: 54182
+472da1514 Bug 53765 - Switch to commons-lang3-3.1 Bugzilla Id: 53765
+3da254b78 Bug 52052 - Using a delimiter to separate result-messages for JMS Subscriber ER1: the separator should not be placed after the last message; ER2: no separator for one message;
+c3e1778ca Bug 52052 - Using a delimiter to separate result-messages for JMS Subscriber There was an issue when following options were checked: - stopBetweenSamples - Read Response
+be0d75a92 Bug 52052 - Using a delimiter to separate result-messages for JMS Subscriber
+25c941775 Bug 52052 - Using a delimiter to separate result-messages for JMS Subscriber Fix setting \t, \n , \r as separator
+c28b77943 Bug 52052 - Using a delimiter to separate result-messages for JMS Subscriber
+93a5ce84e Bug 52044 - JMS Subscriber used with many threads leads to javax.naming.NamingException: Something already bound with ActiveMQ
+1c4a4e7b7 Bug 52044 - JMS Subscriber used with many threads leads to javax.naming.NamingException: Something already bound with ActiveMQ
+98fac8545 Bug 51419 - JMS Subscriber: ability to use Selectors
+b66c9a19a Bug 52036 - Durable Subscription fails with ActiveMQ due to missing clientId field
+0f48431b5 Bug 51840 - JMS : Cache of InitialContext has some issues
+921b365dc Bug 50666 - JMSSubscriber: support for durable subscriptions

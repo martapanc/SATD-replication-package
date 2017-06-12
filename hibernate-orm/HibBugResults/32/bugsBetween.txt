@@ -1,0 +1,1 @@
+a6ca833e2e HHH-3392 : query cache cluster replication with ResultTransformers

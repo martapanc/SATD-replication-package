@@ -1,0 +1,6 @@
+3cd5f13072 Fix for JRUBY-791, and also inspect on Process::Status
+1c02ca0e64 Fixes for JRUBY-734, along with a first run at cleaning up IRubyObject.
+49cf139366 Fix for JRUBY-455: It was using the wrong argument for write selects, and if arg[0] was nil and arg[1] was not, ClassCastEx would result.
+57504d74a1 Initial fixes for JRUBY-408. Added ObjectAllocator and code to consume it throughout the MetaClass hierarchy.
+ebb36c83a5 Fix for JRUBY-249, by Damian Steer. A first version of IO#pipe
+9994820016 Fix for JRUBY-321: remove CONNECT from interested events on reads, since it is always "ready" for open sockets.

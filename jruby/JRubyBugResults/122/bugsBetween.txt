@@ -1,0 +1,2 @@
+7d500602a4 Wayne Meissner's fixes/improvements for getline performance. JRUBY-2689.
+e8a3ebe129 Fix for JRUBY-2071, reopen seek errors because of shared position in the underlying channel.

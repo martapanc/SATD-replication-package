@@ -1,0 +1,1 @@
+6ea9dc102 When loading resources from jars it seems to be advisable to disable caching.  PR 54473.  Combining patches by René Krell and Antoine Levy-Lambert.

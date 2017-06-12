@@ -1,0 +1,6 @@
+7bc745a28 post-process generated javadocs as workaround for CVE-2013-1571 - based on Maven patch by Uwe Schindler - PR 55132
+5f20b9914 microoptimizations.  PR 50716
+f1a903928 Add attributes for javadoc's -docfilessubdirs and -excludedocfilessubdir CLI args.  PR 34455
+5f81fd801 javadoc fails if bottom/gead contain line breaks.  PR 43342.  Based on patch by Robert Streich.
+a9831bdca Add a new attribute to javadoc to allow URLs for location of offline links.  PR 28881.
+44564adf2 -breakiterator has been promoted, PR 34580

@@ -1,0 +1,9 @@
+68fa5d8f9e HHH-11612 - SINGLE_TABLE associated entity query missing restriction of DiscriminatorColumn - reverting HHH-11375
+34d92507c9 HHH-11375 - SINGLE_TABLE associated entity query missing restriction of DiscriminatorColumn
+7469df8da1 HHH-11241 : Missing column when executing HQL and criteria query with secondary table
+b8a3774cb4 HHH-9411 : Fix downcast of treat statement.
+3571218183 HHH-10133 - CatalogSeparator of dialect metadata not used in runtime, just in schema tool
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers
+611f8a0e1c HHH-9803 - Checkstyle fix ups
+7308e14fed HHH-9803 - Checkstyle fix ups
+9caca0ce37 HHH-9490 - Migrate from dom4j to jaxb for XML processing; HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc); HHH-7078 - Split NamingStrategy into ImplicitNamingStrategy/PhysicalNamingStrategy; HHH-6005 - Better handling of implicit column naming with @ElementCollection of @Embeddables; HHH-9633 - Add tests that explicitly test the "main" NamingStrategy impls

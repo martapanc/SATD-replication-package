@@ -1,0 +1,13 @@
+bcc26747f5 Use RubyModule.JavaClassKindOf fixes jruby/jruby#614
+78491e1c91 Fix JRUBY-7145 by checking for drive letter in Dir.mkdir.
+37e33c389d My stab at fixing JRUBY-7122
+15dd7233ea Potentially fix JRUBY-7002. Existing specs should pass, but the fix should also be tested on Windows.
+6de4987a92 Rework the previous logic (calling #to_path) for #393. Also, fix #399.
+e89ffda1a0 Throw correct Errno from File.symlink and File.link.  Fixes #397.
+58111ccd41 Fix JRUBY-6998 and define File::NULL (which is included in IO).
+ad609577a2 Merge pull request #178 from lukefx/fix_JRUBY-2724
+89ed6b777f Fix JRUBY-6578: File.readlink with chdir
+92fe8de00d Fix JRUBY-6774
+533b304286 Fix JRUBY-6780
+35604c2847 Fix JRUBY-6735: FileUtils.chmod broken for symlinks
+34c4091481 Fix JRUBY-6702

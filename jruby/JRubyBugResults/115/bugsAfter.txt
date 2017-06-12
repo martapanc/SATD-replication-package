@@ -1,0 +1,8 @@
+fbc85d9466 Fix JRUBY-5883: Hash Subclass#== not respected when checking equality of collections.
+ff1ec4932a Fixes and support code for JRUBY-5596: Improve Dalli IO performance
+527be7924f Fix JRUBY-5471: private method `verify_mode=' called with Bundler, net/https, jruby-openssl and RubyGems 1.5
+67b5fb8dad Fix JRUBY-5477: Caller stacks now include AbstractScript.java
+80ab30ab0b Fix JRUBY-5363: Kernel#caller behavior is different for files with .rbw extension
+2225f2cb21 Fixes for JRUBY-5229: Interpreter is slower for microbenchmarks after "backtrace" merge
+20ff6278cc Fix JRUBY-5322: NPE forcing to compile a script
+62ecad3bed Fix JRUBY-5221: jruby.reify.classes raising error with optparse

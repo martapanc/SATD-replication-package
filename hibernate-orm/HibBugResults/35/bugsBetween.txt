@@ -1,0 +1,12 @@
+66ce8b7fb5 HHH-9466 - Drop metamodel package from source
+8fe5460ec0 HHH-8741 - More checkstyle cleanups
+cd590470c0 HHH-8741 - More checkstyle cleanups
+cf903b78f0 HHH-8354 - New dirty-checking options based on bytecode enhancement
+0433a539b4 HHH-3078 copyright and refactored package
+228d14e8bc HHH-3078 Fixed bug with multiple classloaders and proxy class
+aef27fec41 HHH-6735 Let Core use InstrumentationService instead of FieldIinterceptionHelper directly
+dc7feab061 HHH-6498 HHH-6337 : Updates to support single-table inheritance using new metamodel
+e540089783 HHH-6480 - Develop component binding for new metamodel
+46102a2be3 HHH-6471 - Redesign how EntityBinding models hierarchy-shared information
+24edf42c04 HHH-6371 - Develop metamodel binding creation using a push approach
+e339dac91e HHH-6371 - Develop metamodel binding creation using a push approach

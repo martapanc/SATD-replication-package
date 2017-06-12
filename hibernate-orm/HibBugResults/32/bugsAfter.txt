@@ -1,0 +1,2 @@
+34c2839dcc HHH-5616 - Switch to Gradle for builds
+dc00c4dcde HHH-5163 : ClassCastException caching results using ResultTransformer

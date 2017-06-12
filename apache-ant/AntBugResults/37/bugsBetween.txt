@@ -1,0 +1,4 @@
+bd52e7b9b allow targets to deal with missing extension points.  PR 49473.  Submitted by Danny Yates.
+11b928d06 Avoid ConcurrentModificationException when iteratong over life-maps.  PR 48310
+32f2e37a9 JDK 1.2 is EOL and documentation is no more available. Point to JDK 5 API PR: 37203
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof

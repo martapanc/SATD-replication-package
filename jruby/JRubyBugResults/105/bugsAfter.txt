@@ -1,0 +1,1 @@
+daa36aa25f Partially fix JRUBY-6893: fcntl(Fcntl::F_GETFL) always return 0

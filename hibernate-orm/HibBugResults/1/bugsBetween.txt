@@ -1,0 +1,1 @@
+d2c88d55df HHH-5647 - Develop release process using Gradle

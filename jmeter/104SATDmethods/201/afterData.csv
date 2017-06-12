@@ -1,0 +1,329 @@
+201
+202
+203
+204
+205
+206
+207,/207/After/Bug 60564  72cb7ea9_diff.java,0,0,0,0,0,0,0
+208,/208/After/Bug 60564  24c8763e_diff.java,0,0,0,0,0,0,0
+208,/208/After/Bug 60564  2c275677_diff.java,0,1,1,28,17,45,0
+209,/209/After/Bug 42246  90d8067c_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 42246  c592cc4c_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 52003  3a87c8dc_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 52022  11668430_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 52217  9845e49b_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 52266  c0f98a93_diff.java,4,1,5,0,0,0,0
+209,/209/After/Bug 52694  ea4d5cab_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 54226  b85f6c38_diff.java,1,1,2,0,0,0,0
+209,/209/After/Bug 55597  08efaaad_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 56228  4321ec75_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 59102  8cc1b70b_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 60542  ac1f2c21_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 60564  61304dee_diff.java,0,0,0,0,0,0,0
+209,/209/After/Bug 60583  eb234b7a_diff.java,0,0,0,0,0,0,0
+210,/210/After/Bug 52962  343a9428_diff.java,0,0,0,0,0,0,0
+210,/210/After/Bug 60564  2c275677_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 42246  90d8067c_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 42246  c592cc4c_diff.java,0,0,0,0,0,0,1
+211,/211/After/Bug 52003  3a87c8dc_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 52022  11668430_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 52217  9845e49b_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 52266  c0f98a93_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 52694  ea4d5cab_diff.java,0,0,0,0,0,0,14
+211,/211/After/Bug 54226  b85f6c38_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 55597  08efaaad_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 56228  4321ec75_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 59102  8cc1b70b_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 60542  ac1f2c21_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 60564  61304dee_diff.java,0,0,0,0,0,0,0
+211,/211/After/Bug 60583  eb234b7a_diff.java,0,0,0,0,0,0,0
+212,/212/After/Bug 51380  3ccce769_diff.java,0,0,0,0,0,0,0
+212,/212/After/Bug 52371  752cde47_diff.java,0,0,0,0,0,0,0
+212,/212/After/Bug 55023  c199d56a_diff.java,0,0,0,0,0,0,0
+212,/212/After/Bug 55023  e554711a_diff.java,0,0,0,0,0,0,0
+212,/212/After/Bug 59038  fd8938f0_diff.java,0,0,0,0,0,0,0
+212,/212/After/Bug 60727  2651c6ff_diff.java,0,1,1,0,3,3,0
+213
+214
+215
+216
+217,/217/After/Bug 36726  dd20f3a4_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 39717  607a2d81_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 41873  0a717bba_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 41913  a585fdb2_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 42184  d1bab6ae_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 42246  90d8067c_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 42246  c592cc4c_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 42582  e09e4965_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 43450  6f9771e8_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 47137  447cb7f4_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 47474  e5c10847_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 52003  3a87c8dc_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 52022  11668430_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 52217  9845e49b_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 52266  c0f98a93_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 52694  ea4d5cab_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 54226  b85f6c38_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 55597  08efaaad_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 56228  4321ec75_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 59102  8cc1b70b_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 60542  ac1f2c21_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 60564  61304dee_diff.java,0,0,0,0,0,0,0
+217,/217/After/Bug 60583  eb234b7a_diff.java,0,0,0,0,0,0,0
+218,/218/After/Bug 60507  3d13ac87_diff.java,0,0,0,0,0,0,0
+218,/218/After/Bug 60564  0af7ce0e_diff.java,0,0,0,0,0,0,0
+218,/218/After/Bug 60747  13fd1465_diff.java,0,0,0,0,0,0,0
+219
+220,/220/After/Bug 43119  d81ad7e2_diff.java,0,0,0,0,0,0,0
+220,/220/After/Bug 52214  3e16150b_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 42246  90d8067c_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 42246  c592cc4c_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 52003  3a87c8dc_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 52022  11668430_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 52217  9845e49b_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 52266  c0f98a93_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 52694  ea4d5cab_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 54226  b85f6c38_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 55597  08efaaad_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 56228  4321ec75_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 59102  8cc1b70b_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 60542  ac1f2c21_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 60564  61304dee_diff.java,0,0,0,0,0,0,0
+221,/221/After/Bug 60583  eb234b7a_diff.java,0,0,0,0,0,0,0
+222
+223,/223/After/Bug 41418  12b53ca4_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 42778  858ce038_diff.java,6,2,8,3,0,3,0
+223,/223/After/Bug 47385  54e1cef5_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 47909  34c29868_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 50032  df78199c_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 50134  0c9eab39_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 51876  6572ccd2_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 51876  6d25bd5a_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 52265  1710a70a_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 52296  2c316251_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 52296  3143c47e_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 52296  f27a8aac_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 52968  03ea5d70_diff.java,0,0,0,0,0,0,21
+223,/223/After/Bug 53039  caaf9e66_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 55816  a6696aa5_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 56160  aa77e7b8_diff.java,0,0,0,4,1,5,5
+223,/223/After/Bug 56811  07d60f60_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 57193: 65bd9c28_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 58122  1058659d_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 59067  6c9d00ae_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 60229  bac01a62_diff.java,0,0,0,0,0,0,0
+223,/223/After/Bug 60564  5f0651b4_diff.java,1,3,4,0,0,0,0
+224,/224/After/Bug 60564  5f0651b4_diff.java,1,3,4,0,0,0,0
+225
+226,/226/After/Bug 60106  58c262ee_diff.java,1,1,2,0,0,0,0
+226,/226/After/Bug 60229  bac01a62_diff.java,0,0,0,5,0,5,1
+226,/226/After/Bug 60564  88a09242_diff.java,0,0,0,25,25,50,0
+226,/226/After/Bug 60830  1ee63ff4_diff.java,0,0,0,0,0,0,0
+226,/226/After/Bug 60830  46234ac0_diff.java,6,8,14,5,6,11,2
+227,/227/After/Bug 59064  e85059bc_diff.java,0,0,0,0,0,0,0
+228,/228/After/Bug 59064  e85059bc_diff.java,0,0,0,0,2,2,0
+229
+230,/230/After/Bug 59064  e85059bc_diff.java,0,0,0,0,0,0,0
+231
+232,/232/After/Bug 60564  20c0659e_diff.java,0,0,0,0,0,0,0
+233,/233/After/Bug 42947  7c3ae364_diff.java,0,0,0,0,0,0,0
+233,/233/After/Bug 52160  b43c12b5_diff.java,0,0,0,0,0,0,0
+233,/233/After/Bug 52279  6237f65f_diff.java,0,0,0,0,0,0,0
+233,/233/After/Bug 52279  cde35455_diff.java,0,0,0,0,0,0,0
+233,/233/After/Bug 52280  9a3c9b81_diff.java,0,0,0,0,0,0,0
+233,/233/After/Bug 52280  a4e47359_diff.java,0,0,0,0,0,0,0
+233,/233/After/Bug 52552  0d647fff_diff.java,0,0,0,0,0,0,0
+233,/233/After/Bug 52741  66ee22a9_diff.java,4,0,4,0,0,0,0
+233,/233/After/Bug 60564  ea090c4e_diff.java,0,0,0,0,0,0,0
+233,/233/After/clearGui() 87951a11_diff.java,0,0,0,0,0,0,0
+234,/234/After/bug 52968  373a0382_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 58726  6cb0db93_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 58728  cbdd5614_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 58736  fd62770a_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 59067  6c9d00ae_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 59133  28c3e8d2_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 59882  5f87f309_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 60018  01618c3e_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 60049  3fd2896a_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 60049  b32997c3_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 60050  482e1edb_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 60530  bd3b94bb_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 60564  ea768213_diff.java,0,0,0,0,0,0,6
+234,/234/After/Bug 60797  520166ca_diff.java,0,0,0,0,0,0,0
+234,/234/After/Bug 60812  3fa81823_diff.java,0,0,0,0,0,0,0
+234,/234/After/Sonar : Fi 7d8faded_diff.java,0,0,0,0,0,0,0
+235
+236
+237
+238
+239,/239/After/Bug 25441  986530c4_diff.java,0,0,0,0,0,0,47
+239,/239/After/Bug 43450  be023bb6_diff.java,0,0,0,0,0,0,1
+239,/239/After/Bug 50203  55c15877_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 53765  472da151_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 54412  6445156a_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 57025  b31d061c_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 57182  f6b96cee_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 57193: 5d6aec5d_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 58653  27745b72_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 58978  5486169c_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 58991  e9482584_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 59064  e85059bc_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 59523  14d593ab_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 60106  58c262ee_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 60125  a7efa9ef_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 60229  bac01a62_diff.java,0,0,0,0,0,0,1
+239,/239/After/Bug 60564  88a09242_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 60830  1ee63ff4_diff.java,0,0,0,0,0,0,0
+239,/239/After/Bug 60830  46234ac0_diff.java,0,0,0,0,0,0,2
+240,/240/After/Bug 54129  e1c5c20a_diff.java,0,0,0,0,0,0,0
+240,/240/After/Bug 55694  4a087408_diff.java,0,0,0,1,1,2,0
+240,/240/After/Bug 60564  7ebfa083_diff.java,0,0,0,0,0,0,0
+240,/240/After/Bug 60564  b1cca8cc_diff.java,0,0,0,0,0,0,0
+240,/240/After/Bug 60602  c53bafae_diff.java,0,0,0,3,3,6,0
+240,/240/After/Bug 60710  9033e620_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 40696  0ba6e2ba_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 49374  9de8dfd3_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 51750  f2955e7a_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 54629  b8a912a1_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 55632  15ca0337_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 55632  6ee224f0_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 55632  99b941c5_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 56772  74d599b3_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 56772  be4d1fe6_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 57193: 0d45f17f_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 57193: ee0c987f_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 59033  b93b3328_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 60564  3ff0e609_diff.java,0,0,0,0,0,0,0
+241,/241/After/Bug 60842  1e4a1ca5_diff.java,0,0,0,0,0,0,0
+242
+243
+244
+245
+246
+247
+248
+249,/249/After/Bug 27780  76ac18a7_diff.java,0,0,0,12,5,17,1
+249,/249/After/Bug 41705  90684a56_diff.java,0,0,0,7,0,7,1
+249,/249/After/Bug 50684  592bf6b7_diff.java,0,0,0,7,4,11,0
+249,/249/After/Bug 51861  4b9cb415_diff.java,0,0,0,22,0,22,0
+249,/249/After/Bug 51861  dcf739f0_diff.java,0,0,0,2,0,2,0
+249,/249/After/Bug 52613  ddc3bf4d_diff.java,0,0,0,0,0,0,0
+249,/249/After/Bug 53765  472da151_diff.java,0,0,0,0,0,0,0
+249,/249/After/Bug 55606  22bc84d7_diff.java,0,0,0,3,2,5,0
+249,/249/After/Bug 55606  2ed95f96_diff.java,0,0,0,4,6,10,0
+249,/249/After/Bug 55606  832fa54b_diff.java,0,0,0,6,6,12,0
+249,/249/After/Bug 57193: 0d45f17f_diff.java,0,0,0,1,1,2,0
+249,/249/After/Bug 57193: 5be9daa8_diff.java,0,0,0,0,0,0,0
+249,/249/After/Bug 57193: ee0c987f_diff.java,0,0,0,0,0,0,0
+249,/249/After/Bug 59044  3282578e_diff.java,0,0,0,1,0,1,0
+249,/249/After/Bug 59060  564705a4_diff.java,0,0,0,7,6,13,0
+249,/249/After/Bug 60543  2c182abb_diff.java,0,0,0,40,27,67,0
+249,/249/After/Reduce the f459b334_diff.java,0,0,0,1,0,1,0
+250,/250/After/Bug 52242  6d292754_diff.java,0,0,0,0,0,0,0
+250,/250/After/Bug 57193: 99e35432_diff.java,0,0,0,0,0,0,0
+251,/251/After/Bug 59995  03a2728d_diff.java,0,0,0,0,0,0,0
+251,/251/After/Bug 60053  f464c9ba_diff.java,0,0,0,0,0,0,0
+251,/251/After/Bug 60564  5f0651b4_diff.java,0,0,0,0,0,0,0
+251,/251/After/Bug 60589  22288a77_diff.java,0,0,0,0,0,0,0
+251,/251/After/Bug 60589  9418f1a3_diff.java,0,0,0,0,0,0,6
+251,/251/After/Bug 60595: 5153cdb4_diff.java,0,0,0,0,0,0,0
+252,/252/After/Bug 36755  e861ae37_diff.java,0,0,0,0,0,0,3
+252,/252/After/Bug 54199  5a32848a_diff.java,0,0,0,0,0,0,0
+252,/252/After/Bug 57193: f023972d_diff.java,0,0,0,0,0,0,0
+253,/253/After/Bug 51876  3dd627dc_diff.java,0,0,0,8,0,8,0
+253,/253/After/Bug 51876  6572ccd2_diff.java,0,0,0,7,5,12,0
+253,/253/After/Bug 51876  c84b8bca_diff.java,0,0,0,1,0,1,0
+253,/253/After/Bug 54648  1372fcf4_diff.java,0,0,0,0,0,0,0
+253,/253/After/Bug 54648  4f697f78_diff.java,0,0,0,0,0,0,0
+253,/253/After/Bug 54648  9d8dc678_diff.java,0,0,0,0,0,0,0
+253,/253/After/Bug 57193: 80e99eb8_diff.java,0,0,0,0,0,0,0
+253,/253/After/Bug 57193: 8cf39ed8_diff.java,0,0,0,0,0,0,0
+253,/253/After/Bug 60564  2ee6bd97_diff.java,0,0,0,1,1,2,0
+254,/254/After/Bug 51380  3ccce769_diff.java,0,0,0,0,0,0,0
+254,/254/After/Bug 52371  752cde47_diff.java,0,0,0,0,0,0,0
+254,/254/After/Bug 55023  c199d56a_diff.java,0,0,0,0,0,0,0
+254,/254/After/Bug 55023  e554711a_diff.java,0,0,0,0,0,0,0
+254,/254/After/Bug 59038  fd8938f0_diff.java,0,0,0,0,0,0,0
+254,/254/After/Bug 60727  2651c6ff_diff.java,0,0,0,0,2,2,2
+255
+256
+257
+258,/258/After/Bug 51380  3ccce769_diff.java,0,0,0,0,0,0,0
+258,/258/After/Bug 52371  752cde47_diff.java,0,0,0,0,0,0,0
+258,/258/After/Bug 55023  c199d56a_diff.java,0,0,0,0,0,0,0
+258,/258/After/Bug 55023  e554711a_diff.java,0,0,0,0,0,0,0
+258,/258/After/Bug 59038  fd8938f0_diff.java,0,0,0,0,0,0,0
+258,/258/After/Bug 60727  2651c6ff_diff.java,0,1,1,0,4,4,6
+259
+260
+261
+262
+263,/263/After/Bug 36755  6f1c66ae_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 36755  e861ae37_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 42346  ecb301a2_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 42428  93d0af85_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 43283  45a133a6_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 52097  3e87a3df_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 52997  3a2f36ba_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 52997  7c669726_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 52997  7ccb6983_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 55693  49338443_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 55693  ea6580c1_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 57061  ceaf2b7c_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 57913  46eb9d63_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 57913  75ab5a73_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 58699  eba38b51_diff.java,0,0,0,0,0,0,0
+263,/263/After/Bug 60564  c6a82dfa_diff.java,0,0,0,0,0,0,0
+264,/264/After/Bug 60564  20c0659e_diff.java,0,0,0,0,0,0,0
+265,/265/After/Bug 60564  5f526b47_diff.java,0,0,0,0,0,0,0
+266,/266/After/ Bug 46900 2235b203_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 41788  d491016a_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 44378  db5304dd_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 51876  0f34fcd0_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 51876  3dd627dc_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 51876  b8298512_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 52019  f2ee7acd_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 52027  0f1cc344_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 52040  62b9f6ba_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 52601  326d4cea_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 55085  f184d4a7_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 55172  4832bb91_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 55172  a034d3ec_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 55258  e1c1410e_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 55657  4eb16285_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 55693  49338443_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 57193: e0ec0a9c_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 59236  1e04e7e5_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 59995  03a2728d_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 60564  2ee6bd97_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 60664  0020353a_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 60792  4e78b5e8_diff.java,0,0,0,0,0,0,0
+266,/266/After/Bug 60814  055154b4_diff.java,0,0,0,0,0,0,0
+267
+268,/268/After/Bug 59033  b93b3328_diff.java,0,0,0,0,0,0,0
+268,/268/After/Bug 60564  3ff0e609_diff.java,0,0,0,0,0,0,0
+268,/268/After/Bug 60842  1e4a1ca5_diff.java,0,0,0,0,0,0,0
+269,/269/After/Bug 42947  7c3ae364_diff.java,0,0,0,0,0,0,0
+269,/269/After/Bug 52160  b43c12b5_diff.java,0,0,0,0,0,0,0
+269,/269/After/Bug 52279  6237f65f_diff.java,0,0,0,0,0,0,0
+269,/269/After/Bug 52279  cde35455_diff.java,0,0,0,0,0,0,0
+269,/269/After/Bug 52280  9a3c9b81_diff.java,0,0,0,0,0,0,0
+269,/269/After/Bug 52280  a4e47359_diff.java,0,0,0,0,0,0,0
+269,/269/After/Bug 52552  0d647fff_diff.java,0,0,0,0,0,0,0
+269,/269/After/Bug 52741  66ee22a9_diff.java,0,0,0,0,0,0,0
+269,/269/After/Bug 60564  ea090c4e_diff.java,1,1,2,0,0,0,0
+269,/269/After/clearGui() 87951a11_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 42246  90d8067c_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 42246  c592cc4c_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 52003  3a87c8dc_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 52022  11668430_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 52217  9845e49b_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 52266  c0f98a93_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 52694  ea4d5cab_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 54226  b85f6c38_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 55597  08efaaad_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 56228  4321ec75_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 59102  8cc1b70b_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 60542  ac1f2c21_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 60564  61304dee_diff.java,0,0,0,0,0,0,0
+270,/270/After/Bug 60583  eb234b7a_diff.java,0,0,0,0,0,0,0

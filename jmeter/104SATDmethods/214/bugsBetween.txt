@@ -1,0 +1,3 @@
+ca8b70dfe Bug 60222 - Remove deprecated elements Distribution Graph, Spline Visualizer Also update version in saveservice.properties to match version of JMeter Bugzilla Id: 60222
+73ff68b9b Bug 58791 - Deprecate listeners:Distribution Graph (alpha) and Spline Visualizer Bugzilla Id: 58791
+ea4d5caba Bug 52694 - Deadlock in GUI related to non AWT Threads updating GUI

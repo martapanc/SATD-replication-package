@@ -1,0 +1,4 @@
+7576a8487 Bug 52048 - BSFSampler, BSFPreProcessor and BSFPostProcessor should share the same GUI
+86a21b46f Bug 52048 - BSFSampler, BSFPreProcessor and BSFPostProcessor should share the same GUI
+6e7cecae4 Bug 52048 - BSFSampler, BSFPreProcessor and BSFPostProcessor should share the same GUI
+0f7f880de Bug 40077 - Creating new Elements copies values from Existing elements Applied patch 20129

@@ -1,0 +1,19 @@
+9caca0ce37 HHH-9490 - Migrate from dom4j to jaxb for XML processing; HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc); HHH-7078 - Split NamingStrategy into ImplicitNamingStrategy/PhysicalNamingStrategy; HHH-6005 - Better handling of implicit column naming with @ElementCollection of @Embeddables; HHH-9633 - Add tests that explicitly test the "main" NamingStrategy impls
+fff49977ab HHH-9369 Fix @Formula of enum type results in ClassCastException
+cd590470c0 HHH-8741 - More checkstyle cleanups
+498735aa37 HHH-8478 - AttributeConverters need to be applied to JPQL and Criteria queries
+1f6daa6785 HHH-8469 - Application of JPA 2.1 AttributeConverters
+9f86babd88 HHH-8111 - AttributeConverter doesn't override built-in type mappings
+bf168ca24e HHH-8111 - AttributeConverter doesn't override built-in type mappings
+7bcf161d36 HHH-8111 - AttributeConverter doesn't override built-in type mappings
+1825a4762c HHH-8211 Checkstyle and FindBugs fix-ups
+c259e157b0 HHH-8167 - Adding @NotNull to a @ManyToOne association with @JoinColumnsOrFormulas logs a ClassCastException
+07fc1627cd HHH-7780 - many envers tests are failing
+4294e0faee HHH-7645 - Enum property defined within orm.xml using enum-type string does not work
+d0e13b664a HHH-7108 HHH-6608
+219707df1d HHH-7387 - Integrate Draft 6 of the JPA 2.1 spec : REF_CURSOR param handling
+ad2a9ef651 HHH-7387 - Integrate Draft 6 of the JPA 2.1 spec : AttributeConverter
+cfa729d8b3 HHH-6790 - Sequence per entity for enhanced SequenceStyleGenerator
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

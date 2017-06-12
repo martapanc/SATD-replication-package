@@ -1,0 +1,10 @@
+5ecf92bf5 add an option to suppress the artifical package-info.class files created by <javac>.  PR 52096
+28c651a95 Empty package-info.class is created in wrong directory if no destdir is specified.  PR 51947
+4a07176ab support sources with extensions other than .java in javac.  Submitted by Andrew Eisenberg.  PR 48829.
+c5a945fe3 Allow users to specify a classpath when using a custom adapter in javac, rmic, javah or native2ascii.  PR 11143
+130b9317e support source/target on gcj.  PR 46617.  Based on patch by Paweł Zuzelski
+f6af37217 PR 37546: Use alternative names for the compiler argument line. (If modern is specified in javac and javac1.5 is used, and for javac1.5 a command line is specified, but no command line is specified for modern, the javac1.5 command line will be used, if no javac has been specified and javac 1.4 is used and a comman line is specified for modern, the command line specified for modern will be used, etc.)
+a245b4e9e compiler attributes is used to determine command line arguments even in the fork case, this warning is misleading.  PR: 31664
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof
+cc9f4f71f Be a little more defensive in a protected method of a non-final public class, PR 26737
+f0c61ad2f <javac>'s executable attribute can now also be used to specify the executable for jikes, jvc, sj or gcj. PR: 13814

@@ -1,0 +1,5 @@
+22288a776 Bug 60589 Migrate LogKit to SLF4J - Drop avalon, logkit and excalibur with backward compatibility for 3rd party modules. Contributed by Woonsan Ko Documenting log4j2 related changes since 3.2 This closes #278 Bugzilla Id: 60589
+5f0651b4a Bug 60564 - Migrating LogKit to SLF4J - core, core/control, core/engine/ClientJMeterEngine Contributed by Woonsan Ko This closes #269 Bugzilla Id: 60564
+9418f1a3d Bug 60589 - Migrate LogKit to SLF4J - Drop avalon, logkit and excalibur with backward compatibility for 3rd party modules Part 1 of PR #254 Contributed by Woonsan Ko
+03a2728d2 Bug 59995 - Allow user to change font size with 2 new menu items and use "jmeter.hidpi.scale.factor" for scaling fonts Contributed by UbikLoadPack Bugzilla Id: 59995
+5153cdb45 Bug 60595: Add a SplashScreen at the start of JMeter GUI Contributed by maxime.chassagneux at gmail.com This closes #251 Bugzilla Id: 60595

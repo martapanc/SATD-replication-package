@@ -1,0 +1,47 @@
+9caca0ce37 HHH-9490 - Migrate from dom4j to jaxb for XML processing; HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc); HHH-7078 - Split NamingStrategy into ImplicitNamingStrategy/PhysicalNamingStrategy; HHH-6005 - Better handling of implicit column naming with @ElementCollection of @Embeddables; HHH-9633 - Add tests that explicitly test the "main" NamingStrategy impls
+52f2c3a002 HHH-9388 HHH-7079 : Default collection table and foreign key names are incorrect in some cases; deprecate NamingStrategy
+1cba98022e HHH-9388 HHH-7079 : Default collection table and foreign key names are incorrect in some cases; deprecate NamingStrategy
+cd590470c0 HHH-8741 - More checkstyle cleanups
+412d5d6fca HHH-8662 : Deprecate functionality for initialized many-to-many collections of proxies
+fd57a751b4 HHH-2907 Retrofitting @Generated, making it a generator annotation type
+77825fefd6 HHH-2907 - ability to apply 'generation strategy' to generated properties
+803c73c555 HHH-8276 - Integrate LoadPlans into UniqueEntityLoader (PoC)
+3677045663 HHH-8520 apply global quoting to HBM columns
+456dfd83f9 HHH-7807 - Cascade delete revisions
+bc6f5d8a17 HHH-6813 @Id @OneToOne cause NullPointerException during query
+9030fa015e HHH-8217 Make generated constraint names short and non-random
+459c061eb6 HHH-8159 - Apply fixups indicated by analysis tools
+b51164aef6 HHH-8159 - Apply fixups indicated by analysis tools
+cbbadea538 HHH-7908 Logging level checking
+06ab065272 HHH-1904 Hash the natural id unique key names
+7976e2396a HHH-7580 - Complete 2-phase SessionFactory building design
+2883cb85c3 HHH-7860 : Log a warning when embed-xml attribute is used in mappings
+8fa530a247 HHH-7300 - TypeDefs won't be found depending of files read-order
+3edb72db48 HHH-7387 - Integrate Draft 6 of the JPA 2.1 spec : addNamedQuery support
+5cb8d3a8b3 HHH-2394 Add support for SqlFragmentAlias.entity element
+05dcc209ae HHH-2394  Implemented @SqlFragmentAlias
+ee01d80677 HHH-2394 Prefixes won't work; need table set explicitly
+01fe115adf HHH-6100 unqualify entity name and minor improvement
+ae5d030ae1 HHH-6100 Bug fix related to CriteriaQuery (JPA) when using XML mappings
+23a62802c8 HHH-4358 - Having to use @ForceDiscriminator kind of breaks JPA compatibility
+d50a66bc20 HHH-6970 - Expand notion of "natural id mutability" to ternary value
+57e9b48587 HHH-6970 - Expand notion of "natural id mutability" to ternary value
+6c7379c38f HHH-6817 Logging of strings containing the percent character broken
+bec88716d6 HHH-6791 tiny improvement, in favor of java auto-box instead of create new instance
+129c0f1348 HHH-6732 more logging trace statements are missing guards against unneeded string creation
+bcae560079 HHH-2304 Wrong type detection for sql type char(x) columns
+a351c52020 HHH-6724 Move persister binding for class hierarchies to PersisterClassResolver out of {Hbm|Annotation}Binder
+c7421837a4 HHH-6447 - Develop shared binding creation approach
+594f689d98 HHH-6371 - Develop metamodel binding creation using a push approach
+182150769a HHH-6371 - Develop metamodel binding creation using a push approach
+4a4f636caf HHH-6330 - Remove entity mode switching capability
+814b514933 HHH-6110 : Integrate new metamodel into persisters
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+ad17f89c4c HHH-6097 - Review log levels, especially related to i18n messages
+38068e1495 HHH-6101 - Clean up checks for java 1.3 versus 1.4
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+ddfcc44d76 HHH-5916 - Add support for a programmatic way to define a default EntityPersister and CollectionPersister class implementation
+4ffba763cf HHH-5916 Use PersisterClassProvider in Binders
+e18799b036 HHH-5916 Use PersisterClassProvider in Binders
+34c2839dcc HHH-5616 - Switch to Gradle for builds

@@ -1,0 +1,10 @@
+c93177faa Bug 60266 - Usability/ UX : It should not be possible to close/exit/Revert/Load/Load a recent project or create from template a JMeter plan or open a new one if a test is running Bugzilla Id: 60266
+01618c3e6 Bug 60018 - Timer : Add a factor to apply on pauses Bugzilla Id: 60018
+a7efa9efe Bug 60125 - Report / Dashboard : Dashboard cannot be generated if the default delimiter is \t Bugzilla Id: 60125
+ebb9c4e45 Bug 58100 - Performance enhancements : Replace Random by ThreadLocalRandom Bugzilla Id: 58100
+0d6bdceb1 Bug 57193: Add param and return tags to javadoc Bugzilla Id: 57193
+176640e49 Bug 57193: Add javadoc @param, @return and @throws tags, or fill  them. Bugzilla Id: 57193
+eb3c238dc Bug 57193: Escape &, < and > in javadoc Bugzilla Id: 57193
+935ec9c09 Bug 55623 - Invalid/unexpected configuration values should not be silently ignored Bugzilla Id: 55623
+cb248782e Bug 54268 - Improve CPU and memory usage Factor out code Bugzilla Id: 54268
+a96760645 Bug 53311 - JMeterUtils#runSafe should not throw Error when interrupted

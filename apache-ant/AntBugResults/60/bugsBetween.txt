@@ -1,0 +1,5 @@
+ff41336fc provide a Map based method to access environment variables and use that.  Don't use System.getenv() on OpenVMS.  PR 49366
+e160d8323 JDependTask did not close an output file PR: 28557 Obtained from: Jeff Badorek
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof
+98c3a0ea1 [PATCH] Misspelling: s/occured/occurred/g PR: 27282 Obtained from: Jesse Glick
+eba9a3c2d Fix NPE, PR: 24344

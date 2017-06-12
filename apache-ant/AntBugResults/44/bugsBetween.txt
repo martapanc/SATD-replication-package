@@ -1,0 +1,2 @@
+3ac732f3f Support wildcards in CLASSPATH.  PR 46842.  Based on patch by Mike Murray.
+abe974363 Optionally enable caching for <path>.  Should help in situations like PR 45696

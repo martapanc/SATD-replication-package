@@ -1,0 +1,15 @@
+6cabc326b8 HHH-8312 - named parameters binding are not correct when used within subquery
+3d332371bd HHH-7841 - Redesign Loader
+5e7b3601a9 HHH-7984 - Oracle callable statement closing
+6e71a0907e HHH-1168 - Problem combining locking and paging on Oracle
+4b2871cfba HHH-1168 - Problem combining locking and paging on Oracle
+06b0faaf57 HHH-7746 - Investigate alternative batch loading algorithms
+c46daa4cf0 HHH-7440, HHH-7368, HHH-7369, HHH-7370 - Redesign dialect-specific LIMIT clause appliance
+360317eedf HHH-6200 - Split org.hibernate.hql package into api/spi/internal
+4ee0d4237d HHH-6198 - Split org.hibernate.event package into api/spi/internal
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+ff74ceaaa4 HHH-6155 - Migrate o.h.impl package to o.h.internal
+d104f28a59 HHH-5348 - support for TypedQuery jpaql/hql "scalar" queries
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+3ca8216c7c HHH-5765 : Wire in SQLExceptionHelper for converting SQLExceptions
+34c2839dcc HHH-5616 - Switch to Gradle for builds

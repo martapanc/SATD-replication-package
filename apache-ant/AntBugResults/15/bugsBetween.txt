@@ -1,0 +1,3 @@
+1ddab2c14 add xmlcatalog nested element to the xmlproperty task PR: 27053 Obtained from: David Crossley and Dave Brondsema
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof
+cdd1db5a9 PR:	17195 Submitted by:	Markku Saarela

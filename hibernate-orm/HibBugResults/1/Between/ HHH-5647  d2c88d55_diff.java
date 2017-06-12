@@ -1,0 +1,24556 @@
+diff --git a/.gitignore b/.gitignore
+index 1db6207f9f..b7948872ab 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,15 +1,14 @@
+ .gradle
+ target
+-build
+ .idea
+ .idea/*
+ *.ipr
+ *.iws
+ *.iml
+ atlassian-ide-plugin.xml
+ .classpath
+ .project
+ .settings
+ .nbattrs
+ *.log
+ .clover
+diff --git a/build.gradle b/build.gradle
+index 9246d510f8..0fe57219c5 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,252 +1,230 @@
+ apply plugin: 'eclipse'
+ apply plugin: 'idea'
+ 
+ allprojects {
+     repositories {
+         mavenCentral()
+         mavenRepo name: 'jboss-nexus', urls: "https://repository.jboss.org/nexus/content/groups/public/"
+         mavenRepo name: "jboss-snapshots", urls: "http://snapshots.jboss.org/maven2/"
+         mavenRepo urls: "file://" + System.getProperty('user.home') + "/.m2/repository/"
+     }
+ }
+ 
+ ideaProject {
+     javaVersion = "1.6"
+     withXml { root ->
+         root.component.find { it.@name == 'VcsDirectoryMappings' }.mapping.@vcs = 'Git'
+     }
+ }
+ 
+ ideaModule {
+ }
+ 
+ // build a map of the dependency artifacts to use.  Allows centralized definition of the version of artifacts to
+ // use.  In that respect it serves a role similar to <dependencyManagement> in Maven
+ slf4jVersion = '1.5.8'
+ libraries = [
+         // Ant
+         ant:            'ant:ant:1.6.5',
+ 
+         // Antlr
+         antlr:          'antlr:antlr:2.7.7',
+ 
+         // Annotations
+         commons_annotations:
+                         'org.hibernate:hibernate-commons-annotations:3.2.0.Final',
+ 
+         // CGLIB
+         cglib:          'cglib:cglib:2.2',
+ 
+         // Jakarta commons-collections  todo : get rid of commons-collections dependency
+         commons_collections:
+                         'commons-collections:commons-collections:3.1',
+ 
+         // Dom4J
+         dom4j:          'dom4j:dom4j:1.6.1@jar',
+ 
+         // h2
+-        h2:             'com.h2database:h2:1.2.134',
++        h2:             'com.h2database:h2:1.2.140',
+ 
+         // Javassist
+         javassist:      'javassist:javassist:3.12.0.GA',
+ 
+         // javax
+         jpa:            'org.hibernate.javax.persistence:hibernate-jpa-2.0-api:1.0.0.Final',
+         jta:            'javax.transaction:jta:1.1',
+         validation:     'javax.validation:validation-api:1.0.0.GA',
+         validator:      'org.hibernate:hibernate-validator:4.0.2.GA',
+         jacc:           'org.jboss.javaee:jboss-jacc-api:1.1.0.GA',
+ 
+         // logging
+         slf4j_api:      'org.slf4j:slf4j-api:' + slf4jVersion,
+         slf4j_simple:   'org.slf4j:slf4j-simple:' + slf4jVersion,
+         jcl_slf4j:      'org.slf4j:jcl-over-slf4j:' + slf4jVersion,
+         jcl_api:        'commons-logging:commons-logging-api:99.0-does-not-exist',
+         jcl:            'commons-logging:commons-logging:99.0-does-not-exist',
+ 
+         // testing
+         junit:          'junit:junit:3.8.2',
+         testng:         'org.testng:testng:5.8:jdk15',
+         jpa_modelgen:   'org.hibernate:hibernate-jpamodelgen:1.0.0.Final',
+         shrinkwrap_api: 'org.jboss.shrinkwrap:shrinkwrap-api:1.0.0-alpha-6',
+         shrinkwrap:     'org.jboss.shrinkwrap:shrinkwrap-impl-base:1.0.0-alpha-6'
+ ]
+ 
+ 
+ subprojects { subProject ->
+     apply plugin: 'idea'
+-    apply { url: 'https://loom.svn.sourceforge.net/svnroot/loom/shared/trunk/artifacts.gradle' } // sets up source and javadoc jar uploads
++    apply plugin: 'maven'
++
++    defaultTasks 'build'
+ 
+     group = 'org.hibernate'
+     version = '4.0.0-SNAPSHOT'
+ 
+-    defaultTasks 'build'
+-
+     // minimize changes, at least for now (gradle uses 'build' by default)..
+     buildDir = "target"
+-
+-    if ( ! subProject.name.startsWith( 'hibernate-release' ) ) {
++    
++    if ( ! subProject.name.startsWith( 'release' ) ) {
+         apply plugin: 'java'
+         apply plugin: 'maven' // for install task as well as deploy dependencies
+-//        apply plugin: org.hibernate.build.gradle.upload.UploadManager
++        apply plugin: org.hibernate.build.gradle.upload.UploadManager
+ 
+         configurations {
+             provided {
+                 // todo : need to make sure these are non-exported
+                 description = 'Non-exported compile-time dependencies.'
+             }
+             deployerJars {
+                 description = 'Jars needed for doing deployment to JBoss Nexus repo'
+             }
+         }
+ 
+         // appropriately inject the common dependencies into each sub-project
+         dependencies {
+             compile( libraries.slf4j_api )
+             testCompile( libraries.junit )
+             testRuntime( libraries.slf4j_simple )
+             testRuntime( libraries.jcl_slf4j )
+             testRuntime( libraries.jcl_api )
+             testRuntime( libraries.jcl )
+             testRuntime( libraries.javassist )
+             testRuntime( libraries.h2 )
+             deployerJars "org.apache.maven.wagon:wagon-http:1.0-beta-6"
+         }
+ 
+         sourceSets {
+             main {
+                 compileClasspath += configurations.provided
+             }
+         }
+ 
+         manifest.mainAttributes(
+                 provider: 'gradle',
+                 'Implementation-Url': 'http://hibernate.org',
+                 'Implementation-Version': version,
+                 'Implementation-Vendor': 'Hibernate.org',
+                 'Implementation-Vendor-Id': 'org.hibernate'
+         )
+ 
+         test {
+-//            ignoreFailures = true
+             systemProperties['hibernate.test.validatefailureexpected'] = true
+             maxHeapSize = "1024m"
+         }
+ 
+         processTestResources.doLast( {
+             copy {
+                 from( sourceSets.test.java.srcDirs ) {
+                     include '**/*.properties'
+                     include '**/*.xml'
+                 }
+                 into sourceSets.test.classesDir
+             }
+         } )
+ 
+         assemble.doLast( { install } )
+         uploadArchives.dependsOn install
+ 
+         targetCompatibility = "1.6"
+         sourceCompatibility = "1.6"
+ 
+         ideaModule {
+             // treat our "provided" configuration dependencies as "Compile" scope dependencies in IntelliJ
+             scopes.COMPILE.plus.add( configurations.provided )
+             // Use explicitly separate compilation output directories for Gradle and IntelliJ
+             File baseDirectory = new File( subProject.buildDir, "idea/classes" )
+             outputDir = new File( baseDirectory, "main" )
+             testOutputDir = new File( baseDirectory, "test" )
+             whenConfigured { module ->
+                 module.dependencies*.exported = true
+             }
+         }
+ 
+         // elements used to customize the generated POM used during upload
+         def pomConfig = {
+             url 'http://hibernate.org'
+             organization {
+                 name 'Hibernate.org'
+                 url 'http://hibernate.org'
+             }
+             issueManagement {
+                 system 'jira'
+                 url 'http://opensource.atlassian.com/projects/hibernate/browse/HHH'
+             }
+             scm {
+                 url "http://github.com/hibernate/hibernate-core"
+                 connection "scm:git:http://github.com/hibernate/hibernate-core.git"
+                 developerConnection "scm:git:git@github.com:hibernate/hibernate-core.git"
+             }
+             licenses {
+                 license {
+                     name 'GNU Lesser General Public License'
+                     url 'http://www.gnu.org/licenses/lgpl-2.1.html'
+                     comments 'See discussion at http://hibernate.org/356.html for more details.'
+                     distribution 'repo'
+                 }
+             }
+             developers {
+             }
+         }
+ 
+         configure(install.repositories.mavenInstaller) {
+             pom.project pomConfig
+         }
+ 
+-        if ( ! project.hasProperty('JBOSS_NEXUS_USERNAME') ) {
+-            JBOSS_NEXUS_USERNAME = "";
+-        }
+-        if ( ! project.hasProperty('JBOSS_NEXUS_PASSWORD') ) {
+-            JBOSS_NEXUS_PASSWORD = "";
+-        }
+-
+         uploadArchives {
+             repositories.mavenDeployer {
+                 name = 'jbossDeployer'
+                 configuration = configurations.deployerJars
+                 pom.project pomConfig
+-//                repository(url: "https://repository.jboss.org/nexus/service/local/staging/deploy/maven2/")
+-//                snapshotRepository(url: "https://repository.jboss.org/nexus/content/repositories/snapshots")
+-                credentials = [userName: JBOSS_NEXUS_USERNAME, password: JBOSS_NEXUS_PASSWORD]
+-                repository(url: "https://repository.jboss.org/nexus/service/local/staging/deploy/maven2/") {
+-                    authentication(credentials)
+-                }
+-                snapshotRepository(url: "https://repository.jboss.org/nexus/content/repositories/snapshots") {
+-                    authentication(credentials)
+-                }
++                repository(url: "https://repository.jboss.org/nexus/service/local/staging/deploy/maven2/")
++                snapshotRepository(url: "https://repository.jboss.org/nexus/content/repositories/snapshots")
+             }
+         }
+ 
+-        task javadocJar(type: Jar, dependsOn: javadoc) {
+-            from javadoc.destinationDir
+-            classifier = 'javadoc'
+-        }
+-
+         task sourcesJar(type: Jar, dependsOn: compileJava) {
+             from sourceSets.main.allSource
+             classifier = 'sources'
+         }
+ 
+         artifacts {
+-            archives javadocJar
+             archives sourcesJar
+         }
+ 
+-        uploadArchives.dependsOn javadocJar
+         uploadArchives.dependsOn sourcesJar
+     }
+ 
+ }
+ 
+ dependsOnChildren()
+ 
+ // This is a task that generates the gradlew scripts, allowing users to run gradle without having gradle installed
+ // on their system.
+ // This task should be run by "build master" and the resulting ouput committed to source control.  Its outputs include:
+ //  1) /gradlew which is the *NIX shell script for executing builds
+ //  2) /gradlew.bat which is the windows bat script for for executing builds
+ //  3) /wrapper which is a directory named by the "jarPath" config which contains other needed files.
+ task wrapper(type: Wrapper) {
+     gradleVersion = '0.9-rc-1'
+     jarPath = 'wrapper'
+ }
+\ No newline at end of file
+diff --git a/buildSrc/build.gradle b/buildSrc/build.gradle
+index c4b0cff900..7d2eb6b2b5 100644
+--- a/buildSrc/build.gradle
++++ b/buildSrc/build.gradle
+@@ -1,18 +1,23 @@
+ apply plugin: 'groovy'
+ apply plugin: 'idea'
+ 
++buildDir = "target"
++
+ repositories {
+     mavenCentral()
+     mavenRepo urls: "file://" + System.getProperty('user.home') + "/.m2/repository/"
+ }
+ 
+ 
+ dependencies {
+     compile gradleApi()
+     compile localGroovy()
+     compile 'org.apache.ant:ant:1.7.0'
+     compile 'org.apache.maven:maven-ant-tasks:2.1.0'
+     compile 'org.apache.maven.wagon:wagon-http:1.0-beta-6'
+ 
+     groovy localGroovy()
++}
++
++ideaModule {
+ }
+\ No newline at end of file
+diff --git a/buildSrc/src/main/groovy/org/hibernate/build/gradle/javadoc/Aggregator.groovy b/buildSrc/src/main/groovy/org/hibernate/build/gradle/javadoc/Aggregator.groovy
+new file mode 100644
+index 0000000000..2836dd545f
+--- /dev/null
++++ b/buildSrc/src/main/groovy/org/hibernate/build/gradle/javadoc/Aggregator.groovy
+@@ -0,0 +1,78 @@
++/*
++ * Hibernate, Relational Persistence for Idiomatic Java
++ *
++ * Copyright (c) 2010, Red Hat Inc. or third-party contributors as
++ * indicated by the @author tags or express copyright attribution
++ * statements applied by the authors.  All third-party contributions are
++ * distributed under license by Red Hat Inc.
++ *
++ * This copyrighted material is made available to anyone wishing to use, modify,
++ * copy, or redistribute it subject to the terms and conditions of the GNU
++ * Lesser General Public License, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this distribution; if not, write to:
++ * Free Software Foundation, Inc.
++ * 51 Franklin Street, Fifth Floor
++ * Boston, MA  02110-1301  USA
++ */
++
++package org.hibernate.build.gradle.javadoc
++
++import org.gradle.api.tasks.SourceSet
++import org.gradle.api.Project
++
++/**
++ * TODO : javadoc
++ *
++ * @author Steve Ebersole
++ */
++class Aggregator {
++	private final Javadoc javadocTask;
++	private Set<String> excludedSourceSetNames;
++
++	public Aggregator(Javadoc javadocTask) {
++		this.javadocTask = javadocTask;
++	}
++
++	private Set<String> getExcludedSourceSetNames() {
++		if ( excludedSourceSetNames == null ) {
++			excludedSourceSetNames = new HashSet<String>();
++		}
++		return excludedSourceSetNames;
++	}
++
++	/**
++	 * Allow adding them one by one
++	 *
++	 */
++	public void excludeSourceSetName(String name) {
++		getExcludedSourceSetNames().add( name );
++	}
++
++	/**
++	 * Also, allow adding them all at once
++	 */
++	public void excludeSourceSetNames(String[] names) {
++		getExcludedSourceSetNames().addAll( Arrays.asList( names ) );
++	}
++
++	public void project(Project project) {
++		project.sourceSets.each { SourceSet sourceSet ->
++            if ( excludedSourceSetNames == null || !excludedSourceSetNames.contains( sourceSet.name ) ) {
++                javadocTask.source sourceSet.allJava
++                if( javadocTask.classpath ) {
++                    javadocTask.classpath += sourceSet.classes + sourceSet.compileClasspath
++                }
++                else {
++                    javadocTask.classpath = sourceSet.classes + sourceSet.compileClasspath
++                }
++            }
++        }
++	}
++}
+diff --git a/buildSrc/src/main/groovy/org/hibernate/build/gradle/javadoc/Javadoc.groovy b/buildSrc/src/main/groovy/org/hibernate/build/gradle/javadoc/Javadoc.groovy
+new file mode 100644
+index 0000000000..d8ce1360fb
+--- /dev/null
++++ b/buildSrc/src/main/groovy/org/hibernate/build/gradle/javadoc/Javadoc.groovy
+@@ -0,0 +1,259 @@
++/*
++ * Hibernate, Relational Persistence for Idiomatic Java
++ *
++ * Copyright (c) 2010, Red Hat Inc. or third-party contributors as
++ * indicated by the @author tags or express copyright attribution
++ * statements applied by the authors.  All third-party contributions are
++ * distributed under license by Red Hat Inc.
++ *
++ * This copyrighted material is made available to anyone wishing to use, modify,
++ * copy, or redistribute it subject to the terms and conditions of the GNU
++ * Lesser General Public License, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this distribution; if not, write to:
++ * Free Software Foundation, Inc.
++ * 51 Franklin Street, Fifth Floor
++ * Boston, MA  02110-1301  USA
++ */
++
++package org.hibernate.build.gradle.javadoc
++
++import org.gradle.process.internal.ExecAction
++import org.gradle.process.internal.ExecException
++import org.gradle.api.GradleException
++import org.gradle.external.javadoc.JavadocExecHandleBuilder
++
++import org.gradle.external.javadoc.StandardJavadocDocletOptions
++import org.gradle.api.tasks.TaskAction
++import org.gradle.api.file.FileCollection
++import org.gradle.external.javadoc.MinimalJavadocOptions
++import org.gradle.plugins.idea.model.Jdk
++import org.gradle.api.tasks.OutputDirectory
++import org.gradle.api.tasks.InputFiles
++import org.gradle.api.tasks.SourceTask
++import org.gradle.util.ConfigureUtil
++import org.gradle.util.GUtil
++
++/**
++ * This is largely a merging of the different classes in standard Gradle needed to perform Javadoc generation.
++ *
++ * @author Steve Ebersole
++ */
++class Javadoc extends SourceTask {
++    private JavadocExecHandleBuilder javadocExecHandleBuilder = new JavadocExecHandleBuilder();
++
++    private Jdk jdk;
++
++    private File destinationDir;
++
++    private boolean failOnError = true;
++
++    private String title;
++
++    private String maxMemory;
++
++    private MinimalJavadocOptions options = new StandardJavadocDocletOptions();
++
++// EmptyFileCollection not available in my project as is
++//    private FileCollection classpath = new EmptyFileCollection();
++    private FileCollection classpath;
++
++    private String executable;
++
++    @TaskAction
++    protected void generate() {
++        final File destinationDir = getDestinationDir();
++
++        if ( options.getDestinationDirectory() == null ) {
++            options.destinationDirectory(destinationDir);
++        }
++
++        options.classpath(new ArrayList<File>(getClasspath().getFiles()));
++
++        if ( jdk != null ) {
++            executable = jdk.getJavadocExecutable()
++        }
++
++        if ( !GUtil.isTrue(options.getWindowTitle()) && GUtil.isTrue(getTitle()) ) {
++            options.windowTitle(getTitle());
++        }
++        if ( options instanceof StandardJavadocDocletOptions ) {
++            StandardJavadocDocletOptions docletOptions = (StandardJavadocDocletOptions) options;
++            if ( !GUtil.isTrue(docletOptions.getDocTitle()) && GUtil.isTrue(getTitle()) ) {
++                docletOptions.setDocTitle(getTitle());
++            }
++        }
++
++        if ( maxMemory != null ) {
++            final List<String> jFlags = options.getJFlags();
++            final Iterator<String> jFlagsIt = jFlags.iterator();
++            boolean containsXmx = false;
++            while ( !containsXmx && jFlagsIt.hasNext() ) {
++                final String jFlag = jFlagsIt.next();
++                if ( jFlag.startsWith("-Xmx") ) {
++                    containsXmx = true;
++                }
++            }
++            if ( !containsXmx ) {
++                options.jFlags("-Xmx" + maxMemory);
++            }
++        }
++
++        List<String> sourceNames = new ArrayList<String>();
++        for ( File sourceFile: getSource() ) {
++            sourceNames.add(sourceFile.getAbsolutePath());
++        }
++        options.setSourceNames(sourceNames);
++
++        executeExternalJavadoc();
++    }
++
++    private void executeExternalJavadoc() {
++        javadocExecHandleBuilder.execDirectory(getProject().getRootDir()).options(options).optionsFile(getOptionsFile());
++
++        ExecAction execAction = javadocExecHandleBuilder.getExecHandle();
++        if ( executable != null && executable.length() > 0 ) {
++            execAction.setExecutable(executable);
++        }
++
++        if ( !failOnError ) {
++            execAction.setIgnoreExitValue(true);
++        }
++
++        try {
++            execAction.execute();
++        }
++        catch (ExecException e) {
++            throw new GradleException("Javadoc generation failed.", e);
++        }
++    }
++
++    void setJavadocExecHandleBuilder(JavadocExecHandleBuilder javadocExecHandleBuilder) {
++        if (javadocExecHandleBuilder == null) {
++            throw new IllegalArgumentException("javadocExecHandleBuilder == null!");
++        }
++        this.javadocExecHandleBuilder = javadocExecHandleBuilder;
++    }
++
++    /**
++     * <p>Returns the directory to generate the documentation into.</p>
++     *
++     * @return The directory.
++     */
++    @OutputDirectory
++    public File getDestinationDir() {
++        return destinationDir;
++    }
++
++    /**
++     * <p>Sets the directory to generate the documentation into.</p>
++     */
++    public void setDestinationDir(File destinationDir) {
++        this.destinationDir = destinationDir;
++    }
++
++    /**
++     * Returns the amount of memory allocated to this task.
++     */
++    public String getMaxMemory() {
++        return maxMemory;
++    }
++
++    /**
++     * Sets the amount of memory allocated to this task.
++     *
++     * @param maxMemory The amount of memory
++     */
++    public void setMaxMemory(String maxMemory) {
++        this.maxMemory = maxMemory;
++    }
++
++    /**
++     * <p>Returns the title for the generated documentation.</p>
++     *
++     * @return The title, possibly null.
++     */
++    public String getTitle() {
++        return title;
++    }
++
++    /**
++     * <p>Sets the title for the generated documentation.</p>
++     */
++    public void setTitle(String title) {
++        this.title = title;
++    }
++
++    /**
++     * Returns whether javadoc generation is accompanied by verbose output.
++     *
++     * @see #setVerbose(boolean)
++     */
++    public boolean isVerbose() {
++        return options.isVerbose();
++    }
++
++    /**
++     * Sets whether javadoc generation is accompanied by verbose output or not. The verbose output is done via println
++     * (by the underlying ant task). Thus it is not catched by our logging.
++     *
++     * @param verbose Whether the output should be verbose.
++     */
++    public void setVerbose(boolean verbose) {
++        if ( verbose ) {
++            options.verbose();
++        }
++    }
++
++    @InputFiles
++    public FileCollection getClasspath() {
++        return classpath;
++    }
++
++    public void setClasspath(FileCollection configuration) {
++        this.classpath = configuration;
++    }
++
++    public MinimalJavadocOptions getOptions() {
++        return options;
++    }
++
++    public void setOptions(MinimalJavadocOptions options) {
++        this.options = options;
++    }
++
++    public boolean isFailOnError() {
++        return failOnError;
++    }
++
++    public void setFailOnError(boolean failOnError) {
++        this.failOnError = failOnError;
++    }
++
++    public File getOptionsFile() {
++        return new File(getTemporaryDir(), "javadoc.options");
++    }
++
++    public String getExecutable() {
++        return executable;
++    }
++
++    public void setExecutable(String executable) {
++        this.executable = executable;
++    }
++
++    private Aggregator aggregator;
++
++    public void aggregator(Closure closure) {
++        if ( aggregator == null ) {
++            aggregator = new Aggregator(this);
++        }
++        ConfigureUtil.configure(closure, aggregator);
++    }
++}
+diff --git a/buildSrc/src/main/java/org/hibernate/build/gradle/upload/Authenticator.java b/buildSrc/src/main/java/org/hibernate/build/gradle/upload/Authenticator.java
+new file mode 100644
+index 0000000000..c838e2bce0
+--- /dev/null
++++ b/buildSrc/src/main/java/org/hibernate/build/gradle/upload/Authenticator.java
+@@ -0,0 +1,125 @@
++/*
++ * Hibernate, Relational Persistence for Idiomatic Java
++ *
++ * Copyright (c) 2010, Red Hat Inc. or third-party contributors as
++ * indicated by the @author tags or express copyright attribution
++ * statements applied by the authors.  All third-party contributions are
++ * distributed under license by Red Hat Inc.
++ *
++ * This copyrighted material is made available to anyone wishing to use, modify,
++ * copy, or redistribute it subject to the terms and conditions of the GNU
++ * Lesser General Public License, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this distribution; if not, write to:
++ * Free Software Foundation, Inc.
++ * 51 Franklin Street, Fifth Floor
++ * Boston, MA  02110-1301  USA
++ */
++
++package org.hibernate.build.gradle.upload;
++
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileNotFoundException;
++import java.io.IOException;
++import java.util.HashSet;
++import java.util.Properties;
++import java.util.Set;
++
++import org.apache.maven.artifact.ant.Authentication;
++import org.apache.maven.artifact.ant.RemoteRepository;
++import org.gradle.api.DefaultTask;
++import org.gradle.api.tasks.TaskAction;
++
++/**
++ * Responsible for locating and injecting authentication information into the JBoss Nexus repository config for upload
++ * which it does, based on set up in
++ *
++ * @author Steve Ebersole
++ */
++public class Authenticator extends DefaultTask {
++	private Set<RemoteRepository> nexusRepositories = new HashSet<RemoteRepository>();
++
++	void addRepository(RemoteRepository remoteRepository) {
++		nexusRepositories.add( remoteRepository );
++	}
++
++	@TaskAction
++	public void configureNexusAuthentication() {
++		// See if we have username/password...
++		Authentication authentication = locateAuthenticationDetails();
++		if ( authentication == null ) {
++			if ( ! nexusRepositories.isEmpty() ) {
++				getLogger().warn( "Unable to locate JBoss Nexus username/password; upload will most likely fail" );
++			}
++			return;
++		}
++
++		for ( RemoteRepository remoteRepository : nexusRepositories ) {
++			remoteRepository.addAuthentication( authentication );
++		}
++	}
++
++	public static final String ALT_PROP_FILE_NAME = "jboss-nexus.properties";
++	public static final String USER = "JBOSS_NEXUS_USERNAME";
++	public static final String PASS = "JBOSS_NEXUS_PASSWORD";
++
++	private Authentication locateAuthenticationDetails() {
++		String username = (String) getProject().getProperties().get( USER );
++		String password = (String) getProject().getProperties().get( PASS );
++
++		if ( username != null && password != null ) {
++			return newAuthentication( username, password );
++		}
++
++		File alternateFile = new File( new File( System.getProperty( "user.home" ), ".gradle" ), ALT_PROP_FILE_NAME );
++		Properties alternateProperties = new Properties();
++		// in case one or the other were specified...
++		if ( username != null )  {
++			alternateProperties.put( USER, username );
++		}
++		if ( password != null ) {
++			alternateProperties.put( PASS, password );
++		}
++		try {
++			FileInputStream fis = new FileInputStream( alternateFile );
++			try {
++				alternateProperties.load( fis );
++			}
++			catch ( IOException e ) {
++				getLogger().debug( "Unable to load alternate JBoss Nexus properties file", e );
++			}
++			finally {
++				try {
++					fis.close();
++				}
++				catch ( IOException ignore ) {
++				}
++			}
++		}
++		catch ( FileNotFoundException e ) {
++			getLogger().debug( "Unable to locate alternate JBoss Nexus properties file" );
++		}
++
++		username = alternateProperties.getProperty( USER );
++		password = alternateProperties.getProperty( PASS );
++		if ( username != null && password != null ) {
++			return newAuthentication( username, password );
++		}
++
++		return null;
++	}
++
++	private Authentication newAuthentication(String username, String password) {
++		Authentication authentication = new Authentication();
++		authentication.setUserName( username );
++		authentication.setPassword( password );
++		return authentication;
++	}
++}
+diff --git a/buildSrc/src/main/java/org/hibernate/build/gradle/upload/UploadManager.java b/buildSrc/src/main/java/org/hibernate/build/gradle/upload/UploadManager.java
+new file mode 100644
+index 0000000000..d8a2b55a83
+--- /dev/null
++++ b/buildSrc/src/main/java/org/hibernate/build/gradle/upload/UploadManager.java
+@@ -0,0 +1,68 @@
++/*
++ * Hibernate, Relational Persistence for Idiomatic Java
++ *
++ * Copyright (c) 2010, Red Hat Inc. or third-party contributors as
++ * indicated by the @author tags or express copyright attribution
++ * statements applied by the authors.  All third-party contributions are
++ * distributed under license by Red Hat Inc.
++ *
++ * This copyrighted material is made available to anyone wishing to use, modify,
++ * copy, or redistribute it subject to the terms and conditions of the GNU
++ * Lesser General Public License, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this distribution; if not, write to:
++ * Free Software Foundation, Inc.
++ * 51 Franklin Street, Fifth Floor
++ * Boston, MA  02110-1301  USA
++ */
++
++package org.hibernate.build.gradle.upload;
++
++import org.apache.maven.artifact.ant.RemoteRepository;
++import org.gradle.api.Action;
++import org.gradle.api.Plugin;
++import org.gradle.api.Project;
++import org.gradle.api.artifacts.maven.MavenDeployer;
++import org.gradle.api.tasks.Upload;
++
++/**
++ * Plugin to manage authentication
++ *
++ * @author Steve Ebersole
++ */
++public class UploadManager implements Plugin<Project> {
++
++	@Override
++	public void apply(Project project) {
++		final Authenticator authenticator = project.getTasks().add( "nexusAuthHandler", Authenticator.class );
++		project.getTasks().withType( Upload.class ).allTasks(
++			new Action<Upload>() {
++				@Override
++				public void execute(final Upload uploadTask) {
++					uploadTask.getRepositories().withType( MavenDeployer.class ).allObjects(
++							new Action<MavenDeployer>() {
++								public void execute(MavenDeployer deployer) {
++									RemoteRepository repository =  deployer.getRepository();
++									if ( repository != null ) {
++										authenticator.addRepository( repository );
++										uploadTask.getDependsOn().add( authenticator );
++									}
++									repository = deployer.getSnapshotRepository();
++									if ( repository != null ) {
++										authenticator.addRepository( repository );
++										uploadTask.getDependsOn().add( authenticator );
++									}
++								}
++							}
++					);
++				}
++			}
++		);
++	}
++}
+diff --git a/cache-jbosscache/pom.xml b/cache-jbosscache/pom.xml
+deleted file mode 100644
+index 911bd4c835..0000000000
+--- a/cache-jbosscache/pom.xml
++++ /dev/null
+@@ -1,175 +0,0 @@
+-<?xml version="1.0"?>
+-<!--
+-  ~ Copyright (c) 2009, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+-
+-    <modelVersion>4.0.0</modelVersion>
+-
+-    <parent>
+-        <groupId>org.hibernate</groupId>
+-        <artifactId>hibernate-parent</artifactId>
+-        <version>3.6.0-SNAPSHOT</version>
+-        <relativePath>../parent/pom.xml</relativePath>
+-    </parent>
+-    
+-    <groupId>org.hibernate</groupId>
+-    <artifactId>hibernate-jbosscache</artifactId>
+-    <packaging>jar</packaging>
+-
+-    <name>Hibernate JBossCache Integration</name>
+-    <description>Integration of Hibernate with JBossCache 3.x (though 2.x sould work as well)</description>
+-
+-    <dependencies>
+-        <dependency>
+-            <groupId>${groupId}</groupId>
+-            <artifactId>hibernate-core</artifactId>
+-            <version>${version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>org.jboss.cache</groupId>
+-            <artifactId>jbosscache-core</artifactId>
+-            <version>3.2.1.GA</version> 
+-        </dependency>
+-        
+-        <!-- test dependencies -->
+-        <dependency>
+-            <groupId>${groupId}</groupId>
+-            <artifactId>hibernate-testing</artifactId>
+-            <version>${version}</version>
+-            <scope>test</scope>
+-        </dependency>
+-        <dependency>
+-            <groupId>hsqldb</groupId>
+-            <artifactId>hsqldb</artifactId>
+-            <version>1.8.0.2</version>
+-            <scope>test</scope>
+-        </dependency>
+-        <!-- this is optional on core :( and needed for testing -->
+-        <dependency>
+-            <groupId>cglib</groupId>
+-            <artifactId>cglib</artifactId>
+-            <scope>test</scope>
+-        </dependency>
+-        <dependency>
+-            <groupId>javassist</groupId>
+-            <artifactId>javassist</artifactId>
+-            <scope>test</scope>
+-        </dependency>
+-    </dependencies>
+-
+-    <build>
+-        <testResources>
+-            <testResource>
+-                <filtering>false</filtering>
+-                <directory>src/test/java</directory>
+-                <includes>
+-                    <include>**/*.xml</include>
+-                </includes>
+-            </testResource>
+-            <testResource>
+-                <filtering>true</filtering>
+-                <directory>src/test/resources</directory>
+-            </testResource>
+-        </testResources>
+-        
+-        <plugins>
+-            <plugin>
+-                <groupId>org.apache.maven.plugins</groupId>
+-                <artifactId>maven-surefire-plugin</artifactId>
+-                <configuration>
+-                    <excludes>
+-                        <!-- Skip a long-running test of a prototype class -->
+-                        <exclude>**/ClusteredConcurrentTimestampRegionTestCase.java</exclude>
+-                    </excludes>
+-                    <systemProperties>
+-                        <property>
+-                            <name>hibernate.test.validatefailureexpected</name>
+-                            <value>true</value>
+-                        </property>
+-                        <property>
+-                            <name>jgroups.bind_addr</name>
+-                            <value>${jgroups.bind_addr}</value>
+-                        </property>
+-                        <!-- There are problems with multicast and IPv6 on some
+-                             OS/JDK combos, so we tell Java to use IPv4. If you
+-                             have problems with multicast when running the tests
+-                             you can try setting this to 'false', although typically
+-                             that won't be helpful.
+-                        -->
+-                        <property>
+-                            <name>java.net.preferIPv4Stack</name>
+-                            <value>true</value>
+-                        </property>
+-                        <!-- Tell JGroups to only wait a short time for PING 
+-                             responses before determining coordinator. Speeds cluster
+-                             formation during integration tests. (This is too
+-                             low a value for a real system; only use for tests.)
+-                        -->
+-                        <property>
+-                            <name>jgroups.ping.timeout</name>
+-                            <value>500</value>
+-                        </property>
+-                        <!-- Tell JGroups to only require one PING response
+-                             before determining coordinator. Speeds cluster
+-                             formation during integration tests. (This is too
+-                             low a value for a real system; only use for tests.)
+-                        -->
+-                        <property>
+-                            <name>jgroups.ping.num_initial_members</name>
+-                            <value>1</value>
+-                        </property>
+-                        <!-- Disable the JGroups message bundling feature
+-                             to speed tests and avoid FLUSH issue -->
+-                        <property>
+-                            <name>jgroups.udp.enable_bundling</name>
+-                            <value>false</value>
+-                        </property>
+-                    </systemProperties>
+-                    <skipExec>${skipUnitTests}</skipExec>
+-                </configuration>
+-            </plugin>
+-        </plugins>
+-    </build>
+-
+-    <properties>
+-        <skipUnitTests>true</skipUnitTests>
+-        <!-- 
+-            Following is the default jgroups mcast address.  If you find the testsuite runs very slowly, there
+-            may be problems with multicast on the interface JGroups uses by default on your machine. You can
+-            try to resolve setting 'jgroups.bind_addr' as a system-property to the jvm launching maven and
+-            setting the value to an interface where you know multicast works
+-        -->
+-        <jgroups.bind_addr>127.0.0.1</jgroups.bind_addr>
+-    </properties>
+-
+-    <profiles>
+-        <profile>
+-            <id>test</id>
+-            <activation>
+-                <activeByDefault>false</activeByDefault>
+-            </activation>
+-            <properties>
+-                <skipUnitTests>false</skipUnitTests>
+-            </properties>
+-        </profile>
+-     </profiles>
+-</project>
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/BasicRegionAdapter.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/BasicRegionAdapter.java
+deleted file mode 100644
+index b536c97f7b..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/BasicRegionAdapter.java
++++ /dev/null
+@@ -1,580 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc;
+-
+-import java.util.Collections;
+-import java.util.HashMap;
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.concurrent.atomic.AtomicReference;
+-
+-import javax.transaction.SystemException;
+-import javax.transaction.Transaction;
+-import javax.transaction.TransactionManager;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.Region;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.cache.jbc.util.NonLockingDataVersion;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.Node;
+-import org.jboss.cache.NodeSPI;
+-import org.jboss.cache.config.Configuration;
+-import org.jboss.cache.config.Option;
+-import org.jboss.cache.config.Configuration.NodeLockingScheme;
+-import org.jboss.cache.notifications.annotation.NodeInvalidated;
+-import org.jboss.cache.notifications.annotation.NodeModified;
+-import org.jboss.cache.notifications.annotation.ViewChanged;
+-import org.jboss.cache.notifications.event.NodeInvalidatedEvent;
+-import org.jboss.cache.notifications.event.NodeModifiedEvent;
+-import org.jboss.cache.notifications.event.ViewChangedEvent;
+-import org.jboss.cache.optimistic.DataVersion;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * General support for writing {@link Region} implementations for JBoss Cache
+- * 2.x.
+- * 
+- * @author Steve Ebersole
+- */
+-public abstract class BasicRegionAdapter implements Region {
+-   
+-    private enum InvalidateState { INVALID, CLEARING, VALID };
+-    
+-    public static final String ITEM = CacheHelper.ITEM;
+-
+-    protected final Cache jbcCache;
+-    protected final String regionName;
+-    protected final Fqn regionFqn;
+-    protected final Fqn internalFqn;
+-    protected Node regionRoot;
+-    protected final boolean optimistic;
+-    protected final TransactionManager transactionManager;
+-    protected final Logger log;
+-    protected final Object regionRootMutex = new Object();
+-    protected final Object memberId;
+-    protected final boolean replication;
+-    protected final Object invalidationMutex = new Object();
+-    protected final AtomicReference<InvalidateState> invalidateState = 
+-       new AtomicReference<InvalidateState>(InvalidateState.VALID);
+-    protected final Set<Object> currentView = new HashSet<Object>();
+-
+-//    protected RegionRootListener listener;
+-    
+-    public BasicRegionAdapter(Cache jbcCache, String regionName, String regionPrefix) {
+-
+-        this.log = LoggerFactory.getLogger(getClass());
+-        
+-        this.jbcCache = jbcCache;
+-        this.transactionManager = jbcCache.getConfiguration().getRuntimeConfig().getTransactionManager();
+-        this.regionName = regionName;
+-        this.regionFqn = createRegionFqn(regionName, regionPrefix);
+-        this.internalFqn = CacheHelper.getInternalFqn(regionFqn);
+-        this.optimistic = jbcCache.getConfiguration().getNodeLockingScheme() == NodeLockingScheme.OPTIMISTIC;
+-        this.memberId = jbcCache.getLocalAddress();
+-        this.replication = CacheHelper.isClusteredReplication(jbcCache);
+-        
+-        this.jbcCache.addCacheListener(this);
+-        
+-        synchronized (currentView) {
+-           List view = jbcCache.getMembers();
+-           if (view != null) {
+-              currentView.addAll(view);
+-           }
+-        }
+-        
+-        activateLocalClusterNode();
+-        
+-        log.debug("Created Region for " + regionName + " -- regionPrefix is " + regionPrefix);
+-    }
+-
+-    protected abstract Fqn<String> createRegionFqn(String regionName, String regionPrefix);
+-
+-    protected void activateLocalClusterNode() {
+-       
+-        // Regions can get instantiated in the course of normal work (e.g.
+-        // a named query region will be created the first time the query is
+-        // executed), so suspend any ongoing tx
+-        Transaction tx = suspend();
+-        try {
+-            Configuration cfg = jbcCache.getConfiguration();
+-            if (cfg.isUseRegionBasedMarshalling()) {
+-                org.jboss.cache.Region jbcRegion = jbcCache.getRegion(regionFqn, true);
+-                ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+-                if (classLoader == null) {
+-                    classLoader = getClass().getClassLoader();
+-                }
+-                jbcRegion.registerContextClassLoader(classLoader);
+-                if ( !jbcRegion.isActive() ) {
+-                    jbcRegion.activate();
+-                }
+-            }
+-            
+-//            // If we are using replication, we may remove the root node
+-//            // and then need to re-add it. In that case, the fact
+-//            // that it is resident will not replicate, so use a listener
+-//            // to set it as resident
+-//            if (CacheHelper.isClusteredReplication(cfg.getCacheMode()) 
+-//                  || CacheHelper.isClusteredInvalidation(cfg.getCacheMode())) {
+-//                listener = new RegionRootListener();
+-//                jbcCache.addCacheListener(listener);
+-//            }
+-            
+-            regionRoot = jbcCache.getRoot().getChild( regionFqn );
+-            if (regionRoot == null || !regionRoot.isValid()) {
+-               // Establish the region root node with a non-locking data version
+-               DataVersion version = optimistic ? NonLockingDataVersion.INSTANCE : null;
+-               regionRoot = CacheHelper.addNode(jbcCache, regionFqn, true, true, version);
+-            }
+-            else if (optimistic && regionRoot instanceof NodeSPI) {
+-                // FIXME Hacky workaround to JBCACHE-1202
+-                if ( !( ( ( NodeSPI ) regionRoot ).getVersion() instanceof NonLockingDataVersion ) ) {
+-                    ((NodeSPI) regionRoot).setVersion(NonLockingDataVersion.INSTANCE);
+-                }
+-            }
+-            if (!regionRoot.isResident()) {
+-               regionRoot.setResident(true);
+-            }
+-            establishInternalNodes();
+-        }
+-        catch (Exception e) {
+-            throw new CacheException(e.getMessage(), e);
+-        }
+-        finally {
+-            resume(tx);
+-        }
+-        
+-    }
+-
+-    private void establishRegionRootNode()
+-    {
+-        synchronized (regionRootMutex) {
+-            // If we've been blocking for the mutex, perhaps another
+-            // thread has already reestablished the root.
+-            // In case the node was reestablised via replication, confirm it's 
+-            // marked "resident" (a status which doesn't replicate)
+-            if (regionRoot != null && regionRoot.isValid()) {
+-                return;
+-            }
+-            
+-            // For pessimistic locking, we just want to toss out our ref
+-            // to any old invalid root node and get the latest (may be null)            
+-            if (!optimistic) {
+-               establishInternalNodes();
+-               regionRoot = jbcCache.getRoot().getChild( regionFqn );
+-               return;
+-            }
+-            
+-            // The rest only matters for optimistic locking, where we
+-            // need to establish the proper data version on the region root
+-            
+-            // Don't hold a transactional lock for this 
+-            Transaction tx = suspend();
+-            Node newRoot = null;
+-            try {
+-                 // Make sure the root node for the region exists and 
+-                 // has a DataVersion that never complains
+-                 newRoot = jbcCache.getRoot().getChild( regionFqn );
+-                 if (newRoot == null || !newRoot.isValid()) {                
+-                     // Establish the region root node with a non-locking data version
+-                     DataVersion version = optimistic ? NonLockingDataVersion.INSTANCE : null;
+-                     newRoot = CacheHelper.addNode(jbcCache, regionFqn, true, true, version);    
+-                 }
+-                 else if (newRoot instanceof NodeSPI) {
+-                     // FIXME Hacky workaround to JBCACHE-1202
+-                     if ( !( ( ( NodeSPI ) newRoot ).getVersion() instanceof NonLockingDataVersion ) ) {
+-                          ((NodeSPI) newRoot).setVersion(NonLockingDataVersion.INSTANCE);
+-                     }
+-                 }
+-                 // Never evict this node
+-                 newRoot.setResident(true);
+-                 establishInternalNodes();
+-            }
+-            finally {
+-                resume(tx);
+-                regionRoot = newRoot;
+-            }
+-        }
+-    }
+-
+-    private void establishInternalNodes()
+-    {
+-       synchronized (currentView) {
+-          Transaction tx = suspend();
+-          try {
+-             for (Object member : currentView) {
+-                DataVersion version = optimistic ? NonLockingDataVersion.INSTANCE : null;
+-                Fqn f = Fqn.fromRelativeElements(internalFqn, member);
+-                CacheHelper.addNode(jbcCache, f, true, false, version);
+-             }
+-          }
+-          finally {
+-             resume(tx);
+-          }
+-       }
+-       
+-    }
+-
+-    public String getName() {
+-        return regionName;
+-    }
+-
+-    public Cache getCacheInstance() {
+-        return jbcCache;
+-    }
+-
+-    public Fqn getRegionFqn() {
+-        return regionFqn;
+-    }
+-    
+-    public Object getMemberId()
+-    {
+-       return this.memberId;
+-    }
+-    
+-    /**
+-     * Checks for the validity of the root cache node for this region,
+-     * creating a new one if it does not exist or is invalid, and also
+-     * ensuring that the root node is marked as resident.  Suspends any 
+-     * transaction while doing this to ensure no transactional locks are held 
+-     * on the region root.
+-     * 
+-     * TODO remove this once JBCACHE-1250 is resolved.
+-     */
+-    public void ensureRegionRootExists() {
+-       
+-       if (regionRoot == null || !regionRoot.isValid())
+-          establishRegionRootNode();
+-       
+-       // Fix up the resident flag
+-       if (regionRoot != null && regionRoot.isValid() && !regionRoot.isResident())
+-          regionRoot.setResident(true);
+-    }
+-    
+-    public boolean checkValid()
+-    {
+-       boolean valid = invalidateState.get() == InvalidateState.VALID;
+-       
+-       if (!valid) {
+-          synchronized (invalidationMutex) {
+-             if (invalidateState.compareAndSet(InvalidateState.INVALID, InvalidateState.CLEARING)) {
+-                Transaction tx = suspend();
+-                try {
+-                   Option opt = new Option();
+-                   opt.setLockAcquisitionTimeout(1);
+-                   opt.setCacheModeLocal(true);
+-                   CacheHelper.removeAll(jbcCache, regionFqn, opt);
+-                   invalidateState.compareAndSet(InvalidateState.CLEARING, InvalidateState.VALID);
+-                }
+-                catch (Exception e) {
+-                   if (log.isTraceEnabled()) {
+-                      log.trace("Could not invalidate region: " + e.getLocalizedMessage());
+-                   }
+-                }
+-                finally {
+-                   resume(tx);
+-                }
+-             }
+-          }
+-          valid = invalidateState.get() == InvalidateState.VALID;
+-       }
+-       
+-       return valid;   
+-    }
+-
+-    public void destroy() throws CacheException {
+-        try {
+-            // NOTE : this is being used from the process of shutting down a
+-            // SessionFactory. Specific things to consider:
+-            // (1) this clearing of the region should not propagate to
+-            // other nodes on the cluster (if any); this is the
+-            // cache-mode-local option bit...
+-            // (2) really just trying a best effort to cleanup after
+-            // ourselves; lock failures, etc are not critical here;
+-            // this is the fail-silently option bit...
+-            Option option = new Option();
+-            option.setCacheModeLocal(true);
+-            option.setFailSilently(true);
+-            if (optimistic) {
+-                option.setDataVersion(NonLockingDataVersion.INSTANCE);
+-            }
+-            jbcCache.getInvocationContext().setOptionOverrides(option);
+-            jbcCache.removeNode(regionFqn);
+-            deactivateLocalNode();            
+-        } catch (Exception e) {
+-            throw new CacheException(e);
+-        }
+-        finally {
+-            jbcCache.removeCacheListener(this);
+-        }
+-    }
+-
+-    protected void deactivateLocalNode() {
+-        org.jboss.cache.Region jbcRegion = jbcCache.getRegion(regionFqn, false);
+-        if (jbcRegion != null && jbcRegion.isActive()) {
+-            jbcRegion.deactivate();
+-            jbcRegion.unregisterContextClassLoader();
+-        }
+-    }
+-
+-	public boolean contains(Object key) {
+-		if ( !checkValid() ) {
+-			return false;
+-		}
+-
+-		try {
+-			Option opt = new Option();
+-            opt.setLockAcquisitionTimeout(100);
+-            CacheHelper.setInvocationOption( jbcCache, opt );
+-			return CacheHelper.getAllowingTimeout( jbcCache, regionFqn, key ) != null;
+-		}
+-		catch ( CacheException ce ) {
+-			throw ce;
+-		}
+-		catch ( Throwable t ) {
+-			throw new CacheException( t );
+-		}
+-	}
+-
+-    public long getSizeInMemory() {
+-        // not supported
+-        return -1;
+-    }
+-
+-    public long getElementCountInMemory() {
+-        if (checkValid()) {
+-           try {
+-               Set childrenNames = CacheHelper.getChildrenNames(jbcCache, regionFqn);
+-               int size = childrenNames.size();
+-               if (childrenNames.contains(CacheHelper.Internal.NODE)) {
+-                  size--;
+-               }
+-               return size;
+-           }
+-		   catch ( CacheException ce ) {
+-			   throw ce;
+-		   }
+-		   catch (Exception e) {
+-               throw new CacheException(e);
+-           }
+-        }
+-        else {
+-           return 0;
+-        }           
+-    }
+-
+-    public long getElementCountOnDisk() {
+-        return -1;
+-    }
+-
+-    public Map toMap() {
+-        if (checkValid()) {
+-           try {
+-               Map result = new HashMap();
+-               Set childrenNames = CacheHelper.getChildrenNames(jbcCache, regionFqn);
+-               for (Object childName : childrenNames) {
+-                   if (CacheHelper.Internal.NODE != childName) {
+-                      result.put(childName, CacheHelper.get(jbcCache,regionFqn, childName));
+-                   }
+-               }
+-               return result;
+-           } catch (CacheException e) {
+-               throw e;
+-           } catch (Exception e) {
+-               throw new CacheException(e);
+-           }
+-        }
+-        else {
+-           return Collections.emptyMap();
+-        }
+-    }
+-
+-    public long nextTimestamp() {
+-        return System.currentTimeMillis() / 100;
+-    }
+-
+-    public int getTimeout() {
+-        return 600; // 60 seconds
+-    }
+-
+-    /**
+-     * Performs a JBoss Cache <code>get(Fqn, Object)</code> after first
+-     * {@link #suspend suspending any ongoing transaction}. Wraps any exception
+-     * in a {@link CacheException}. Ensures any ongoing transaction is resumed.
+-     * 
+-     * @param key The key of the item to get
+-     * @param opt any option to add to the get invocation. May be <code>null</code>
+-     * @param suppressTimeout should any TimeoutException be suppressed?
+-     * @return The retrieved object
+-	 * @throws CacheException issue managing transaction or talking to cache
+-     */
+-    protected Object suspendAndGet(Object key, Option opt, boolean suppressTimeout) throws CacheException {
+-        Transaction tx = suspend();
+-        try {
+-            CacheHelper.setInvocationOption(getCacheInstance(), opt);
+-            if (suppressTimeout)
+-                return CacheHelper.getAllowingTimeout(getCacheInstance(), getRegionFqn(), key);
+-            else
+-                return CacheHelper.get(getCacheInstance(), getRegionFqn(), key);
+-        } finally {
+-            resume(tx);
+-        }
+-    }
+-
+-    /**
+-     * Tell the TransactionManager to suspend any ongoing transaction.
+-     * 
+-     * @return the transaction that was suspended, or <code>null</code> if
+-     *         there wasn't one
+-     */
+-    public Transaction suspend() {
+-        Transaction tx = null;
+-        try {
+-            if (transactionManager != null) {
+-                tx = transactionManager.suspend();
+-            }
+-        } catch (SystemException se) {
+-            throw new CacheException("Could not suspend transaction", se);
+-        }
+-        return tx;
+-    }
+-
+-    /**
+-     * Tell the TransactionManager to resume the given transaction
+-     * 
+-     * @param tx
+-     *            the transaction to suspend. May be <code>null</code>.
+-     */
+-    public void resume(Transaction tx) {
+-        try {
+-            if (tx != null)
+-                transactionManager.resume(tx);
+-        } catch (Exception e) {
+-            throw new CacheException("Could not resume transaction", e);
+-        }
+-    }
+-
+-    /**
+-     * Get an Option with a {@link Option#getDataVersion() data version}
+-     * of {@link NonLockingDataVersion}.  The data version will not be 
+-     * set if the cache is not configured for optimistic locking.
+-     * 
+-     * @param allowNullReturn If <code>true</code>, return <code>null</code>
+-     *                        if the cache is not using optimistic locking.
+-     *                        If <code>false</code>, return a default
+-     *                        {@link Option}.
+-     *                        
+-     * @return the Option, or <code>null</code>.
+-     */
+-    protected Option getNonLockingDataVersionOption(boolean allowNullReturn) {
+-        return optimistic ? NonLockingDataVersion.getInvocationOption() 
+-                          : (allowNullReturn) ? null : new Option();
+-    }
+-
+-    public static Fqn<String> getTypeFirstRegionFqn(String regionName, String regionPrefix, String regionType) {
+-        Fqn<String> base = Fqn.fromString(regionType);
+-        Fqn<String> added = Fqn.fromString(escapeRegionName(regionName, regionPrefix));
+-        return new Fqn<String>(base, added);
+-    }
+-
+-    public static Fqn<String> getTypeLastRegionFqn(String regionName, String regionPrefix, String regionType) {
+-        Fqn<String> base = Fqn.fromString(escapeRegionName(regionName, regionPrefix));
+-        return new Fqn<String>(base, regionType);
+-    }
+-
+-    public static String escapeRegionName(String regionName, String regionPrefix) {
+-        String escaped = null;
+-        int idx = -1;
+-        if (regionPrefix != null) {
+-            idx = regionName.indexOf(regionPrefix);
+-        }
+-
+-        if (idx > -1) {
+-            int regionEnd = idx + regionPrefix.length();
+-            String prefix = regionName.substring(0, regionEnd);
+-            String suffix = regionName.substring(regionEnd);
+-            suffix = suffix.replace('.', '/');
+-            escaped = prefix + suffix;
+-        } else {
+-            escaped = regionName.replace('.', '/');
+-            if (regionPrefix != null && regionPrefix.length() > 0) {
+-                escaped = regionPrefix + "/" + escaped;
+-            }
+-        }
+-        return escaped;
+-    }
+-    
+-    @NodeModified
+-    public void nodeModified(NodeModifiedEvent event)
+-    {
+-       handleEvictAllModification(event);
+-    }
+-    
+-    protected boolean handleEvictAllModification(NodeModifiedEvent event) {
+-       
+-       if (!event.isPre() && (replication || event.isOriginLocal()) && event.getData().containsKey(ITEM))
+-       {
+-          if (event.getFqn().isChildOf(internalFqn))
+-          {
+-             invalidateState.set(InvalidateState.INVALID);
+-             return true;
+-          }
+-       }
+-       return false;       
+-    }
+-    
+-    @NodeInvalidated
+-    public void nodeInvalidated(NodeInvalidatedEvent event)
+-    {
+-       handleEvictAllInvalidation(event);
+-    }
+-    
+-    protected boolean handleEvictAllInvalidation(NodeInvalidatedEvent event)
+-    {
+-       if (!event.isPre() && event.getFqn().isChildOf(internalFqn))
+-       {
+-          invalidateState.set(InvalidateState.INVALID);
+-          return true;
+-       }      
+-       return false;
+-    }
+-    
+-    @ViewChanged
+-    public void viewChanged(ViewChangedEvent event) {
+-       
+-       synchronized (currentView) {
+-          List view = event.getNewView().getMembers();
+-          if (view != null) {
+-             currentView.addAll(view);
+-             establishInternalNodes();
+-          }
+-       }
+-       
+-    }
+-   
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/CacheInstanceManager.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/CacheInstanceManager.java
+deleted file mode 100644
+index d9dd0d371e..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/CacheInstanceManager.java
++++ /dev/null
+@@ -1,91 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cfg.Settings;
+-import org.jboss.cache.Cache;
+-
+-/**
+- * Acts as a buffer from how instances of {@link Cache} are built/obtained.
+- * 
+- * @author Steve Ebersole
+- */
+-public interface CacheInstanceManager {
+-    /**
+-     * Retrieve a handle to the {@link Cache} instance to be used for storing
+-     * entity data.
+-     * 
+-     * @return The entity data cache instance.
+-     */
+-    public Cache getEntityCacheInstance();
+-
+-    /**
+-     * Retrieve a handle to the {@link Cache} instance to be used for storing
+-     * collection data.
+-     * 
+-     * @return The collection data cache instance.
+-     */
+-    public Cache getCollectionCacheInstance();
+-
+-    /**
+-     * Retrieve a handle to the {@link Cache} instance to be used for storing
+-     * query results.
+-     * 
+-     * @return The query result cache instance.
+-     */
+-    public Cache getQueryCacheInstance();
+-
+-    /**
+-     * Retrieve a handle to the {@link Cache} instance to be used for storing
+-     * timestamps.
+-     * 
+-     * @return The timestamps cache instance.
+-     */
+-    public Cache getTimestampsCacheInstance();
+-
+-    /**
+-     * Lifecycle callback to perform any necessary initialization of the
+-     * CacheInstanceManager. Called exactly once during the construction of a
+-     * {@link org.hibernate.impl.SessionFactoryImpl}.
+-     * 
+-     * @param settings
+-     *            The settings in effect.
+-     * @param properties
+-     *            The defined cfg properties
+-     * @throws CacheException
+-     *             Indicates problems starting the L2 cache impl; considered as
+-     *             a sign to stop {@link org.hibernate.SessionFactory} building.
+-     */
+-    public void start(Settings settings, Properties properties) throws CacheException;
+-
+-    /**
+-     * Lifecycle callback to perform any necessary cleanup of the underlying
+-     * CacheInstanceManager. Called exactly once during
+-     * {@link org.hibernate.SessionFactory#close}.
+-     */
+-    public void stop();
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/JBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/JBossCacheRegionFactory.java
+deleted file mode 100755
+index 3bc684e017..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/JBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,164 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.CollectionRegion;
+-import org.hibernate.cache.EntityRegion;
+-import org.hibernate.cache.QueryResultsRegion;
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.TimestampsRegion;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.jbc.builder.JndiSharedCacheInstanceManager;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cache.jbc.collection.CollectionRegionImpl;
+-import org.hibernate.cache.jbc.entity.EntityRegionImpl;
+-import org.hibernate.cache.jbc.query.QueryResultsRegionImpl;
+-import org.hibernate.cache.jbc.timestamp.TimestampsRegionImpl;
+-import org.hibernate.cfg.Environment;
+-import org.hibernate.cfg.Settings;
+-import org.hibernate.internal.util.config.ConfigurationHelper;
+-import org.jboss.cache.DefaultCacheFactory;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * {@link RegionFactory} that uses one or more JBoss Cache instances for 
+- * caching entities, collections, queries and timestamps. How the factory
+- * obtains a reference to the needed JBoss Cache instance(s) is determined
+- * by the injected {@link CacheInstanceManager}.
+- * <p>
+- * By default uses {@link SharedCacheInstanceManager} as its
+- * {@link #getCacheInstanceManager() CacheInstanceManager}.
+- * Basically, this uses a single shared JBoss Cache for entities, collections,
+- * queries and timestamps. The JBoss Cache instance is created by the
+- * JBC {@link DefaultCacheFactory} using the resource identified by the
+- * {@link JndiSharedCacheInstanceManager#CACHE_RESOURCE_PROP}
+- * configuration property. 
+- * </p>
+- * <p>
+- * Also exposes an overloaded constructor that allows injection of different
+- * <code>CacheInstanceManager</code> implementations.
+- * </p>
+- *
+- * @deprecated Favor Infinispan integration; see HHH-5489 for details.
+- * 
+- * @author Steve Ebersole
+- * @author Brian Stansberry
+- */
+-@Deprecated
+-public class JBossCacheRegionFactory implements RegionFactory {
+-	private static final Logger log = LoggerFactory.getLogger( JBossCacheRegionFactory.class );
+-    private CacheInstanceManager cacheInstanceManager;
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public JBossCacheRegionFactory(Properties props) {
+-        this();
+-    }
+-
+-    /**
+-     *  Create a new JBossCacheRegionFactory.
+-     */
+-    public JBossCacheRegionFactory() {
+-		log.warn( "Integration with JBossCache is deprecated in favor of Infinispan" );
+-    }
+-
+-    /**
+-     * Create a new JBossCacheRegionFactory that uses the provided
+-     * {@link CacheInstanceManager}.
+-     * 
+-     * @param cacheInstanceManager The contract for how we get JBC cache instances.
+-     */
+-    public JBossCacheRegionFactory(CacheInstanceManager cacheInstanceManager) {
+-        this.cacheInstanceManager = cacheInstanceManager;
+-		log.warn( "Integration with JBossCache is deprecated in favor of Infinispan" );
+-    }
+-
+-    public CacheInstanceManager getCacheInstanceManager() {
+-        return cacheInstanceManager;
+-    }
+-
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-        if (cacheInstanceManager == null) {
+-            cacheInstanceManager = new SharedCacheInstanceManager();
+-        }
+-
+-        cacheInstanceManager.start(settings, properties);
+-    }
+-
+-    public void stop() {
+-        if (cacheInstanceManager != null) {
+-            cacheInstanceManager.stop();
+-        }
+-    }
+-
+-    public boolean isMinimalPutsEnabledByDefault() {
+-        return true;
+-    }
+-
+-	public AccessType getDefaultAccessType() {
+-		return AccessType.TRANSACTIONAL;
+-	}
+-
+-	public long nextTimestamp() {
+-        return System.currentTimeMillis() / 100;
+-    }
+-
+-    public EntityRegion buildEntityRegion(String regionName, Properties properties, CacheDataDescription metadata)
+-            throws CacheException {
+-        return new EntityRegionImpl(cacheInstanceManager.getEntityCacheInstance(), regionName,
+-                getRegionPrefix(properties), metadata);
+-    }
+-
+-    public CollectionRegion buildCollectionRegion(String regionName, Properties properties,
+-            CacheDataDescription metadata) throws CacheException {
+-        return new CollectionRegionImpl(cacheInstanceManager.getCollectionCacheInstance(), regionName,
+-                getRegionPrefix(properties), metadata);
+-    }
+-
+-    public QueryResultsRegion buildQueryResultsRegion(String regionName, Properties properties) throws CacheException {
+-
+-        return new QueryResultsRegionImpl(cacheInstanceManager.getQueryCacheInstance(), regionName,
+-                getRegionPrefix(properties), properties);
+-    }
+-
+-    public TimestampsRegion buildTimestampsRegion(String regionName, Properties properties) throws CacheException {
+-
+-        return new TimestampsRegionImpl(cacheInstanceManager.getTimestampsCacheInstance(), regionName,
+-                getRegionPrefix(properties), properties);
+-    }
+-
+-    public static String getRegionPrefix(Properties properties) {
+-        return ConfigurationHelper.getString(Environment.CACHE_REGION_PREFIX, properties, null);
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/JndiMultiplexedJBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/JndiMultiplexedJBossCacheRegionFactory.java
+deleted file mode 100644
+index d13f7cefae..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/JndiMultiplexedJBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,74 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc;
+-
+-import java.util.Properties;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-import org.hibernate.cache.jbc.builder.JndiMultiplexingCacheInstanceManager;
+-
+-/**
+- * {@link JBossCacheRegionFactory} that uses
+- * {@link JndiMultiplexingCacheInstanceManager} as its
+- * {@link #getCacheInstanceManager() CacheInstanceManager}.
+- * <p>
+- * Supports separate JBoss Cache instances for entity, collection, query
+- * and timestamp caching, with the expectation that a single multiplexed JGroups 
+- * resource (i.e. a multiplexed channel or a shared transport channel) will be 
+- * shared between the caches. JBoss Cache instances are created from a factory.
+- * </p>
+- * <p>
+- * This version finds the factory in JNDI. See 
+- * {@link JndiMultiplexingCacheInstanceManager} for configuration details. 
+- * </p>
+- *
+- * @deprecated Favor Infinispan integration; see HHH-5489 for details.
+- *
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-@Deprecated
+-public class JndiMultiplexedJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public JndiMultiplexedJBossCacheRegionFactory(Properties props) {
+-        this();
+-    }
+-
+-    /**
+-     * Create a new MultiplexedJBossCacheRegionFactory.
+-     * 
+-     */
+-    public JndiMultiplexedJBossCacheRegionFactory() {
+-        super(new JndiMultiplexingCacheInstanceManager());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/JndiSharedJBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/JndiSharedJBossCacheRegionFactory.java
+deleted file mode 100644
+index 12f55cf21b..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/JndiSharedJBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,67 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.jbc.builder.JndiSharedCacheInstanceManager;
+-
+-/**
+- * {@link JBossCacheRegionFactory} that uses
+- * {@link JndiSharedCacheInstanceManager} as its
+- * {@link #getCacheInstanceManager() CacheInstanceManager}.
+- * <p>
+- * Basically, uses a single shared JBoss Cache for entities, collections,
+- * queries and timestamps. The JBoss Cache instance is found in JNDI
+- * using the value of the {@link JndiSharedCacheInstanceManager#CACHE_RESOURCE_PROP}
+- * configuration property as the name to look up. 
+- * </p>
+- *
+- * @deprecated Favor Infinispan integration; see HHH-5489 for details.
+- * 
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-@Deprecated
+-public class JndiSharedJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public JndiSharedJBossCacheRegionFactory(Properties props) {
+-        this();
+-    }
+-
+-    /**
+-     * Create a new MultiplexedJBossCacheRegionFactory.
+-     * 
+-     */
+-    public JndiSharedJBossCacheRegionFactory() {
+-        super(new JndiSharedCacheInstanceManager());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/MultiplexedJBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/MultiplexedJBossCacheRegionFactory.java
+deleted file mode 100644
+index a3b3ec468e..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/MultiplexedJBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,71 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-
+-/**
+- * {@link JBossCacheRegionFactory} that uses
+- * {@link MultiplexingCacheInstanceManager} as its
+- * {@link #getCacheInstanceManager() CacheInstanceManager}.
+- * <p>
+- * Supports separate JBoss Cache instances for entity, collection, query
+- * and timestamp caching, with the expectation that a single JGroups resource 
+- * (i.e. a multiplexed channel or a shared transport channel) will be shared 
+- * between the caches. JBoss Cache instances are created from a factory.
+- * </p>
+- * <p>
+- * This version instantiates the factory itself. See 
+- * {@link MultiplexingCacheInstanceManager} for configuration details. 
+- * </p>
+- *
+- * @deprecated Favor Infinispan integration; see HHH-5489 for details.
+- *
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-@Deprecated
+-public class MultiplexedJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public MultiplexedJBossCacheRegionFactory(Properties props) {
+-        this();
+-    }
+-
+-    /**
+-     * Create a new MultiplexedJBossCacheRegionFactory.
+-     * 
+-     */
+-    public MultiplexedJBossCacheRegionFactory() {
+-        super(new MultiplexingCacheInstanceManager());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/SharedJBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/SharedJBossCacheRegionFactory.java
+deleted file mode 100644
+index 63c78f3a78..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/SharedJBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,72 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.jbc.builder.JndiSharedCacheInstanceManager;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.jboss.cache.DefaultCacheFactory;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * {@link JBossCacheRegionFactory} that uses
+- * {@link SharedCacheInstanceManager} as its
+- * {@link #getCacheInstanceManager() CacheInstanceManager}.
+- * <p>
+- * Basically, uses a single shared JBoss Cache for entities, collections,
+- * queries and timestamps. The JBoss Cache instance created by the
+- * JBC {@link DefaultCacheFactory} using the resource identified by the
+- * {@link JndiSharedCacheInstanceManager#CACHE_RESOURCE_PROP}
+- * configuration property. 
+- * </p>
+- *
+- * @deprecated Favor Infinispan integration; see HHH-5489 for details.
+- *
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-@Deprecated
+-public class SharedJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public SharedJBossCacheRegionFactory(Properties props) {
+-        this();
+-    }
+-
+-    /**
+-     * Create a new MultiplexedJBossCacheRegionFactory.
+-     * 
+-     */
+-    public SharedJBossCacheRegionFactory() {
+-        super(new SharedCacheInstanceManager());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/TransactionalDataRegionAdapter.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/TransactionalDataRegionAdapter.java
+deleted file mode 100644
+index e592cd598e..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/TransactionalDataRegionAdapter.java
++++ /dev/null
+@@ -1,60 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.TransactionalDataRegion;
+-import org.jboss.cache.Cache;
+-
+-/**
+- * {@inheritDoc}
+- * 
+- * @author Steve Ebersole
+- */
+-public abstract class TransactionalDataRegionAdapter extends BasicRegionAdapter implements TransactionalDataRegion {
+-
+-    protected final CacheDataDescription metadata;
+-
+-    public TransactionalDataRegionAdapter(Cache jbcCache, String regionName, String regionPrefix,
+-            CacheDataDescription metadata) {
+-        super(jbcCache, regionName, regionPrefix);
+-        this.metadata = metadata;
+-    }
+-
+-    /**
+-     * Here, for JBossCache, we consider the cache to be transaction aware if
+-     * the underlying cache instance has a reference to the transaction manager.
+-     */
+-    public boolean isTransactionAware() {
+-        return transactionManager != null;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public CacheDataDescription getCacheDataDescription() {
+-        return metadata;
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/access/OptimisticTransactionalAccessDelegate.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/access/OptimisticTransactionalAccessDelegate.java
+deleted file mode 100755
+index 2ae999563e..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/access/OptimisticTransactionalAccessDelegate.java
++++ /dev/null
+@@ -1,212 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.access;
+-
+-import javax.transaction.Transaction;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-import org.hibernate.cache.jbc.TransactionalDataRegionAdapter;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.cache.jbc.util.DataVersionAdapter;
+-import org.hibernate.cache.jbc.util.NonLockingDataVersion;
+-import org.jboss.cache.config.Option;
+-
+-/**
+- * Defines the strategy for transactional access to entity or collection data in
+- * an optimistic-locking JBoss Cache using its 2.x APIs.
+- * <p>
+- * The intent of this class is to encapsulate common code and serve as a
+- * delegate for {@link EntityRegionAccessStrategy} and
+- * {@link CollectionRegionAccessStrategy} implementations.
+- * </p>
+- * 
+- * @author Brian Stansberry
+- * @version $Revision: 1 $
+- */
+-public class OptimisticTransactionalAccessDelegate extends TransactionalAccessDelegate {
+-
+-    protected final CacheDataDescription dataDescription;
+-
+-    public OptimisticTransactionalAccessDelegate(TransactionalDataRegionAdapter region, PutFromLoadValidator validator) {
+-        super(region, validator);
+-        this.dataDescription = region.getCacheDataDescription();
+-    }
+-
+-    /**
+-     * Overrides the
+-     * {@link TransactionalAccessDelegate#evict(Object) superclass} by adding a
+-     * {@link NonLockingDataVersion} to the invocation.
+-     */
+-    @Override
+-    public void evict(Object key) throws CacheException {
+-    	if (!putValidator.invalidateKey(key)) {
+-    		throw new CacheException("Failed to invalidate pending putFromLoad calls for key " + key + " from region " + region.getName());
+-    	}
+-        region.ensureRegionRootExists();
+-
+-        Option opt = NonLockingDataVersion.getInvocationOption();
+-        CacheHelper.remove(cache, regionFqn, key, opt);
+-    } 
+-    
+-    
+-
+-    @Override
+-    public void evictAll() throws CacheException
+-    {
+-    	if (!putValidator.invalidateRegion()) {
+-     	   throw new CacheException("Failed to invalidate pending putFromLoad calls for region " + region.getName());
+-        }        
+-       
+-       Transaction tx = region.suspend();
+-       try {        
+-          region.ensureRegionRootExists();
+-          Option opt = NonLockingDataVersion.getInvocationOption();
+-          CacheHelper.sendEvictAllNotification(cache, regionFqn, region.getMemberId(), opt);
+-       }
+-       finally {
+-          region.resume(tx);
+-       }
+-    }
+-
+-   /**
+-     * Overrides the
+-     * {@link TransactionalAccessDelegate#insert(Object, Object, Object) superclass}
+-     * by adding a {@link DataVersion} to the invocation.
+-     */
+-    @Override
+-    public boolean insert(Object key, Object value, Object version) throws CacheException {
+-       
+-        if (!region.checkValid())
+-            return false;
+-        
+-        region.ensureRegionRootExists();
+-
+-        Option opt = getDataVersionOption(version, null);
+-        if (this.invalidation) {
+-        	opt.setCacheModeLocal(true);
+-        }
+-        CacheHelper.put(cache, regionFqn, key, value, opt);
+-        return true;
+-    }
+-
+-    @Override
+-    public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version, boolean minimalPutOverride)
+-            throws CacheException {
+-       
+-        if (!region.checkValid())
+-            return false;
+-        
+-        if (!putValidator.acquirePutFromLoadLock(key))
+-           return false;
+-        
+-        try {
+-	        region.ensureRegionRootExists();
+-	
+-	        // We ignore minimalPutOverride. JBossCache putForExternalRead is
+-	        // already about as minimal as we can get; it will promptly return
+-	        // if it discovers that the node we want to write to already exists
+-	        Option opt = getDataVersionOption(version, version);
+-	        return CacheHelper.putForExternalRead(cache, regionFqn, key, value, opt);
+-        }
+-        finally {
+-        	putValidator.releasePutFromLoadLock(key);
+-        }
+-    }
+-
+-    @Override
+-    public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version) throws CacheException {
+-       
+-        if (!region.checkValid())
+-            return false;
+-        
+-        if (!putValidator.acquirePutFromLoadLock(key))
+-           return false;
+-        
+-        try {
+-	        region.ensureRegionRootExists();
+-	
+-	        Option opt = getDataVersionOption(version, version);
+-	        return CacheHelper.putForExternalRead(cache, regionFqn, key, value, opt);
+-        }
+-        finally {
+-        	putValidator.releasePutFromLoadLock(key);
+-        }
+-    }
+-
+-    @Override
+-    public void remove(Object key) throws CacheException {
+-       
+-    	if (!putValidator.invalidateKey(key)) {
+-    		throw new CacheException("Failed to invalidate pending putFromLoad calls for key " + key + " from region " + region.getName());
+-    	}
+-        
+-        // We remove whether or not the region is valid. Other nodes
+-        // may have already restored the region so they need to
+-        // be informed of the change.
+-        
+-        region.ensureRegionRootExists();
+-
+-        Option opt = NonLockingDataVersion.getInvocationOption();
+-        CacheHelper.remove(cache, regionFqn, key, opt);
+-    }
+-
+-    @Override
+-    public void removeAll() throws CacheException {
+-       if (!putValidator.invalidateRegion()) {
+-    	   throw new CacheException("Failed to invalidate pending putFromLoad calls for region " + region.getName());
+-       }
+-       Option opt = NonLockingDataVersion.getInvocationOption();
+-       CacheHelper.removeAll(cache, regionFqn, opt);
+-    }
+-
+-    @Override
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-            throws CacheException {
+-       
+-        // We update whether or not the region is valid. Other nodes
+-        // may have already restored the region so they need to
+-        // be informed of the change.
+-        
+-        region.ensureRegionRootExists();
+-
+-        Option opt = getDataVersionOption(currentVersion, previousVersion);
+-        CacheHelper.put(cache, regionFqn, key, value, opt);
+-        return true;
+-    }
+-
+-    @SuppressWarnings("deprecation")
+-    private Option getDataVersionOption(Object currentVersion, Object previousVersion) {
+-        
+-       org.jboss.cache.optimistic.DataVersion dv = (dataDescription != null && dataDescription.isVersioned()) ? new DataVersionAdapter(
+-                currentVersion, previousVersion, dataDescription.getVersionComparator(), dataDescription.toString())
+-                : NonLockingDataVersion.INSTANCE;
+-        Option opt = new Option();
+-        opt.setDataVersion(dv);
+-        return opt;
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/access/PutFromLoadValidator.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/access/PutFromLoadValidator.java
+deleted file mode 100644
+index c68d45f69e..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/access/PutFromLoadValidator.java
++++ /dev/null
+@@ -1,744 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2009, Red Hat, Inc or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.access;
+-
+-import java.lang.ref.WeakReference;
+-import java.util.HashMap;
+-import java.util.LinkedList;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.concurrent.ConcurrentHashMap;
+-import java.util.concurrent.ConcurrentMap;
+-import java.util.concurrent.TimeUnit;
+-import java.util.concurrent.locks.Lock;
+-import java.util.concurrent.locks.ReentrantLock;
+-
+-import javax.transaction.SystemException;
+-import javax.transaction.Transaction;
+-import javax.transaction.TransactionManager;
+-
+-import org.hibernate.cache.CacheException;
+-
+-/**
+- * Encapsulates logic to allow a {@link TransactionalAccessDelegate} to determine
+- * whether a {@link TransactionalAccessDelegate#putFromLoad(Object, Object, long, Object, boolean)
+- * call should be allowed to update the cache. A <code>putFromLoad</code> has
+- * the potential to store stale data, since the data may have been removed from the
+- * database and the cache between the time when the data was read from the database 
+- * and the actual call to <code>putFromLoad</code>.
+- * <p>
+- * The expected usage of this class by a thread that read the cache and did
+- * not find data is:
+- * 
+- * <ol>
+- * <li> Call {@link #registerPendingPut(Object)}</li>
+- * <li> Read the database</li>
+- * <li> Call {@link #acquirePutFromLoadLock(Object)}
+- * <li> if above returns <code>false</code>, the thread should not cache the data;
+- *      only if above returns <code>true</code>, put data in the cache and...</li>
+- * <li> then call {@link #releasePutFromLoadLock(Object)}</li>
+- * </ol>
+- * </p>
+- * 
+- * <p>
+- * The expected usage by a thread that is taking an action such that any pending
+- * <code>putFromLoad</code> may have stale data and should not cache it is to either
+- * call
+- * 
+- * <ul>
+- * <li> {@link #invalidateKey(Object)} (for a single key invalidation)</li>
+- * <li>or {@link #invalidateRegion()} (for a general invalidation all pending puts)</li>
+- * </ul>
+- * </p>
+- * 
+- * <p>
+- * This class also supports the concept of "naked puts", which are calls to
+- * {@link #acquirePutFromLoadLock(Object)} without a preceding {@link #registerPendingPut(Object)}
+- * call. 
+- * </p>
+- *
+- * @author Brian Stansberry
+- * 
+- * @version $Revision: $
+- */
+-public class PutFromLoadValidator {
+-	/**
+-	 * Period in ms after a removal during which a call to
+-	 * {@link #acquirePutFromLoadLock(Object)} that hasn't been
+-	 * {@link #registerPendingPut(Object) pre-registered} (aka a "naked put")
+-	 * will return false.
+-	 */
+-	public static final long NAKED_PUT_INVALIDATION_PERIOD = 20 * 1000;
+-
+-	/** Period (in ms) after which a pending put is placed in the over-age queue */
+-	private static final long PENDING_PUT_OVERAGE_PERIOD = 5 * 1000;
+-
+-	/** Period (in ms) before which we stop trying to clean out pending puts */
+-	private static final long PENDING_PUT_RECENT_PERIOD = 2 * 1000;
+-
+-	/**
+-	 * Period (in ms) after which a pending put is never expected to come in 
+-	 * and should be cleaned
+-	 */
+-	private static final long MAX_PENDING_PUT_DELAY = 2 * 60 * 1000;
+-
+-	/**
+-	 * Used to determine whether the owner of a pending put is a thread or a
+-	 * transaction
+-	 */
+-	private final TransactionManager transactionManager;
+-
+-	private final long nakedPutInvalidationPeriod;
+-	private final long pendingPutOveragePeriod;
+-	private final long pendingPutRecentPeriod;
+-	private final long maxPendingPutDelay;
+-
+-	/**
+-	 * Registry of expected, future, isPutValid calls. If a key+owner is
+-	 * registered in this map, it is not a "naked put" and is allowed to
+-	 * proceed.
+-	 */
+-	private final ConcurrentMap<Object, PendingPutMap> pendingPuts = new ConcurrentHashMap<Object, PendingPutMap>();
+-	/**
+-	 * List of pending puts. Used to ensure we don't leak memory via the
+-	 * pendingPuts map
+-	 */
+-	private final List<WeakReference<PendingPut>> pendingQueue = new LinkedList<WeakReference<PendingPut>>();
+-	/**
+-	 * Separate list of pending puts that haven't been resolved within
+-	 * PENDING_PUT_OVERAGE_PERIOD. Used to ensure we don't leak memory via the
+-	 * pendingPuts map. Tracked separately from more recent pending puts for
+-	 * efficiency reasons.
+-	 */
+-	private final List<WeakReference<PendingPut>> overagePendingQueue = new LinkedList<WeakReference<PendingPut>>();
+-	/** Lock controlling access to pending put queues */
+-	private final Lock pendingLock = new ReentrantLock();
+-	private final ConcurrentMap<Object, Long> recentRemovals = new ConcurrentHashMap<Object, Long>();
+-	/**
+-	 * List of recent removals. Used to ensure we don't leak memory via the
+-	 * recentRemovals map
+-	 */
+-	private final List<RecentRemoval> removalsQueue = new LinkedList<RecentRemoval>();
+-	/**
+-	 * The time when the first element in removalsQueue will expire. No reason
+-	 * to do housekeeping on the queue before this time.
+-	 */
+-	private volatile long earliestRemovalTimestamp;
+-	/** Lock controlling access to removalsQueue */
+-	private final Lock removalsLock = new ReentrantLock();
+-
+-	/**
+-	 * The time of the last call to regionRemoved(), plus
+-	 * NAKED_PUT_INVALIDATION_PERIOD. All naked puts will be rejected until the
+-	 * current time is greater than this value.
+-	 */
+-	private volatile long invalidationTimestamp;
+-
+-	/**
+-	 * Creates a new PutFromLoadValidator.
+-	 * 
+-	 * @param transactionManager
+-	 *            transaction manager to use to associate changes with a
+-	 *            transaction; may be <code>null</code>
+-	 */
+-	public PutFromLoadValidator(TransactionManager transactionManager) {
+-		this(transactionManager, NAKED_PUT_INVALIDATION_PERIOD,
+-				PENDING_PUT_OVERAGE_PERIOD, PENDING_PUT_RECENT_PERIOD,
+-				MAX_PENDING_PUT_DELAY);
+-	}
+-
+-	/**
+-	 * Constructor variant for use by unit tests; allows control of various
+-	 * timeouts by the test.
+-	 */
+-	protected PutFromLoadValidator(TransactionManager transactionManager,
+-			long nakedPutInvalidationPeriod, long pendingPutOveragePeriod,
+-			long pendingPutRecentPeriod, long maxPendingPutDelay) {
+-		this.transactionManager = transactionManager;
+-		this.nakedPutInvalidationPeriod = nakedPutInvalidationPeriod;
+-		this.pendingPutOveragePeriod = pendingPutOveragePeriod;
+-		this.pendingPutRecentPeriod = pendingPutRecentPeriod;
+-		this.maxPendingPutDelay = maxPendingPutDelay;
+-	}
+-
+-	// ----------------------------------------------------------------- Public
+-
+-	/**
+-	 * Acquire a lock giving the calling thread the right to put data in the
+-	 * cache for the given key.
+-	 * <p>
+-	 * <strong>NOTE:</strong> A call to this method that returns <code>true</code>
+-	 * should always be matched with a call to {@link #releasePutFromLoadLock(Object)}.
+-	 * </p>
+-	 * 
+-	 * @param key the key
+-	 * 
+-	 * @return <code>true</code> if the lock is acquired and the cache put
+-	 *         can proceed; <code>false</code> if the data should not be cached
+-	 */
+-	public boolean acquirePutFromLoadLock(Object key) {	
+-		
+-		boolean valid = false;
+-		boolean locked = false;
+-		long now = System.currentTimeMillis();
+-
+-		// Important: Do cleanup before we acquire any locks so we
+-		// don't deadlock with invalidateRegion
+-		cleanOutdatedPendingPuts(now, true);
+-		
+-		try {
+-			PendingPutMap pending = pendingPuts.get(key);
+-			if (pending != null) {
+-				locked = pending.acquireLock(100, TimeUnit.MILLISECONDS);
+-				if (locked) {
+-					try {
+-						PendingPut toCancel = pending.remove(getOwnerForPut());
+-						if (toCancel != null) {  
+-							valid = !toCancel.completed;
+-							toCancel.completed = true;
+-						}
+-					}
+-					finally {
+-						if (!valid) {
+-							pending.releaseLock();
+-							locked = false;
+-						}
+-					}
+-				}
+-			}
+-			else {
+-				// Key wasn't in pendingPuts, so either this is a "naked put"
+-				// or regionRemoved has been called. Check if we can proceed
+-				if (now > invalidationTimestamp) {
+-					Long removedTime = recentRemovals.get(key);
+-					if (removedTime == null || now > removedTime.longValue()) {
+-						// It's legal to proceed. But we have to record this key
+-						// in pendingPuts so releasePutFromLoadLock can find it.
+-						// To do this we basically simulate a normal "register
+-						// then acquire lock" pattern
+-						registerPendingPut(key);
+-						locked = acquirePutFromLoadLock(key);
+-						valid = locked;
+-					}
+-				}
+-			}			
+-		}
+-		catch (Throwable t) {
+-			
+-			valid = false;
+-			
+-			if (locked) {
+-				PendingPutMap toRelease = pendingPuts.get(key);
+-				if (toRelease != null) {
+-					toRelease.releaseLock();
+-				}
+-			}
+-			
+-			if (t instanceof RuntimeException) {
+-				throw (RuntimeException) t;
+-			}			
+-			else if (t instanceof Error) {
+-				throw (Error) t;
+-			}			
+-			else {
+-				throw new RuntimeException(t);
+-			}
+-		}
+-		
+-		return valid;
+-	}
+-	
+-	/**
+-	 * Releases the lock previously obtained by a call to
+-	 * {@link #acquirePutFromLoadLock(Object)} that returned <code>true</code>.
+-	 * 
+-	 * @param key the key
+-	 */
+-	public void releasePutFromLoadLock(Object key) {
+-		PendingPutMap pending = pendingPuts.get(key);
+-		if (pending != null) {
+-			if (pending.size() == 0) {
+-				pendingPuts.remove(key);
+-			}
+-			pending.releaseLock();
+-		}
+-	}
+-
+-	/**
+-	 * Invalidates any {@link #registerPendingPut(Object) previously registered pending puts} 
+-	 * ensuring a subsequent call to {@link #acquirePutFromLoadLock(Object)} will
+-	 * return <code>false</code>.
+-	 * <p>
+-	 * This method will block until any concurrent thread that has 
+-	 * {@link #acquirePutFromLoadLock(Object) acquired the putFromLoad lock} for
+-	 * the given key has released the lock. This allows the caller to be certain
+-	 * the putFromLoad will not execute after this method returns, possibly
+-	 * caching stale data.
+-	 * </p>
+-	 * 
+-	 * @param key key identifying data whose pending puts should be invalidated
+-	 * 
+-	 * @return <code>true</code> if the invalidation was successful; <code>false</code>
+-	 *         if a problem occured (which the caller should treat as an
+-	 *         exception condition)
+-	 */
+-	public boolean invalidateKey(Object key) {
+-		
+-		boolean success = true;
+-		
+-		// Invalidate any pending puts
+-		PendingPutMap pending = pendingPuts.get(key);		
+-		if (pending != null) {
+-			// This lock should be available very quickly, but we'll be
+-			// very patient waiting for it as callers should treat not
+-			// acquiring it as an exception condition
+-			if (pending.acquireLock(60, TimeUnit.SECONDS)) {
+-				try {
+-					pending.invalidate();
+-				}
+-				finally {
+-					pending.releaseLock();
+-				}
+-			}
+-			else {
+-				success = false;
+-			}
+-		}
+-
+-		// Record when this occurred to invalidate later naked puts
+-		RecentRemoval removal = new RecentRemoval(key,
+-				this.nakedPutInvalidationPeriod);
+-		recentRemovals.put(key, removal.timestamp);
+-
+-		// Don't let recentRemovals map become a memory leak
+-		RecentRemoval toClean = null;
+-		boolean attemptClean = removal.timestamp.longValue() > earliestRemovalTimestamp;
+-		removalsLock.lock();
+-		try {
+-			removalsQueue.add(removal);
+-
+-			if (attemptClean) {
+-				if (removalsQueue.size() > 1) { // we have at least one as we
+-												// just added it
+-					toClean = removalsQueue.remove(0);
+-				}
+-				earliestRemovalTimestamp = removalsQueue.get(0).timestamp
+-						.longValue();
+-			}
+-		} finally {
+-			removalsLock.unlock();
+-		}
+-
+-		if (toClean != null) {
+-			Long cleaned = recentRemovals.get(toClean.key);
+-			if (cleaned != null && cleaned.equals(toClean.timestamp)) {
+-				cleaned = recentRemovals.remove(toClean.key);
+-				if (cleaned != null
+-						&& cleaned.equals(toClean.timestamp) == false) {
+-					// Oops; removed the wrong timestamp; restore it
+-					recentRemovals.putIfAbsent(toClean.key, cleaned);
+-				}
+-			}
+-		}
+-		
+-		return success;
+-	}
+-
+-	/**
+-	 * Invalidates all {@link #registerPendingPut(Object) previously registered pending puts} 
+-	 * ensuring a subsequent call to {@link #acquirePutFromLoadLock(Object)} will
+-	 * return <code>false</code>.
+-	 * <p>
+-	 * This method will block until any concurrent thread that has 
+-	 * {@link #acquirePutFromLoadLock(Object) acquired the putFromLoad lock} for
+-	 * the any key has released the lock. This allows the caller to be certain
+-	 * the putFromLoad will not execute after this method returns, possibly
+-	 * caching stale data.
+-	 * </p>
+-	 * 
+-	 * @return <code>true</code> if the invalidation was successful; <code>false</code>
+-	 *         if a problem occured (which the caller should treat as an
+-	 *         exception condition)
+-	 */
+-	public boolean invalidateRegion() {
+-		
+-		boolean ok = false;
+-		invalidationTimestamp = System.currentTimeMillis()
+-				+ this.nakedPutInvalidationPeriod;
+-		
+-		try {
+-			
+-			// Acquire the lock for each entry to ensure any ongoing
+-			// work associated with it is completed before we return
+-			for (PendingPutMap entry : pendingPuts.values()) {
+-				if (entry.acquireLock(60, TimeUnit.SECONDS)) {
+-					try {
+-						entry.invalidate();
+-					}
+-					finally {
+-						entry.releaseLock();
+-					}
+-				}
+-				else {
+-					ok = false;
+-				}
+-			}
+-			
+-			removalsLock.lock();
+-			try {
+-				recentRemovals.clear();
+-				removalsQueue.clear();				
+-				
+-				ok = true;
+-
+-			} finally {
+-				removalsLock.unlock();
+-			}
+-		}
+-		catch (Exception e) {
+-			ok = false;
+-		}
+-		finally {
+-			earliestRemovalTimestamp = invalidationTimestamp;
+-		}
+-		
+-		return ok;
+-	}
+-
+-	/**
+-	 * Notifies this validator that it is expected that a database read followed
+-	 * by a subsequent {@link #acquirePutFromLoadLock(Object)} call will occur. The intent
+-	 * is this method would be called following a cache miss wherein it is
+-	 * expected that a database read plus cache put will occur. Calling this
+-	 * method allows the validator to treat the subsequent
+-	 * <code>acquirePutFromLoadLock</code> as if the database read occurred when this method
+-	 * was invoked. This allows the validator to compare the timestamp of this
+-	 * call against the timestamp of subsequent removal notifications. A put
+-	 * that occurs without this call preceding it is "naked"; i.e the validator
+-	 * must assume the put is not valid if any relevant removal has occurred
+-	 * within {@link #NAKED_PUT_INVALIDATION_PERIOD} milliseconds.
+-	 * 
+-	 * @param key key that will be used for subsequent cache put
+-	 */
+-	public void registerPendingPut(Object key) {
+-		PendingPut pendingPut = new PendingPut(key, getOwnerForPut());
+-		PendingPutMap pendingForKey = new PendingPutMap(pendingPut);
+-		
+-		for (;;) {
+-			PendingPutMap existing = pendingPuts.putIfAbsent(key,
+-					pendingForKey);
+-			if (existing != null) {
+-				if (existing.acquireLock(10, TimeUnit.SECONDS)) {
+-					try {
+-						existing.put(pendingPut);
+-						PendingPutMap doublecheck = pendingPuts.putIfAbsent(
+-								key, existing);
+-						if (doublecheck == null || doublecheck == existing) {
+-							break;
+-						}
+-						// else we hit a race and need to loop to try again
+-					}
+-					finally {
+-						existing.releaseLock();
+-					}
+-				}
+-				else {
+-					// Can't get the lock; when we come back we'll be a "naked put"
+-					break;
+-				}
+-			} else {
+-				// normal case
+-				break;
+-			}
+-		}
+-
+-		// Guard against memory leaks
+-		preventOutdatedPendingPuts(pendingPut);
+-	}
+-
+-	// -------------------------------------------------------------- Protected
+-
+-	/** Only for use by unit tests; may be removed at any time */
+-	protected int getPendingPutQueueLength() {
+-		pendingLock.lock();
+-		try {
+-			return pendingQueue.size();
+-		} finally {
+-			pendingLock.unlock();
+-		}
+-	}
+-
+-	/** Only for use by unit tests; may be removed at any time */
+-	protected int getOveragePendingPutQueueLength() {
+-		pendingLock.lock();
+-		try {
+-			return overagePendingQueue.size();
+-		} finally {
+-			pendingLock.unlock();
+-		}
+-	}
+-
+-	/** Only for use by unit tests; may be removed at any time */
+-	protected int getRemovalQueueLength() {
+-		removalsLock.lock();
+-		try {
+-			return removalsQueue.size();
+-		} finally {
+-			removalsLock.unlock();
+-		}
+-	}
+-
+-	// ---------------------------------------------------------------- Private
+-
+-	private Object getOwnerForPut() {
+-		Transaction tx = null;
+-		try {
+-			if (transactionManager != null) {
+-				tx = transactionManager.getTransaction();
+-			}
+-		} catch (SystemException se) {
+-			throw new CacheException("Could not obtain transaction", se);
+-		}
+-		return tx == null ? Thread.currentThread() : tx;
+-
+-	}
+-
+-	private void preventOutdatedPendingPuts(PendingPut pendingPut) {
+-		pendingLock.lock();
+-		try {
+-			pendingQueue.add(new WeakReference<PendingPut>(pendingPut));
+-			if (pendingQueue.size() > 1) {
+-				cleanOutdatedPendingPuts(pendingPut.timestamp, false);
+-			}
+-		} finally {
+-			pendingLock.unlock();
+-		}
+-	}
+-
+-	private void cleanOutdatedPendingPuts(long now, boolean lock) {
+-
+-		PendingPut toClean = null;
+-		if (lock) {
+-			pendingLock.lock();
+-		}
+-		try {
+-			// Clean items out of the basic queue
+-			long overaged = now - this.pendingPutOveragePeriod;
+-			long recent = now - this.pendingPutRecentPeriod;
+-
+-			int pos = 0;
+-			while (pendingQueue.size() > pos) {
+-				WeakReference<PendingPut> ref = pendingQueue.get(pos);
+-				PendingPut item = ref.get();
+-				if (item == null || item.completed) {
+-					pendingQueue.remove(pos);
+-				} else if (item.timestamp < overaged) {
+-					// Potential leak; move to the overaged queued
+-					pendingQueue.remove(pos);
+-					overagePendingQueue.add(ref);
+-				} else if (item.timestamp >= recent) {
+-					// Don't waste time on very recent items
+-					break;
+-				} else if (pos > 2) {
+-					// Don't spend too much time getting nowhere
+-					break;
+-				} else {
+-					// Move on to the next item
+-					pos++;
+-				}
+-			}
+-
+-			// Process the overage queue until we find an item to clean
+-			// or an incomplete item that hasn't aged out
+-			long mustCleanTime = now - this.maxPendingPutDelay;
+-
+-			while (overagePendingQueue.size() > 0) {
+-				WeakReference<PendingPut> ref = overagePendingQueue.get(0);
+-				PendingPut item = ref.get();
+-				if (item == null || item.completed) {
+-					overagePendingQueue.remove(0);
+-				} else {
+-					if (item.timestamp < mustCleanTime) {
+-						overagePendingQueue.remove(0);
+-						toClean = item;
+-					}
+-					break;
+-				}
+-			}
+-		} finally {
+-			if (lock) {
+-				pendingLock.unlock();
+-			}
+-		}
+-
+-		// We've found a pendingPut that never happened; clean it up
+-		if (toClean != null) {
+-			PendingPutMap map = pendingPuts.get(toClean.key);
+-			if (map != null) {
+-				if (map.acquireLock(100, TimeUnit.MILLISECONDS)) {
+-					try {
+-						PendingPut cleaned = map.remove(toClean.owner);
+-						if (toClean.equals(cleaned) == false) {
+-							// Oops. Restore it.
+-							map.put(cleaned);
+-						} else if (map.size() == 0) {
+-							pendingPuts.remove(toClean.key);
+-						}
+-					}
+-					finally {
+-						map.releaseLock();
+-					}
+-				}
+-				else {
+-					// Something's gone wrong and the lock isn't being released. 
+-					// We removed toClean from the queue and need to restore it
+-					// TODO this is pretty dodgy
+-					restorePendingPut(toClean);
+-				}
+-			}
+-		}
+-
+-	}
+-		
+-	private void restorePendingPut(PendingPut toRestore) {
+-		pendingLock.lock();
+-		try {
+-			// Give it a new lease on life so it's not out of order. We could
+-			// scan the queue and put toRestore back at the front, but then
+-			// we'll just immediately try removing it again; instead we
+-			// let it cycle through the queue again
+-			toRestore.refresh();
+-			pendingQueue.add(new WeakReference<PendingPut>(toRestore));
+-		}
+-		finally {
+-			pendingLock.unlock();
+-		}
+-	}
+-
+-	/**
+-	 * Lazy-initialization map for PendingPut. Optimized for the expected usual
+-	 * case where only a single put is pending for a given key.
+-	 * 
+-	 * This class is NOT THREAD SAFE. All operations on it must be performed
+-	 * with the lock held.
+-	 */
+-	private static class PendingPutMap {
+-		private PendingPut singlePendingPut;
+-		private Map<Object, PendingPut> fullMap;
+-		private final Lock lock = new ReentrantLock();
+-		
+-		PendingPutMap(PendingPut singleItem) {
+-			this.singlePendingPut = singleItem;
+-		}
+-		
+-		public void put(PendingPut pendingPut) {
+-			if (singlePendingPut == null) {
+-				if (fullMap == null) {
+-					// initial put
+-					singlePendingPut = pendingPut;
+-				} else {
+-					fullMap.put(pendingPut.owner, pendingPut);
+-				}
+-			} else {
+-				// 2nd put; need a map
+-				fullMap = new HashMap<Object, PendingPut>(4);
+-				fullMap.put(singlePendingPut.owner, singlePendingPut);
+-				singlePendingPut = null;
+-				fullMap.put(pendingPut.owner, pendingPut);
+-			}
+-		}
+-
+-		public PendingPut remove(Object ownerForPut) {
+-			PendingPut removed = null;
+-			if (fullMap == null) {
+-				if (singlePendingPut != null
+-						&& singlePendingPut.owner.equals(ownerForPut)) {
+-					removed = singlePendingPut;
+-					singlePendingPut = null;
+-				}
+-			} else {
+-				removed = fullMap.remove(ownerForPut);
+-			}
+-			return removed;
+-		}
+-
+-		public int size() {
+-			return fullMap == null ? (singlePendingPut == null ? 0 : 1)
+-					: fullMap.size();
+-		}
+-		
+-		public boolean acquireLock(long time, TimeUnit unit) {
+-			try {
+-				return lock.tryLock(time, unit);
+-			} catch (InterruptedException e) {
+-				Thread.currentThread().interrupt();
+-				return false;
+-			}
+-		}
+-		
+-		public void releaseLock() {
+-			lock.unlock();
+-		}
+-		
+-		public void invalidate() {
+-			if (singlePendingPut != null) {
+-				singlePendingPut.completed = true;
+-			}
+-			else if (fullMap != null) {
+-				for (PendingPut pp : fullMap.values()) {
+-					pp.completed = true;
+-				}
+-			}
+-		}
+-	}
+-
+-	private static class PendingPut {
+-		private final Object key;
+-		private final Object owner;
+-		private long timestamp = System.currentTimeMillis();
+-		private volatile boolean completed;
+-
+-		private PendingPut(Object key, Object owner) {
+-			this.key = key;
+-			this.owner = owner;
+-		}
+-		
+-		private void refresh() {
+-			timestamp = System.currentTimeMillis();
+-		}
+-
+-	}
+-
+-	private static class RecentRemoval {
+-		private final Object key;
+-		private final Long timestamp;
+-
+-		private RecentRemoval(Object key, long nakedPutInvalidationPeriod) {
+-			this.key = key;
+-			timestamp = Long.valueOf(System.currentTimeMillis()
+-					+ nakedPutInvalidationPeriod);
+-		}
+-	}
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/access/TransactionalAccessDelegate.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/access/TransactionalAccessDelegate.java
+deleted file mode 100755
+index 487637ea82..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/access/TransactionalAccessDelegate.java
++++ /dev/null
+@@ -1,222 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.access;
+-
+-import javax.transaction.Transaction;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-import org.hibernate.cache.access.SoftLock;
+-import org.hibernate.cache.jbc.BasicRegionAdapter;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.config.Option;
+-
+-/**
+- * Defines the strategy for transactional access to entity or collection data in
+- * a pessimistic-locking JBoss Cache using its 2.x APIs.
+- * <p>
+- * The intent of this class is to encapsulate common code and serve as a
+- * delegate for {@link EntityRegionAccessStrategy} and
+- * {@link CollectionRegionAccessStrategy} implementations.
+- * </p>
+- * 
+- * @author Brian Stansberry
+- */
+-public class TransactionalAccessDelegate {
+-        
+-    protected final Cache cache;
+-    protected final Fqn regionFqn;
+-    protected final boolean invalidation;
+-    protected final BasicRegionAdapter region;
+-    protected final PutFromLoadValidator putValidator;
+-
+-    public TransactionalAccessDelegate(BasicRegionAdapter adapter, PutFromLoadValidator validator) {
+-        this.region = adapter;
+-        this.cache = adapter.getCacheInstance();
+-        this.regionFqn = adapter.getRegionFqn();
+-        this.putValidator = validator;
+-        this.invalidation = CacheHelper.isClusteredInvalidation(this.cache);
+-    }
+-
+-    public Object get(Object key, long txTimestamp) throws CacheException {
+-        
+-        if (!region.checkValid())
+-           return null;
+-        
+-        region.ensureRegionRootExists();
+-        
+-        Object val = CacheHelper.get(cache, regionFqn, key);
+-        
+-        if (val == null) {
+-           putValidator.registerPendingPut(key);
+-        }
+-        
+-        return val;
+-    }
+-
+-   public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version) throws CacheException {
+-       
+-        if (!region.checkValid())
+-            return false;
+-        
+-        if (!putValidator.acquirePutFromLoadLock(key))
+-            return false;
+-       
+-        try {
+-	        region.ensureRegionRootExists();
+-	
+-	        return CacheHelper.putForExternalRead(cache, regionFqn, key, value);
+-        }
+-        finally {
+-        	putValidator.releasePutFromLoadLock(key);
+-        }
+-    }
+-
+-   public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version, boolean minimalPutOverride)
+-            throws CacheException {
+-       
+-        if (!region.checkValid())
+-            return false;
+-        
+-        if (!putValidator.acquirePutFromLoadLock(key))
+-            return false;
+-        
+-        try {
+-	        region.ensureRegionRootExists();
+-	
+-	        // We ignore minimalPutOverride. JBossCache putForExternalRead is
+-	        // already about as minimal as we can get; it will promptly return
+-	        // if it discovers that the node we want to write to already exists
+-	        return CacheHelper.putForExternalRead(cache, regionFqn, key, value);
+-        }
+-        finally {
+-        	putValidator.releasePutFromLoadLock(key);
+-        }
+-    }
+-
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-        return null;
+-    }
+-
+-    public SoftLock lockRegion() throws CacheException {
+-        return null;
+-    }
+-
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-    }
+-
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-    }
+-
+-    public boolean insert(Object key, Object value, Object version) throws CacheException {
+-       
+-        if (!region.checkValid())
+-            return false;
+-       
+-        region.ensureRegionRootExists();
+-        if (invalidation) {
+-        	Option opt = new Option();
+-        	opt.setCacheModeLocal(true);
+-        	CacheHelper.put(cache, regionFqn, key, value, opt);
+-        }
+-        else {
+-        	CacheHelper.put(cache, regionFqn, key, value);
+-        }
+-        return true;
+-    }
+-
+-    public boolean afterInsert(Object key, Object value, Object version) throws CacheException {
+-        return false;
+-    }
+-
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-            throws CacheException {
+-       
+-        // We update whether or not the region is valid. Other nodes
+-        // may have already restored the region so they need to
+-        // be informed of the change.
+-       
+-        region.ensureRegionRootExists();
+-
+-        CacheHelper.put(cache, regionFqn, key, value);
+-        return true;
+-    }
+-
+-    public boolean afterUpdate(Object key, Object value, Object currentVersion, Object previousVersion, SoftLock lock)
+-            throws CacheException {
+-        return false;
+-    }
+-
+-    public void remove(Object key) throws CacheException {
+-       
+-    	if (!putValidator.invalidateKey(key)) {
+-    		throw new CacheException("Failed to invalidate pending putFromLoad calls for key " + key + " from region " + region.getName());
+-    	}        
+-       
+-        // We remove whether or not the region is valid. Other nodes
+-        // may have already restored the region so they need to
+-        // be informed of the change.
+-       
+-        region.ensureRegionRootExists();
+-
+-        CacheHelper.remove(cache, regionFqn, key);
+-    }
+-
+-    public void removeAll() throws CacheException {
+-       if (!putValidator.invalidateRegion()) {
+-     	  throw new CacheException("Failed to invalidate pending putFromLoad calls for region " + region.getName());
+-       }
+-       CacheHelper.removeAll(cache, regionFqn); 
+-    }
+-
+-    public void evict(Object key) throws CacheException {
+-       
+-    	if (!putValidator.invalidateKey(key)) {
+-    		throw new CacheException("Failed to invalidate pending putFromLoad calls for key " + key + " from region " + region.getName());
+-    	}        
+-       
+-        region.ensureRegionRootExists();
+-        
+-        CacheHelper.remove(cache, regionFqn, key);
+-    }
+-
+-    public void evictAll() throws CacheException {
+-       if (!putValidator.invalidateRegion()) {
+-     	  throw new CacheException("Failed to invalidate pending putFromLoad calls for region " + region.getName());
+-       }
+-        
+-       Transaction tx = region.suspend();
+-       try {        
+-          region.ensureRegionRootExists();
+-          
+-          CacheHelper.sendEvictAllNotification(cache, regionFqn, region.getMemberId(), null);
+-       }
+-       finally {
+-          region.resume(tx);
+-       }        
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/JndiMultiplexingCacheInstanceManager.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/JndiMultiplexingCacheInstanceManager.java
+deleted file mode 100644
+index 69270e5013..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/JndiMultiplexingCacheInstanceManager.java
++++ /dev/null
+@@ -1,103 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.builder;
+-
+-import java.util.Properties;
+-
+-import javax.naming.Context;
+-import javax.naming.InitialContext;
+-import javax.naming.NamingException;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cfg.Settings;
+-import org.hibernate.internal.util.jndi.JndiHelper;
+-import org.hibernate.internal.util.config.ConfigurationHelper;
+-import org.jboss.cache.CacheManager;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-
+-/**
+- * A {@link MultiplexingCacheInstanceManager} that finds its cache factory
+- * in JNDI rather than creating one itself.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class JndiMultiplexingCacheInstanceManager extends MultiplexingCacheInstanceManager {
+-    
+-    private static final Logger log = LoggerFactory.getLogger(JndiMultiplexingCacheInstanceManager.class);
+-    
+-    /**
+-     * Specifies the JNDI name under which the {@link CacheManager} to use is bound.
+-     * There is no default value -- the user must specify the property.
+-     */
+-    public static final String CACHE_FACTORY_RESOURCE_PROP = "hibernate.cache.region.jbc2.cachefactory";
+-
+-    /**
+-     * Create a new JndiMultiplexingCacheInstanceManager.
+-     */
+-    public JndiMultiplexingCacheInstanceManager() {
+-        super();
+-    }
+-
+-    @Override
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-        
+-        String name = ConfigurationHelper.getString(CACHE_FACTORY_RESOURCE_PROP, properties, null);
+-        if (name == null)
+-            throw new CacheException("Configuration property " + CACHE_FACTORY_RESOURCE_PROP + " not set");
+-        
+-        CacheManager cf = locateCacheFactory( name, JndiHelper.extractJndiProperties( properties ) );
+-        setCacheFactory( cf );        
+-        
+-        super.start(settings, properties);
+-    }
+-
+-    private CacheManager locateCacheFactory(String jndiNamespace, Properties jndiProperties) {
+-
+-        Context ctx = null;
+-        try {
+-            ctx = new InitialContext( jndiProperties );
+-            return (CacheManager) ctx.lookup( jndiNamespace );
+-        }
+-        catch (NamingException ne) {
+-            String msg = "Unable to retreive Cache from JNDI [" + jndiNamespace + "]";
+-            log.info( msg, ne );
+-            throw new CacheException( msg );
+-        }
+-        finally {
+-            if ( ctx != null ) {
+-                try {
+-                    ctx.close();
+-                }
+-                catch( NamingException ne ) {
+-                    log.info( "Unable to release initial context", ne );
+-                }
+-            }
+-        }
+-    }
+-
+-    
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/JndiSharedCacheInstanceManager.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/JndiSharedCacheInstanceManager.java
+deleted file mode 100644
+index baeee98da8..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/JndiSharedCacheInstanceManager.java
++++ /dev/null
+@@ -1,112 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.builder;
+-
+-import java.util.Properties;
+-
+-import javax.naming.Context;
+-import javax.naming.InitialContext;
+-import javax.naming.NamingException;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cfg.Settings;
+-import org.hibernate.internal.util.jndi.JndiHelper;
+-import org.hibernate.internal.util.config.ConfigurationHelper;
+-import org.jboss.cache.Cache;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * A {@link SharedCacheInstanceManager} that finds the shared cache in JNDI 
+- * rather than instantiating one from an XML config file.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class JndiSharedCacheInstanceManager extends SharedCacheInstanceManager {
+-    
+-    private static final Logger log = LoggerFactory.getLogger(JndiSharedCacheInstanceManager.class);
+-
+-    /**
+-     * Specifies the JNDI name under which the {@link Cache} to use is bound.
+-     * <p>
+-     * Note that although this configuration property has the same name as that by
+-     * in {@link SharedCacheInstanceManager#CACHE_RESOURCE_PROP the superclass}, 
+-     * the meaning here is different. Note also that in this class' usage
+-     * of the property, there is no default value -- the user must specify
+-     * the property.
+-     */
+-    public static final String CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.shared";
+-    
+-    /**
+-     * Create a new JndiSharedCacheInstanceManager.
+-     * 
+-     */
+-    public JndiSharedCacheInstanceManager() {
+-        super();
+-    }
+-
+-    @Override
+-    protected Cache createSharedCache(Settings settings, Properties properties) {
+-        
+-        String name = ConfigurationHelper.getString(CACHE_RESOURCE_PROP, properties, null);
+-        if (name == null)
+-            throw new CacheException("Configuration property " + CACHE_RESOURCE_PROP + " not set");
+-        
+-        return locateCache( name, JndiHelper.extractJndiProperties( properties ) );
+-    }
+-
+-    /**
+-     * No-op; we don't own the cache so we shouldn't stop it.
+-     */
+-    @Override
+-    protected void stopSharedCache(Cache cache) {
+-        // no-op. We don't own the cache so we shouldn't stop it.
+-    }
+-
+-    private Cache locateCache(String jndiNamespace, Properties jndiProperties) {
+-
+-        Context ctx = null;
+-        try {
+-            ctx = new InitialContext( jndiProperties );
+-            return (Cache) ctx.lookup( jndiNamespace );
+-        }
+-        catch (NamingException ne) {
+-            String msg = "Unable to retreive Cache from JNDI [" + jndiNamespace + "]";
+-            log.info( msg, ne );
+-            throw new CacheException( msg );
+-        }
+-        finally {
+-            if ( ctx != null ) {
+-                try {
+-                    ctx.close();
+-                }
+-                catch( NamingException ne ) {
+-                    log.info( "Unable to release initial context", ne );
+-                }
+-            }
+-        }
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/MultiplexingCacheInstanceManager.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/MultiplexingCacheInstanceManager.java
+deleted file mode 100644
+index c85c7ecc8f..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/MultiplexingCacheInstanceManager.java
++++ /dev/null
+@@ -1,555 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.builder;
+-
+-import java.util.Properties;
+-import javax.transaction.TransactionManager;
+-
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.CacheManager;
+-import org.jboss.cache.CacheManagerImpl;
+-import org.jboss.cache.CacheStatus;
+-import org.jboss.cache.config.Configuration;
+-import org.jgroups.ChannelFactory;
+-import org.jgroups.JChannelFactory;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.cfg.Settings;
+-import org.hibernate.internal.util.config.ConfigurationHelper;
+-import org.hibernate.transaction.TransactionManagerLookup;
+-
+-/**
+- * Allows building separate {@link Cache} instances for each type of region,
+- * with the expectation that a single multiplexed JGroups resource (i.e. a 
+- * multiplexed channel or a shared transport channel) will be shared between 
+- * the caches.<p/>
+- * 
+- * @author Steve Ebersole
+- * @author Brian Stansberry
+- */
+-public class MultiplexingCacheInstanceManager implements CacheInstanceManager {
+-
+-    private static final Logger log = LoggerFactory.getLogger(MultiplexingCacheInstanceManager.class);
+-    
+-    /** 
+-     * Classpath or filesystem resource containing JBoss Cache 
+-     * configurations the factory should use.
+-     * 
+-     * @see #DEF_CACHE_FACTORY_RESOURCE
+-     */
+-    public static final String CACHE_FACTORY_RESOURCE_PROP = "hibernate.cache.jbc.configs";
+-    /** 
+-     * Legacy name for configuration property {@link #CACHE_FACTORY_RESOURCE_PROP}.
+-     * 
+-     * @see #DEF_CACHE_FACTORY_RESOURCE
+-     */
+-    public static final String LEGACY_CACHE_FACTORY_RESOURCE_PROP = "hibernate.cache.region.jbc2.configs";
+-    /**
+-     * Classpath or filesystem resource containing JGroups protocol
+-     * stack configurations the <code>org.jgroups.ChannelFactory</code>
+-     * should use.
+-     * 
+-     * @see #DEF_JGROUPS_RESOURCE
+-     */
+-    public static final String CHANNEL_FACTORY_RESOURCE_PROP = "hibernate.cache.jbc.jgroups.stacks";
+-    /**
+-     * Legacy name for configuration property {@link #CHANNEL_FACTORY_RESOURCE_PROP}.
+-     * 
+-     * @see #DEF_JGROUPS_RESOURCE
+-     */
+-    public static final String LEGACY_CHANNEL_FACTORY_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.jgroups.stacks";
+-    
+-    /**
+-     * Name of the configuration that should be used for entity caches.
+-     * 
+-     * @see #DEF_ENTITY_RESOURCE
+-     */
+-    public static final String ENTITY_CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.entity";
+-    /**
+-     * Legacy name for configuration property {@link #ENTITY_CACHE_RESOURCE_PROP}.
+-     * 
+-     * @see #DEF_ENTITY_RESOURCE
+-     */
+-    public static final String LEGACY_ENTITY_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.entity";
+-    /**
+-     * Name of the configuration that should be used for collection caches.
+-     * No default value, as by default we try to use the same JBoss Cache
+-     * instance we use for entity caching.
+-     * 
+-     * @see #ENTITY_CACHE_RESOURCE_PROP
+-     * @see #DEF_ENTITY_RESOURCE
+-     */
+-    public static final String COLLECTION_CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.collection";
+-    /**
+-     * Legacy name for configuration property {@link #COLLECTION_CACHE_RESOURCE_PROP}.
+-     * 
+-     * @see #ENTITY_CACHE_RESOURCE_PROP
+-     * @see #DEF_ENTITY_RESOURCE
+-     */
+-    public static final String LEGACY_COLLECTION_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.collection";
+-    /**
+-     * Name of the configuration that should be used for timestamp caches.
+-     * 
+-     * @see #DEF_TS_RESOURCE
+-     */
+-    public static final String TIMESTAMP_CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.timestamps";
+-    /**
+-     * Legacy name for configuration property {@link #TIMESTAMP_CACHE_RESOURCE_PROP}.
+-     * 
+-     * @see #DEF_TS_RESOURCE
+-     */
+-    public static final String LEGACY_TIMESTAMP_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.ts";
+-    /**
+-     * Name of the configuration that should be used for query caches.
+-     * 
+-     * @see #DEF_QUERY_RESOURCE
+-     */
+-    public static final String QUERY_CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.query";
+-
+-    /**
+-     * Legacy name for configuration property {@link #QUERY_CACHE_RESOURCE_PROP}.
+-     * 
+-     * @see #DEF_QUERY_RESOURCE
+-     */
+-    public static final String LEGACY_QUERY_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.query";
+-
+-    /**
+-     * Default value for {@link #CACHE_FACTORY_RESOURCE_PROP}. Specifies
+-     * the "jbc2-configs.xml" file in this package.
+-     */
+-    public static final String DEF_CACHE_FACTORY_RESOURCE = "org/hibernate/cache/jbc/builder/jbc-configs.xml";    
+-    /**
+-     * Default value for {@link #CHANNEL_FACTORY_RESOURCE_PROP}. Specifies
+-     * the "jgroups-stacks.xml" file in this package.
+-     */
+-    public static final String DEF_JGROUPS_RESOURCE = "org/hibernate/cache/jbc/builder/jgroups-stacks.xml";
+-    /**
+-     * Default value for {@link #ENTITY_CACHE_RESOURCE_PROP}.
+-     */
+-    public static final String DEF_ENTITY_RESOURCE = "optimistic-entity";
+-    /**
+-     * Default value for {@link #TIMESTAMP_CACHE_RESOURCE_PROP}.
+-     */
+-    public static final String DEF_TS_RESOURCE = "timestamps-cache";
+-    /**
+-     * Default value for {@link #ENTITY_CACHE_RESOURCE_PROP}.
+-     */
+-    public static final String DEF_QUERY_RESOURCE = "local-query";
+-
+-    /** Cache for entities */
+-    private Cache jbcEntityCache;
+-    /** Cache for collections */
+-    private Cache jbcCollectionCache;
+-    /** Cache for timestamps */
+-    private Cache jbcTsCache;
+-    /** Cache for queries */
+-    private Cache jbcQueryCache;
+-    /** Name of config used for entities. */
+-    private String entityConfig = null;
+-    /** Name of config used for collections. */
+-    private String collectionConfig = null;
+-    /** Name of config used for queries. */
+-    private String queryConfig = null;
+-    /** Name of config used for timestamps. */
+-    private String tsConfig = null;
+-    
+-    /** Our cache factory */
+-    private CacheManager jbcFactory;
+-    /** Our channel factory */
+-    private ChannelFactory channelFactory;
+-    /** 
+-     * Did we create the factory ourself and thus can assume we are not
+-     * sharing it (and the caches) with other users?
+-     */
+-    private boolean selfCreatedFactory;
+-
+-    /**
+-     * Create a new MultiplexingCacheInstanceManager.
+-     */
+-    public MultiplexingCacheInstanceManager() {
+-    }
+-    
+-    /**
+-     * Create a new MultiplexingCacheInstanceManager using the provided {@link Cache}s.
+-     * <p/>
+-     * If this constructor is used, the {@link #start(Settings, Properties)}
+-     * method will make no attempt to create a cache factory or obtain caches
+-     * from it.  Only the <code>Cache</code>s passed as arguments to this
+-     * constructor will be available.
+-     *
+-	 * @param jbcEntityCache The entity cache
+-	 * @param jbcCollectionCache the collection cache
+-	 * @param jbcTsCache The timestamps cache
+-	 * @param jbcQueryCache The query cache
+-     */
+-    public MultiplexingCacheInstanceManager(
+-			Cache jbcEntityCache,
+-			Cache jbcCollectionCache,
+-			Cache jbcTsCache,
+-			Cache jbcQueryCache) {
+-        this.jbcEntityCache = jbcEntityCache;
+-        this.jbcCollectionCache = jbcCollectionCache;
+-        this.jbcTsCache = jbcTsCache;
+-        this.jbcQueryCache = jbcQueryCache;
+-    }
+-
+-    /**
+-	 * Getter for property 'cacheFactory'.
+-	 * @see #setCacheFactory
+-	 *
+-	 * @return Value for property 'cacheFactory'.
+-	 */
+-	public CacheManager getCacheFactory() {
+-        return jbcFactory;
+-    }
+-
+-    /**
+-	 * Setter for property 'cacheFactory'.
+-	 * @see #getCacheFactory
+-	 *
+-	 * @param factory Value to set for property 'cacheFactory'.
+-	 */
+-	public void setCacheFactory(CacheManager factory) {
+-        this.jbcFactory = factory;
+-    }
+-
+-    /**
+-	 * Getter for property 'channelFactory'.
+-	 * @see #setChannelFactory
+-	 *
+-	 * @return Value for property 'channelFactory'.
+-	 */
+-	public ChannelFactory getChannelFactory() {
+-        return channelFactory;
+-    }
+-
+-    /**
+-	 * Setter for property 'channelFactory'.
+-	 * @see #getChannelFactory
+-	 *
+-	 * @param factory Value to set for property 'channelFactory'.
+-	 */
+-	public void setChannelFactory(ChannelFactory factory) {
+-        this.channelFactory = factory;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public Cache getEntityCacheInstance() {
+-        return jbcEntityCache;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public Cache getCollectionCacheInstance() {
+-        return jbcCollectionCache;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public Cache getQueryCacheInstance() {
+-       
+-        if (jbcQueryCache != null && jbcTsCache == null) {
+-            // This should only be possible if the caches are constructor injected 
+-            throw new CacheException("Timestamps cache must be configured if a query cache is used");   
+-        }
+-
+-        return jbcQueryCache;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public Cache getTimestampsCacheInstance() {
+-       
+-       if (jbcTsCache != null && CacheHelper.isClusteredInvalidation(jbcTsCache)) {
+-          throw new CacheException("Clustered invalidation not supported for timestamps cache");
+-       }
+-       return jbcTsCache;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-        try {
+-            // We need our tm, so get it now and avoid doing other work
+-            // if there is a problem
+-            TransactionManagerLookup tml = settings.getTransactionManagerLookup();
+-            TransactionManager tm =  (tml == null ? null : tml.getTransactionManager(properties));
+-
+-            // We only build caches if *none* were passed in.  Passing in
+-            // caches counts as a clear statement of exactly what is wanted
+-            boolean buildCaches = jbcEntityCache == null
+-                                  && jbcCollectionCache == null
+-                                  && jbcTsCache == null
+-                                  && jbcQueryCache == null;
+-                                  
+-            // Set up the cache factory
+-            if (buildCaches && jbcFactory == null) {
+-                // See if the user configured a multiplexer stack
+-                if (channelFactory == null) {
+-                    String muxStacks = ConfigurationHelper.getString(CHANNEL_FACTORY_RESOURCE_PROP, properties, null);
+-                    if (muxStacks == null) {
+-                    	muxStacks = ConfigurationHelper.getString(LEGACY_CHANNEL_FACTORY_RESOURCE_PROP, properties, DEF_JGROUPS_RESOURCE);
+-                    }
+-                    if (muxStacks != null) {
+-                        channelFactory = new JChannelFactory();
+-                        channelFactory.setMultiplexerConfig(muxStacks);
+-                    }
+-                }
+-                
+-                String factoryRes = ConfigurationHelper.getString(CACHE_FACTORY_RESOURCE_PROP, properties, null);
+-                if (factoryRes == null) {
+-                	factoryRes = ConfigurationHelper.getString(LEGACY_CACHE_FACTORY_RESOURCE_PROP, properties, DEF_CACHE_FACTORY_RESOURCE);
+-                }
+-                jbcFactory = new CacheManagerImpl(factoryRes, channelFactory);
+-                ((CacheManagerImpl) jbcFactory).start();
+-                selfCreatedFactory = true;
+-            }
+-            
+-            if (settings.isSecondLevelCacheEnabled()) {
+-
+-                if (buildCaches) {
+-                    entityConfig = ConfigurationHelper
+-                            .getString(ENTITY_CACHE_RESOURCE_PROP, properties, null);
+-                    if (entityConfig == null) {
+-                    	entityConfig = ConfigurationHelper.getString(LEGACY_ENTITY_CACHE_RESOURCE_PROP,
+-                    			properties, DEF_ENTITY_RESOURCE);
+-                    }
+-                    jbcEntityCache = jbcFactory.getCache(entityConfig, true);
+-                
+-                    // Default to collections sharing entity cache if there is one
+-                    collectionConfig = ConfigurationHelper.getString(COLLECTION_CACHE_RESOURCE_PROP, properties, null);
+-                    if (collectionConfig == null) {
+-                    	collectionConfig = ConfigurationHelper.getString(LEGACY_COLLECTION_CACHE_RESOURCE_PROP, properties, entityConfig);
+-                    }
+-                    if (entityConfig.equals(collectionConfig)) {
+-                        jbcCollectionCache = jbcEntityCache;
+-                    }
+-                    else {
+-                        jbcCollectionCache = jbcFactory.getCache(collectionConfig, true);
+-                    }
+-                }
+-                
+-                if (jbcEntityCache != null) {
+-                    configureTransactionManager(jbcEntityCache, tm, false);
+-                    jbcEntityCache.start();
+-                }
+-                if (jbcCollectionCache != null) {
+-                    configureTransactionManager(jbcCollectionCache, tm, false);
+-                    jbcCollectionCache.start();
+-                }
+-                
+-            } 
+-            else {
+-                jbcEntityCache = null;
+-                jbcCollectionCache = null;
+-            }
+-
+-            if (settings.isQueryCacheEnabled()) {
+-
+-                if (buildCaches) {
+-                    // Default to sharing the entity cache if there is one
+-                    String dfltQueryResource = (entityConfig == null ? DEF_QUERY_RESOURCE : entityConfig);
+-                    queryConfig = ConfigurationHelper.getString(QUERY_CACHE_RESOURCE_PROP, properties, null);
+-                    if (queryConfig == null) {
+-                    	queryConfig = ConfigurationHelper.getString(LEGACY_QUERY_CACHE_RESOURCE_PROP, properties, dfltQueryResource);
+-                    }
+-                    if (queryConfig.equals(entityConfig)) {
+-                        jbcQueryCache = jbcEntityCache;
+-                    } else if (queryConfig.equals(collectionConfig)) {
+-                        jbcQueryCache = jbcCollectionCache;
+-                    } else {
+-                        jbcQueryCache = jbcFactory.getCache(queryConfig, true);
+-                    }
+-    
+-                    // For Timestamps, we default to a separate config
+-                    tsConfig = ConfigurationHelper.getString(TIMESTAMP_CACHE_RESOURCE_PROP, properties, null);
+-                    if (tsConfig == null) {
+-                    	tsConfig = ConfigurationHelper.getString(LEGACY_TIMESTAMP_CACHE_RESOURCE_PROP, properties, DEF_TS_RESOURCE);
+-                    }
+-                    if (tsConfig.equals(queryConfig)) {
+-                        jbcTsCache = jbcQueryCache;
+-                    }
+-                    else if (tsConfig.equals(entityConfig)) {
+-                        jbcTsCache = jbcEntityCache;
+-                    } 
+-                    else if (tsConfig.equals(collectionConfig)) {
+-                        jbcTsCache = jbcCollectionCache;
+-                    } 
+-                    else {
+-                        jbcTsCache = jbcFactory.getCache(tsConfig, true);
+-                    }
+-                }
+-                
+-                if (jbcQueryCache != null) {
+-                   configureTransactionManager(jbcQueryCache, tm, false);
+-                   jbcQueryCache.start();
+-                   // TODO: I considered validating the presence of the TS cache here,
+-                   // but decided to defer unti getQueryCacheInstance() in case the 
+-                   // cache is never actually used
+-                }                
+-                if (jbcTsCache != null) {
+-                   configureTransactionManager(jbcTsCache, tm, true);
+-                   jbcTsCache.start();
+-                   // TODO: I considered validating TS cache config here,
+-                   // but decided to defer unti getTimestampsCacheInstance() in case the 
+-                   // cache is never actually used
+-                }
+-            } 
+-            else {
+-                jbcTsCache = null;
+-                jbcQueryCache = null;
+-            }
+-        } 
+-        catch (CacheException ce) {
+-            throw ce;
+-        }
+-        catch (Throwable t) {
+-            throw new CacheException("Unable to start region factory", t);
+-        }
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public void stop() {
+-        releaseCaches();
+-        if (selfCreatedFactory) {
+-            ((CacheManagerImpl) jbcFactory).stop();
+-        }
+-    }
+-
+-    /**
+-     * Injects the given TransactionManager into the cache.
+-     * 
+-     * @param cache    the cache. cannot be <code>null</code>
+-     * @param tm        the transaction manager Hibernate recognizes
+-     *                  May be <code>null</code>
+-     * @param allowNull whether we accept a null transaction manager in the cache
+-     *                  if <code>tm</code> is not <code>null</code>
+-     * 
+-     * @throws CacheException if <code>cache</code> is already started and is 
+-     *                        configured with a different TransactionManager
+-     *                        than the one we would inject
+-     */
+-    private void configureTransactionManager(Cache cache, TransactionManager tm, boolean allowNull) {
+-        Configuration cacheConfig = cache.getConfiguration();
+-        TransactionManager cacheTm = cacheConfig.getRuntimeConfig().getTransactionManager();
+-        if (!safeEquals(tm, cacheTm)) {
+-            if (cache.getCacheStatus() != CacheStatus.INSTANTIATED) {
+-                // We can't change the TM on a running cache; just check
+-                // if the cache has no TM and we're OK with that
+-                if (!allowNull && cacheTm == null) {
+-                    throw new CacheException("JBoss Cache is already started with no transaction manager configured");
+-                } else {
+-                   log.debug("JBoss Cache is already started with a transaction manager ("
+-                         + cacheTm + ") that is not equal to our own (" + tm + ")");                   
+-                }                
+-            } else {
+-                // Configure the cache to use our TM
+-                cacheConfig.getRuntimeConfig().setTransactionManager(tm);
+-                if (tm == null) {
+-                    // Make sure JBC doesn't look one up
+-                    cacheConfig.setTransactionManagerLookupClass(null);
+-                }
+-            }
+-        }
+-    }
+-
+-    /**
+-     * Notify cache factory that we are no longer using the caches.  
+-     */
+-    private void releaseCaches() {
+-        
+-        // This method should be implemented assuming it's valid to 
+-        // do start/stop/start -- leave state appropriate for another start
+-        
+-        if (jbcEntityCache != null  && entityConfig != null) {
+-            try {
+-                jbcFactory.releaseCache(entityConfig);
+-                jbcEntityCache = null;
+-                
+-                // Make sure we don't re-release the same cache
+-                if (entityConfig.equals(collectionConfig))
+-                    collectionConfig = null;
+-                if (entityConfig.equals(queryConfig))
+-                    queryConfig = null;
+-                if (entityConfig.equals(tsConfig))
+-                    tsConfig = null;
+-                entityConfig = null;
+-            } catch (Throwable t) {
+-                log.info("Unable to release entity cache instance", t);
+-            }
+-        }
+-        if (jbcCollectionCache != null && collectionConfig != null) {
+-            try {
+-                jbcFactory.releaseCache(collectionConfig);
+-                jbcCollectionCache = null;
+-                
+-                if (collectionConfig.equals(queryConfig))
+-                    queryConfig = null;
+-                if (collectionConfig.equals(tsConfig))
+-                    tsConfig = null;
+-                collectionConfig = null;
+-            } catch (Throwable t) {
+-                log.info("Unable to stop collection cache instance", t);
+-            }
+-        }
+-        if (jbcQueryCache != null && queryConfig != null) {
+-            try {
+-                jbcFactory.releaseCache(queryConfig);
+-                jbcQueryCache = null;
+-                
+-                if (queryConfig.equals(tsConfig))
+-                    tsConfig = null;
+-                queryConfig = null;
+-            } catch (Throwable t) {
+-                log.info("Unable to stop query cache instance", t);
+-            }
+-        }
+-        if (jbcTsCache != null && tsConfig != null) {
+-            try {
+-                jbcFactory.releaseCache(tsConfig);
+-                jbcTsCache = null;
+-                
+-                tsConfig = null;
+-            } catch (Throwable t) {
+-                log.info("Unable to stop timestamp cache instance", t);
+-            }
+-        }
+-    }
+-
+-    private boolean safeEquals(Object a, Object b) {
+-        return (a == b || (a != null && a.equals(b)));
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/SharedCacheInstanceManager.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/SharedCacheInstanceManager.java
+deleted file mode 100644
+index 6f1deade6a..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/builder/SharedCacheInstanceManager.java
++++ /dev/null
+@@ -1,274 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.builder;
+-
+-import java.util.Properties;
+-import javax.transaction.TransactionManager;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.CacheStatus;
+-import org.jboss.cache.DefaultCacheFactory;
+-import org.jboss.cache.config.Configuration;
+-import org.jgroups.ChannelFactory;
+-import org.jgroups.JChannelFactory;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.cfg.Settings;
+-import org.hibernate.internal.util.config.ConfigurationHelper;
+-
+-/**
+- * A {@link CacheInstanceManager} implementation where we use a single JBoss Cache
+- * instance for each type of region. If operating on a cluster, the cache must
+- * be configured for REPL_SYNC if query caching is enabled. If query caching
+- * is not used, REPL_SYNC or INVALIDATION_SYNC are valid, with 
+- * INVALIDATION_SYNC preferred.
+- * 
+- * @author Steve Ebersole
+- * @author Brian Stansberry
+- */
+-public class SharedCacheInstanceManager implements CacheInstanceManager {
+-    
+-    private static final Logger log = LoggerFactory.getLogger(SharedCacheInstanceManager.class);
+-
+-    /**
+-     * Classpath or filesystem resource containing JBoss Cache 
+-     * configuration settings the {@link Cache} should use.
+-     * 
+-     * @see #DEFAULT_CACHE_RESOURCE
+-     */
+-    public static final String CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.shared";
+-    
+-    /**
+-     * Legacy name for configuration property {@link #CACHE_RESOURCE_PROP}.
+-     * 
+-     * @see #DEFAULT_CACHE_RESOURCE
+-     */
+-    public static final String LEGACY_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.shared";
+-    
+-    /**
+-     * Default name for the JBoss Cache configuration file.
+-     */
+-    public static final String DEFAULT_CACHE_RESOURCE = "treecache.xml";
+-    /**
+-     * Classpath or filesystem resource containing JGroups protocol
+-     * stack configurations the <code>org.jgroups.ChannelFactory</code>
+-     * should use.
+-     * 
+-     * @see #DEF_JGROUPS_RESOURCE
+-     */
+-    public static final String CHANNEL_FACTORY_RESOURCE_PROP = "hibernate.cache.jbc.cfg.jgroups.stacks";
+-    /**
+-     * Legacy name for configuration property {@link #CHANNEL_FACTORY_RESOURCE_PROP}.
+-     * 
+-     * @see #DEF_JGROUPS_RESOURCE
+-     */
+-    public static final String LEGACY_CHANNEL_FACTORY_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.jgroups.stacks";
+-    /**
+-     * Default value for {@link #CHANNEL_FACTORY_RESOURCE_PROP}.  Specifies
+-     * the "jgroups-stacks.xml" file in this package.
+-     */
+-    public static final String DEF_JGROUPS_RESOURCE = "org/hibernate/cache/jbc/builder/jgroups-stacks.xml";
+-
+-    private Cache cache;
+-    private ChannelFactory channelFactory;
+-    private boolean use2ndLevel;
+-    private boolean useQuery;
+-    
+-    public SharedCacheInstanceManager() {
+-    }
+-
+-    public SharedCacheInstanceManager(ChannelFactory channelFactory) {
+-        this.channelFactory = channelFactory;
+-    }
+-    
+-    public SharedCacheInstanceManager(Cache cache) {
+-        this.cache = cache;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public Cache getEntityCacheInstance() {
+-        return use2ndLevel ? cache : null;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public Cache getCollectionCacheInstance() {
+-        return use2ndLevel ? cache : null;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public Cache getQueryCacheInstance() {
+-        
+-        if (!useQuery)
+-            return null;
+-        
+-        if (CacheHelper.isClusteredInvalidation(cache)) {
+-            throw new CacheException("Query cache not supported for clustered invalidation");
+-        }
+-        return cache;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-
+-        use2ndLevel = settings.isSecondLevelCacheEnabled();
+-        useQuery = settings.isQueryCacheEnabled();
+-        
+-        if (cache == null) {
+-            
+-            if (channelFactory == null) {
+-                String muxStacks = ConfigurationHelper.getString(CHANNEL_FACTORY_RESOURCE_PROP, properties, null);
+-                if (muxStacks == null) {
+-                	ConfigurationHelper.getString(LEGACY_CHANNEL_FACTORY_RESOURCE_PROP, properties, DEF_JGROUPS_RESOURCE);
+-                }
+-                if (muxStacks != null) {
+-                    channelFactory = new JChannelFactory();
+-                    try {
+-                        channelFactory.setMultiplexerConfig(muxStacks);
+-                    }
+-                    catch (Exception e) {
+-                        throw new CacheException("Problem setting ChannelFactory config", e);
+-                    }
+-                }
+-            }
+-            cache = createSharedCache(settings, properties);
+-            configureTransactionManager(cache, settings, properties);
+-            if (cache.getConfiguration().getMultiplexerStack() != null
+-                    && cache.getConfiguration().getRuntimeConfig().getMuxChannelFactory() == null) {
+-                cache.getConfiguration().getRuntimeConfig().setMuxChannelFactory(channelFactory);
+-            }
+-        }
+-        cache.start();
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public Cache getTimestampsCacheInstance() {
+-        
+-        if (!useQuery)
+-            return null;
+-        
+-        if (CacheHelper.isClusteredInvalidation(cache)) {
+-            throw new CacheException("Query cache not supported for clustered invalidation");
+-        }
+-        return cache;
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public void stop() {
+-        if (cache != null) {
+-            stopSharedCache(cache);
+-        }
+-    }
+-
+-    /**
+-     * Create a cache using the given settings and properties.
+-     *
+-     * @param settings The Hibernate settings
+-     * @param properties The configuration properties
+-     * @return The created cache
+-     */
+-    protected Cache createSharedCache(Settings settings, Properties properties)
+-    {
+-        String configResource = ConfigurationHelper.getString(CACHE_RESOURCE_PROP, properties, null);
+-        if (configResource == null) {
+-        	configResource = ConfigurationHelper.getString(LEGACY_CACHE_RESOURCE_PROP, properties, DEFAULT_CACHE_RESOURCE);
+-        }
+-        return new DefaultCacheFactory().createCache(configResource, false);
+-    }
+-    
+-    /**
+-     * Injects the TransactionManager found via {@link Settings#getTransactionManagerLookup()}
+-     * into the cache.
+-     * 
+-     * @param cache The cache instance
+-     * @param settings The Hibernate settings
+-     * @param properties The configuration properties
+-     * 
+-     * @throws CacheException if <code>cache</code> is already started and is 
+-     *                        configured with a different TransactionManager
+-     *                        than the one we would inject
+-     */
+-    protected void configureTransactionManager(Cache cache, Settings settings, Properties properties) {
+-        
+-        TransactionManager tm = null;
+-        if (settings.getTransactionManagerLookup() != null) {
+-            tm = settings.getTransactionManagerLookup().getTransactionManager(properties);
+-        }
+-        
+-        Configuration cacheConfig = cache.getConfiguration();
+-        TransactionManager cacheTm = cacheConfig.getRuntimeConfig().getTransactionManager();
+-        
+-        if (!safeEquals(tm, cacheTm)) {            
+-            if (cache.getCacheStatus() != CacheStatus.INSTANTIATED
+-                    && cache.getCacheStatus() != CacheStatus.DESTROYED) {
+-               log.debug("JBoss Cache is already started with a transaction manager ("
+-                     + cacheTm + ") that is not equal to our own (" + tm + ")");    
+-            } else {
+-                // Configure the cache to use our TM
+-                cacheConfig.getRuntimeConfig().setTransactionManager(tm);
+-                if (tm == null) {
+-                    // Make sure JBC doesn't look one up
+-                    cacheConfig.setTransactionManagerLookupClass(null);
+-                }
+-            }
+-        }
+-    }
+-
+-    private boolean safeEquals(Object a, Object b) {
+-        return (a == b || (a != null && a.equals(b)));
+-    }
+-
+-    /**
+-     * Stops the shared cache.
+-     * @param cache the shared cache
+-     */
+-    protected void stopSharedCache(Cache cache) {
+-        try {
+-            if (cache.getCacheStatus() == CacheStatus.STARTED) {
+-                cache.stop();
+-            }
+-            if (cache.getCacheStatus() != CacheStatus.DESTROYED
+-                    && cache.getCacheStatus() != CacheStatus.INSTANTIATED) {
+-                cache.destroy();
+-            }
+-        } catch (Throwable t) {
+-            log.warn("Unable to stop cache instance", t);
+-        }
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/CollectionRegionImpl.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/CollectionRegionImpl.java
+deleted file mode 100644
+index ed751350ed..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/CollectionRegionImpl.java
++++ /dev/null
+@@ -1,76 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.collection;
+-
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.config.Configuration.NodeLockingScheme;
+-import org.jboss.cache.notifications.annotation.CacheListener;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.CollectionRegion;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-import org.hibernate.cache.jbc.TransactionalDataRegionAdapter;
+-import org.hibernate.cache.jbc.access.PutFromLoadValidator;
+-
+-/**
+- * Defines the behavior of the collection cache regions for JBossCache 2.x.
+- * 
+- * @author Steve Ebersole
+- */
+-@CacheListener
+-public class CollectionRegionImpl extends TransactionalDataRegionAdapter implements CollectionRegion {
+-
+-    public static final String TYPE = "COLL";
+-    private boolean optimistic;
+-
+-    public CollectionRegionImpl(Cache jbcCache, String regionName, String regionPrefix, CacheDataDescription metadata) {
+-        super(jbcCache, regionName, regionPrefix, metadata);
+-        optimistic = (jbcCache.getConfiguration().getNodeLockingScheme() == NodeLockingScheme.OPTIMISTIC);
+-    }
+-
+-    public CollectionRegionAccessStrategy buildAccessStrategy(AccessType accessType) throws CacheException {
+-        if (AccessType.READ_ONLY.equals(accessType)) {
+-            return optimistic ? new OptimisticReadOnlyAccess(this) : new ReadOnlyAccess(this);
+-        }
+-        if (AccessType.TRANSACTIONAL.equals(accessType)) {
+-            return optimistic ? new OptimisticTransactionalAccess(this) : new TransactionalAccess(this);
+-        }
+-
+-        // todo : add support for READ_WRITE ( + NONSTRICT_READ_WRITE ??? )
+-
+-        throw new CacheException("unsupported access type [" + accessType.getName() + "]");
+-    }
+-
+-    @Override
+-    protected Fqn<String> createRegionFqn(String regionName, String regionPrefix) {
+-        return getTypeLastRegionFqn(regionName, regionPrefix, TYPE);
+-    }
+-    
+-    public PutFromLoadValidator getPutFromLoadValidator() {
+-       return new PutFromLoadValidator(transactionManager);
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/OptimisticReadOnlyAccess.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/OptimisticReadOnlyAccess.java
+deleted file mode 100755
+index a4b3dedbf6..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/OptimisticReadOnlyAccess.java
++++ /dev/null
+@@ -1,71 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.collection;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.access.SoftLock;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * This defines the strategy for transactional access to collection data in an
+- * optimistic-locking JBossCache using its 2.x APIs. <p/> The read-only access
+- * to a JBossCache really is still transactional, just with the extra semantic
+- * or guarantee that we will not update data.
+- * 
+- * @author Brian Stansberry
+- */
+-public class OptimisticReadOnlyAccess extends OptimisticTransactionalAccess {
+-
+-    private static final Logger log = LoggerFactory.getLogger(OptimisticReadOnlyAccess.class);
+-
+-    /**
+-     * Create a new OptimisticReadOnlyAccess.
+-     * 
+-     * @param region The region to which this is providing access
+-     */
+-    public OptimisticReadOnlyAccess(CollectionRegionImpl region) {
+-        super(region);
+-    }
+-
+-    @Override
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only item");
+-    }
+-
+-    @Override
+-    public SoftLock lockRegion() throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only region");
+-    }
+-
+-    @Override
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-        log.error("Illegal attempt to edit read only item");
+-    }
+-
+-    @Override
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-        log.error("Illegal attempt to edit read only region");
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/OptimisticTransactionalAccess.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/OptimisticTransactionalAccess.java
+deleted file mode 100755
+index 86f5011e26..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/OptimisticTransactionalAccess.java
++++ /dev/null
+@@ -1,48 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.collection;
+-
+-import org.hibernate.cache.jbc.access.OptimisticTransactionalAccessDelegate;
+-
+-/**
+- * Defines the strategy for transactional access to entity data in an
+- * optimistic-locking JBoss Cache using its 2.x APIs
+- * 
+- * @author Brian Stansberry
+- * @version $Revision: 1 $
+- */
+-public class OptimisticTransactionalAccess extends TransactionalAccess {
+-
+-    /**
+-     * Create a new OptimisticTransactionalAccess.
+-     * 
+-     * @param region The region to which this is providing access
+-     */
+-    public OptimisticTransactionalAccess(CollectionRegionImpl region) {
+-        
+-        // We use a different delegate than the non-optimistic superclass default
+-        super(region, new OptimisticTransactionalAccessDelegate(region, region.getPutFromLoadValidator()));
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/ReadOnlyAccess.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/ReadOnlyAccess.java
+deleted file mode 100644
+index 82b342ab4e..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/ReadOnlyAccess.java
++++ /dev/null
+@@ -1,83 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.collection;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-import org.hibernate.cache.access.SoftLock;
+-import org.hibernate.cache.CacheException;
+-
+-/**
+- * This defines the strategy for transactional access to collection data in a
+- * pessimistic-locking JBossCache using its 2.x APIs. <p/> The read-only access
+- * to a JBossCache really is still transactional, just with the extra semantic
+- * or guarantee that we will not update data.
+- * 
+- * @author Steve Ebersole
+- */
+-public class ReadOnlyAccess extends TransactionalAccess {
+-    private static final Logger log = LoggerFactory.getLogger(ReadOnlyAccess.class);
+-
+-	/**
+-	 * Create a provider of read-only access to the specific region.
+-	 *
+-	 * @param region The region to which this provides access.
+-	 */
+-	public ReadOnlyAccess(CollectionRegionImpl region) {
+-        super(region);
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	@Override
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only item");
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	@Override
+-    public SoftLock lockRegion() throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only region");
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	@Override
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-        log.error("Illegal attempt to edit read only item");
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	@Override
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-        log.error("Illegal attempt to edit read only region");
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/TransactionalAccess.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/TransactionalAccess.java
+deleted file mode 100644
+index edc07cc9b6..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/collection/TransactionalAccess.java
++++ /dev/null
+@@ -1,155 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.collection;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.CollectionRegion;
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-import org.hibernate.cache.access.SoftLock;
+-import org.hibernate.cache.jbc.access.TransactionalAccessDelegate;
+-
+-/**
+- * This defines the strategy for transactional access to collection data in a
+- * pessimistic-locking JBossCache using its 2.x APIs
+- * 
+- * @author Steve Ebersole
+- * @author Brian Stansberry
+- */
+-public class TransactionalAccess implements CollectionRegionAccessStrategy {
+-
+-    private final CollectionRegionImpl region;
+-
+-    /**
+-     * Most of our logic is shared between this and entity regions, so we
+-     * delegate to a class that encapsulates it
+-     */
+-    private final TransactionalAccessDelegate delegate;
+-
+-    /**
+-     * Create a new TransactionalAccess.
+-     * 
+-     * @param region the region to which this provides access
+-     */
+-    public TransactionalAccess(CollectionRegionImpl region) {
+-        this(region, new TransactionalAccessDelegate(region, region.getPutFromLoadValidator()));
+-    }
+-
+-    /**
+-     * Allow subclasses to define the delegate.
+-     *
+-     * @param region the region to which this provides access
+-     * @param delegate type of transactional access
+-     */
+-    protected TransactionalAccess(CollectionRegionImpl region, TransactionalAccessDelegate delegate) {
+-        this.region = region;
+-        this.delegate = delegate;
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public CollectionRegion getRegion() {
+-        return region;
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public Object get(Object key, long txTimestamp) throws CacheException {
+-
+-        return delegate.get(key, txTimestamp);
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version) throws CacheException {
+-
+-        return delegate.putFromLoad(key, value, txTimestamp, version);
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version, boolean minimalPutOverride)
+-            throws CacheException {
+-
+-        return delegate.putFromLoad(key, value, txTimestamp, version, minimalPutOverride);
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public void remove(Object key) throws CacheException {
+-
+-        delegate.remove(key);
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public void removeAll() throws CacheException {
+-        delegate.removeAll();
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public void evict(Object key) throws CacheException {
+-        delegate.evict(key);
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public void evictAll() throws CacheException {
+-        delegate.evictAll();
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public SoftLock lockItem(Object key, Object version) throws CacheException {
+-        return null;
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public SoftLock lockRegion() throws CacheException {
+-        return null;
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-    }
+-
+-    /**
+-	 * {@inheritDoc}
+-	 */
+-	public void unlockRegion(SoftLock lock) throws CacheException {
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/EntityRegionImpl.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/EntityRegionImpl.java
+deleted file mode 100644
+index 12e3073c4a..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/EntityRegionImpl.java
++++ /dev/null
+@@ -1,81 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.entity;
+-
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.config.Configuration.NodeLockingScheme;
+-import org.jboss.cache.notifications.annotation.CacheListener;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.EntityRegion;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-import org.hibernate.cache.jbc.TransactionalDataRegionAdapter;
+-import org.hibernate.cache.jbc.access.PutFromLoadValidator;
+-
+-/**
+- * Defines the behavior of the entity cache regions for JBossCache.
+- * 
+- * @author Steve Ebersole
+- */
+-@CacheListener
+-public class EntityRegionImpl extends TransactionalDataRegionAdapter implements EntityRegion {
+-
+-    public static final String TYPE = "ENTITY";
+-    
+-    private boolean optimistic;
+-
+-    public EntityRegionImpl(Cache jbcCache, String regionName, String regionPrefix, CacheDataDescription metadata) {
+-        super(jbcCache, regionName, regionPrefix, metadata);
+-        optimistic = (jbcCache.getConfiguration().getNodeLockingScheme() == NodeLockingScheme.OPTIMISTIC);
+-    }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    public EntityRegionAccessStrategy buildAccessStrategy(AccessType accessType) throws CacheException {
+-        if (AccessType.READ_ONLY.equals(accessType)) {
+-            return optimistic ? new OptimisticReadOnlyAccess(this) : new ReadOnlyAccess(this);
+-        }
+-        if (AccessType.TRANSACTIONAL.equals(accessType)) {
+-            return optimistic ? new OptimisticTransactionalAccess(this) : new TransactionalAccess(this);
+-        }
+-
+-        // todo : add support for READ_WRITE ( + NONSTRICT_READ_WRITE ??? )
+-
+-        throw new CacheException("unsupported access type [" + accessType.getName() + "]");
+-    }
+-
+-    @Override
+-    protected Fqn<String> createRegionFqn(String regionName, String regionPrefix) {
+-        return getTypeLastRegionFqn(regionName, regionPrefix, TYPE);
+-    }
+-    
+-    public PutFromLoadValidator getPutFromLoadValidator() {
+-       return new PutFromLoadValidator(transactionManager);
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/OptimisticReadOnlyAccess.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/OptimisticReadOnlyAccess.java
+deleted file mode 100755
+index 957805f360..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/OptimisticReadOnlyAccess.java
++++ /dev/null
+@@ -1,78 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.entity;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-import org.hibernate.cache.access.SoftLock;
+-import org.hibernate.cache.CacheException;
+-
+-/**
+- * This defines the strategy for read-only access to enity data in an
+- * optimistic-locking JBossCache using its 2.x APIs <p/> The read-only access to
+- * a JBossCache really is still transactional, just with the extra semantic or
+- * guarantee that we will not update data.
+- * 
+- * @author Brian Stansberry
+- */
+-public class OptimisticReadOnlyAccess extends OptimisticTransactionalAccess {
+-    private static final Logger log = LoggerFactory.getLogger(OptimisticReadOnlyAccess.class);
+-
+-    public OptimisticReadOnlyAccess(EntityRegionImpl region) {
+-        super(region);
+-    }
+-
+-    @Override
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only item");
+-    }
+-
+-    @Override
+-    public SoftLock lockRegion() throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only region");
+-    }
+-
+-    @Override
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-        log.error("Illegal attempt to edit read only item");
+-    }
+-
+-    @Override
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-        log.error("Illegal attempt to edit read only region");
+-    }
+-
+-    @Override
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-            throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only item");
+-    }
+-
+-    @Override
+-    public boolean afterUpdate(Object key, Object value, Object currentVersion, Object previousVersion, SoftLock lock)
+-            throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only item");
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/OptimisticTransactionalAccess.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/OptimisticTransactionalAccess.java
+deleted file mode 100755
+index 7097102ed6..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/OptimisticTransactionalAccess.java
++++ /dev/null
+@@ -1,46 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-
+-package org.hibernate.cache.jbc.entity;
+-
+-import org.hibernate.cache.jbc.access.OptimisticTransactionalAccessDelegate;
+-
+-/**
+- * Defines the strategy for transactional access to entity data in an
+- * optimistic-locking JBoss Cache using its 2.x APIs
+- * 
+- * @author Brian Stansberry
+- * @version $Revision: 1 $
+- */
+-public class OptimisticTransactionalAccess extends TransactionalAccess {
+-
+-    /**
+-     * Create a new OptimisticTransactionalAccess.
+-     * 
+-     * @param region The region\ to which this is providing access
+-     */
+-    public OptimisticTransactionalAccess(EntityRegionImpl region) {
+-        super(region, new OptimisticTransactionalAccessDelegate(region, region.getPutFromLoadValidator()));
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/ReadOnlyAccess.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/ReadOnlyAccess.java
+deleted file mode 100644
+index f51467a7b5..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/ReadOnlyAccess.java
++++ /dev/null
+@@ -1,78 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.entity;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-import org.hibernate.cache.access.SoftLock;
+-import org.hibernate.cache.CacheException;
+-
+-/**
+- * This defines the strategy for transactional access to enity data in
+- * JBossCache using its 2.x APIs <p/> read-only access to a JBossCache really is
+- * still transactional, just with the extra semantic or guarentee that we will
+- * not update data.
+- * 
+- * @author Steve Ebersole
+- */
+-public class ReadOnlyAccess extends TransactionalAccess {
+-    private static final Logger log = LoggerFactory.getLogger(ReadOnlyAccess.class);
+-
+-    public ReadOnlyAccess(EntityRegionImpl region) {
+-        super(region);
+-    }
+-
+-    @Override
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only item");
+-    }
+-
+-    @Override
+-    public SoftLock lockRegion() throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only region");
+-    }
+-
+-    @Override
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-        log.error("Illegal attempt to edit read only item");
+-    }
+-
+-    @Override
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-        log.error("Illegal attempt to edit read only region");
+-    }
+-
+-    @Override
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-            throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only item");
+-    }
+-
+-    @Override
+-    public boolean afterUpdate(Object key, Object value, Object currentVersion, Object previousVersion, SoftLock lock)
+-            throws CacheException {
+-        throw new UnsupportedOperationException("Illegal attempt to edit read only item");
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/TransactionalAccess.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/TransactionalAccess.java
+deleted file mode 100644
+index 06a8a742e7..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/entity/TransactionalAccess.java
++++ /dev/null
+@@ -1,130 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.entity;
+-
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-import org.hibernate.cache.access.SoftLock;
+-import org.hibernate.cache.jbc.access.TransactionalAccessDelegate;
+-import org.hibernate.cache.EntityRegion;
+-import org.hibernate.cache.CacheException;
+-
+-/**
+- * Defines the strategy for transactional access to entity data in a
+- * pessimistic-locking JBossCache using its 2.x APIs
+- * 
+- * @author Steve Ebersole
+- */
+-public class TransactionalAccess implements EntityRegionAccessStrategy {
+-
+-    protected final EntityRegionImpl region;
+-
+-    /**
+-     * Most of our logic is shared between this and entity regions, so we
+-     * delegate to a class that encapsulates it
+-     */
+-    private final TransactionalAccessDelegate delegate;
+-
+-    public TransactionalAccess(EntityRegionImpl region) {
+-        this(region, new TransactionalAccessDelegate(region, region.getPutFromLoadValidator()));
+-    }
+-
+-    protected TransactionalAccess(EntityRegionImpl region, TransactionalAccessDelegate delegate) {
+-        this.region = region;
+-        this.delegate = delegate;
+-    }
+-
+-    public EntityRegion getRegion() {
+-        return region;
+-    }
+-
+-    public Object get(Object key, long txTimestamp) throws CacheException {
+-
+-        return delegate.get(key, txTimestamp);
+-    }
+-
+-    public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version) throws CacheException {
+-
+-        return delegate.putFromLoad(key, value, txTimestamp, version);
+-    }
+-
+-    public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version, boolean minimalPutOverride)
+-            throws CacheException {
+-
+-        return delegate.putFromLoad(key, value, txTimestamp, version, minimalPutOverride);
+-    }
+-
+-    public boolean insert(Object key, Object value, Object version) throws CacheException {
+-
+-        return delegate.insert(key, value, version);
+-    }
+-
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-            throws CacheException {
+-
+-        return delegate.update(key, value, currentVersion, previousVersion);
+-    }
+-
+-    public void remove(Object key) throws CacheException {
+-
+-        delegate.remove(key);
+-    }
+-
+-    public void removeAll() throws CacheException {
+-        delegate.removeAll();
+-    }
+-
+-    public void evict(Object key) throws CacheException {
+-        delegate.evict(key);
+-    }
+-
+-    public void evictAll() throws CacheException {
+-        delegate.evictAll();
+-    }
+-
+-    // Following methods we don't delegate since they have so little logic
+-    // it's clearer to just implement them here
+-
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-        return null;
+-    }
+-
+-    public SoftLock lockRegion() throws CacheException {
+-        return null;
+-    }
+-
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-    }
+-
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-    }
+-
+-    public boolean afterInsert(Object key, Object value, Object version) throws CacheException {
+-        return false;
+-    }
+-
+-    public boolean afterUpdate(Object key, Object value, Object currentVersion, Object previousVersion, SoftLock lock)
+-            throws CacheException {
+-        return false;
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/query/QueryResultsRegionImpl.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/query/QueryResultsRegionImpl.java
+deleted file mode 100644
+index 3bd39a0c37..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/query/QueryResultsRegionImpl.java
++++ /dev/null
+@@ -1,160 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.query;
+-
+-import java.util.Properties;
+-
+-import javax.transaction.Transaction;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.QueryResultsRegion;
+-import org.hibernate.cache.jbc.TransactionalDataRegionAdapter;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.internal.util.config.ConfigurationHelper;
+-
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.config.Option;
+-import org.jboss.cache.notifications.annotation.CacheListener;
+-
+-/**
+- * Defines the behavior of the query cache regions for JBossCache 2.x.
+- * 
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-@CacheListener
+-public class QueryResultsRegionImpl extends TransactionalDataRegionAdapter implements QueryResultsRegion {
+-
+-    public static final String QUERY_CACHE_LOCAL_ONLY_PROP = "hibernate.cache.jbc.query.localonly";
+-    public static final String LEGACY_QUERY_CACHE_LOCAL_ONLY_PROP = "hibernate.cache.region.jbc2.query.localonly";
+-    public static final String TYPE = "QUERY";
+-    
+-    /**
+-     * Whether we should set an option to disable propagation of changes around
+-     * cluster.
+-     */
+-    private boolean localOnly;
+-
+-    /**
+-     * Create a new QueryResultsRegionImpl.
+-     * 
+-     * @param jbcCache The JBC cache instance to use to store the query results
+-     * @param regionName The name of the region (within the JBC cache)
+-     * @param regionPrefix Any region prefix to apply
+-	 * @param properties The configuration properties.
+-     */
+-    public QueryResultsRegionImpl(Cache jbcCache, String regionName, String regionPrefix, Properties properties) {
+-        super(jbcCache, regionName, regionPrefix, null);
+-
+-        // If JBC is using INVALIDATION, we don't want to propagate changes.
+-        // We use the Timestamps cache to manage invalidation
+-        localOnly = CacheHelper.isClusteredInvalidation(jbcCache);
+-        if (!localOnly) {
+-            // We don't want to waste effort setting an option if JBC is
+-            // already in LOCAL mode. If JBC is REPL_(A)SYNC then check
+-        	// if they passed an config option to disable query replication
+-        	if (CacheHelper.isClusteredReplication(jbcCache)) {
+-        		if (properties.containsKey(QUERY_CACHE_LOCAL_ONLY_PROP)) {
+-        			localOnly = ConfigurationHelper.getBoolean(QUERY_CACHE_LOCAL_ONLY_PROP, properties, false);
+-        		}
+-        		else {
+-        			localOnly = ConfigurationHelper.getBoolean(LEGACY_QUERY_CACHE_LOCAL_ONLY_PROP, properties, false);
+-        		}
+-        	}
+-        }
+-    }
+-
+-    public void evict(Object key) throws CacheException {
+-       
+-        ensureRegionRootExists();
+-        
+-        Option opt = getNonLockingDataVersionOption(false);
+-        if (localOnly)
+-            opt.setCacheModeLocal(true);
+-        CacheHelper.removeNode(getCacheInstance(), getRegionFqn(), key, opt);
+-    }
+-
+-    public void evictAll() throws CacheException {
+-          Transaction tx = suspend();
+-          try {        
+-             ensureRegionRootExists();
+-             Option opt = getNonLockingDataVersionOption(true);
+-             CacheHelper.sendEvictAllNotification(jbcCache, regionFqn, getMemberId(), opt);
+-          }
+-          finally {
+-             resume(tx);
+-          }        
+-    }
+-
+-    public Object get(Object key) throws CacheException {
+-       
+-        if (!checkValid())
+-           return null;
+-       
+-        ensureRegionRootExists();
+-
+-        // Don't hold the JBC node lock throughout the tx, as that
+-        // prevents updates
+-        // Add a zero (or low) timeout option so we don't block
+-        // waiting for tx's that did a put to commit
+-        Option opt = new Option();
+-        opt.setLockAcquisitionTimeout(0);
+-        return suspendAndGet(key, opt, true);
+-    }
+-
+-    public void put(Object key, Object value) throws CacheException {
+-       
+-        if (checkValid()) {
+-           ensureRegionRootExists();
+-   
+-           // Here we don't want to suspend the tx. If we do:
+-           // 1) We might be caching query results that reflect uncommitted
+-           // changes. No tx == no WL on cache node, so other threads
+-           // can prematurely see those query results
+-           // 2) No tx == immediate replication. More overhead, plus we
+-           // spread issue #1 above around the cluster
+-   
+-           // Add a zero (or quite low) timeout option so we don't block.
+-           // Ignore any TimeoutException. Basically we forego caching the
+-           // query result in order to avoid blocking.
+-           // Reads are done with suspended tx, so they should not hold the
+-           // lock for long.  Not caching the query result is OK, since
+-           // any subsequent read will just see the old result with its
+-           // out-of-date timestamp; that result will be discarded and the
+-           // db query performed again.
+-           Option opt = getNonLockingDataVersionOption(false);
+-           opt.setLockAcquisitionTimeout(2);
+-           if (localOnly)
+-               opt.setCacheModeLocal(true);
+-           CacheHelper.putAllowingTimeout(getCacheInstance(), getRegionFqn(), key, value, opt);
+-        }
+-    }
+-
+-    @Override
+-    protected Fqn<String> createRegionFqn(String regionName, String regionPrefix) {
+-        return getTypeLastRegionFqn(regionName, regionPrefix, TYPE);
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/timestamp/ClusteredConcurrentTimestampsRegionImpl.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/timestamp/ClusteredConcurrentTimestampsRegionImpl.java
+deleted file mode 100644
+index 9c59a06f97..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/timestamp/ClusteredConcurrentTimestampsRegionImpl.java
++++ /dev/null
+@@ -1,361 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.cache.jbc.timestamp;
+-
+-import java.util.Properties;
+-import java.util.Set;
+-import java.util.concurrent.ConcurrentHashMap;
+-import java.util.concurrent.Semaphore;
+-
+-import javax.transaction.Transaction;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.TimestampsRegion;
+-import org.hibernate.cache.jbc.TransactionalDataRegionAdapter;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.config.Option;
+-import org.jboss.cache.notifications.annotation.CacheListener;
+-import org.jboss.cache.notifications.annotation.NodeModified;
+-import org.jboss.cache.notifications.annotation.NodeRemoved;
+-import org.jboss.cache.notifications.event.NodeModifiedEvent;
+-import org.jboss.cache.notifications.event.NodeRemovedEvent;
+-
+-/**
+- * Prototype of a clustered timestamps cache region impl usable if the
+- * TimestampsRegion API is changed.
+- * <p>
+- * Maintains a local (authoritative) cache of timestamps along with the
+- * distributed cache held in JBoss Cache. Listens for changes in the distributed
+- * cache and updates the local cache accordingly. Ensures that any changes in
+- * the local cache represent either 1) an increase in the timestamp or 
+- * 2) a stepback in the timestamp by the caller that initially increased
+- * it as part of a pre-invalidate call. This approach allows
+- * timestamp changes to be replicated asynchronously by JBoss Cache while still
+- * preventing invalid backward changes in timestamps.
+- * </p>
+- * 
+- * NOTE: This is just a prototype!!! Only useful if we change the 
+- * TimestampsRegion API.
+- * 
+- * @author Brian Stansberry
+- * @version $Revision: 14106 $
+- */
+-@CacheListener
+-public class ClusteredConcurrentTimestampsRegionImpl extends TransactionalDataRegionAdapter implements TimestampsRegion {
+-
+-    public static final String TYPE = "TS";
+-    
+-    private final ConcurrentHashMap localCache = new ConcurrentHashMap();
+-    
+-    /**
+-     * Create a new ClusteredConccurentTimestampsRegionImpl.
+-     * 
+-     * @param jbcCache
+-     * @param regionName
+-     * @param regionPrefix
+-     *            TODO
+-     * @param metadata
+-     */
+-    public ClusteredConcurrentTimestampsRegionImpl(Cache jbcCache, String regionName, String regionPrefix, Properties properties) {
+-        super(jbcCache, regionName, regionPrefix, null);
+-
+-        jbcCache.addCacheListener(this);
+-
+-        populateLocalCache();
+-    }
+-
+-    @Override
+-    protected Fqn<String> createRegionFqn(String regionName, String regionPrefix) {
+-        return getTypeFirstRegionFqn(regionName, regionPrefix, TYPE);
+-    }
+-
+-    public void evict(Object key) throws CacheException {
+-        Option opt = getNonLockingDataVersionOption(true);
+-        CacheHelper.removeNode(getCacheInstance(), getRegionFqn(), key, opt);
+-    }
+-
+-    public void evictAll() throws CacheException {
+-        Option opt = getNonLockingDataVersionOption(true);
+-        CacheHelper.removeAll(getCacheInstance(), getRegionFqn(), opt);
+-    }
+-
+-    public Object get(Object key) throws CacheException {
+-        Entry entry = getLocalEntry(key);
+-        Object timestamp = entry.getCurrent();
+-        if (timestamp == null) {
+-            // Double check the distributed cache
+-            Object[] vals = (Object[]) suspendAndGet(key, null, false);
+-            if (vals != null) {
+-                storeDataFromJBC(key, vals);
+-                timestamp = entry.getCurrent();
+-            }
+-        }
+-        return timestamp;
+-    }
+-
+-    public void put(Object key, Object value) throws CacheException {
+-        
+-        throw new UnsupportedOperationException("Prototype only; Hibernate core must change the API before really using");
+-    }
+-    
+-    public void preInvalidate(Object key, Object value) throws CacheException {
+-        
+-        Entry entry = getLocalEntry(key);
+-        if (entry.preInvalidate(value)) {
+-            putInJBossCache(key, entry);
+-        }
+-    }
+-    
+-    public void invalidate(Object key, Object value, Object preInvalidateValue) throws CacheException {
+-        
+-        Entry entry = getLocalEntry(key);
+-        if (entry.invalidate(value, preInvalidateValue)) {
+-            putInJBossCache(key, entry);
+-        }
+-    }
+-    
+-    private void putInJBossCache(Object key, Entry entry) {        
+-    
+-        // Get an exclusive right to update JBC for this key from this node.
+-        boolean locked = false;
+-        try {
+-            entry.acquireJBCWriteMutex();
+-            locked = true;
+-            // We have the JBCWriteMutex, so no other *local* thread will 
+-            // be trying to write this key. 
+-            // It's possible here some remote thread has come in and
+-            // changed the values again, but since we are reading the
+-            // values to write to JBC right now, we know we are writing
+-            // the latest values; i.e. we don't assume that what we cached
+-            // in entry.update() above is what we should write to JBC *now*.
+-            // Our write could be redundant, i.e. we are writing what
+-            // some remote thread just came in an wrote.  There is a chance 
+-            // that yet another remote thread will update us, and we'll then
+-            // overwrite that later data in JBC.  But, all remote nodes will
+-            // ignore that change in their localCache; the only place it 
+-            // will live will be in JBC, where it can only effect the 
+-            // initial state transfer values on newly joined nodes 
+-            // (i.e. populateLocalCache()).
+-            
+-            // Don't hold the JBC node lock throughout the tx, as that
+-            // prevents reads and other updates
+-            Transaction tx = suspend();
+-            try {
+-                Option opt = getNonLockingDataVersionOption(false);
+-                // We ensure ASYNC semantics (JBCACHE-1175)
+-                opt.setForceAsynchronous(true);
+-                CacheHelper.put(getCacheInstance(), getRegionFqn(), key, entry.getJBCUpdateValues(), opt);
+-            } 
+-            finally {
+-                resume(tx);
+-            }  
+-        } 
+-        catch (InterruptedException e) {
+-            throw new CacheException("Interrupted while acquiring right to update " + key, e);
+-        } 
+-        finally {
+-            if (locked) {
+-                entry.releaseJBCWriteMutex();
+-            }
+-        }
+-    }
+-
+-    @Override
+-    public void destroy() throws CacheException {
+-
+-        getCacheInstance().removeCacheListener(this);
+-        super.destroy();
+-        localCache.clear();
+-    }
+-
+-    /**
+-     * Monitors cache events and updates the local cache
+-     * 
+-     * @param event
+-     */
+-    @NodeModified
+-    public void nodeModified(NodeModifiedEvent event) {
+-        if (event.isOriginLocal() || event.isPre())
+-            return;
+-
+-        Fqn fqn = event.getFqn();
+-        Fqn regFqn = getRegionFqn();
+-        if (fqn.size() == regFqn.size() + 1 && fqn.isChildOf(regFqn)) {
+-            Object key = fqn.get(regFqn.size());
+-            Object[] vals = (Object[]) event.getData().get(ITEM);
+-            storeDataFromJBC(key, vals);
+-            // TODO consider this hack instead of the simple entry.update above:
+-//            if (!entry.update(vals[0], vals[1])) {
+-//                // Hack! Use the fact that the Object[] stored in JBC is
+-//                // mutable to correct our local JBC state in this callback
+-//                Object[] correct = entry.getJBCUpdateValues();
+-//                vals[0] = correct[0];
+-//                vals[1] = correct[1];
+-//            }
+-        }
+-    }
+-    
+-    private void storeDataFromJBC(Object key, Object[] vals) {
+-        Entry entry = getLocalEntry(key);
+-        if (vals[0].equals(vals[1])) {
+-            entry.preInvalidate(vals[0]);
+-        }
+-        else {
+-            entry.invalidate(vals[0], vals[1]);
+-        }
+-    }
+-
+-    /**
+-     * Monitors cache events and updates the local cache
+-     * 
+-     * @param event
+-     */
+-    @NodeRemoved
+-    public void nodeRemoved(NodeRemovedEvent event) {
+-        if (event.isOriginLocal() || event.isPre())
+-            return;
+-
+-        Fqn fqn = event.getFqn();
+-        Fqn regFqn = getRegionFqn();
+-        if (fqn.isChildOrEquals(regFqn)) {
+-            if (fqn.size() == regFqn.size()) {
+-                localCache.clear();
+-            }
+-            else {
+-                Object key = fqn.get(regFqn.size());
+-                localCache.remove(key);
+-            }
+-        }
+-    }
+-
+-    /**
+-     * Brings all data from the distributed cache into our local cache.
+-     */
+-    private void populateLocalCache() {
+-        Set children = CacheHelper.getChildrenNames(getCacheInstance(), getRegionFqn());
+-        for (Object key : children) {
+-            Object[] vals = (Object[]) suspendAndGet(key, null, false);
+-            if (vals != null) {
+-                storeDataFromJBC(key, vals);
+-            }
+-        }
+-    }
+-    
+-    private Entry getLocalEntry(Object key) {
+-        
+-        Entry entry = new Entry();
+-        Entry oldEntry = (Entry) localCache.putIfAbsent(key, entry);
+-        return (oldEntry == null ? entry : oldEntry);
+-    }
+-    
+-    private class Entry {
+-        
+-        private Semaphore writeMutex = new Semaphore(1);
+-        private boolean preInvalidated = false;
+-        private Object preInval  = null;
+-        private Object current = null;
+-        
+-        void acquireJBCWriteMutex() throws InterruptedException {
+-            writeMutex.acquire();
+-        }
+-        
+-        void releaseJBCWriteMutex() {
+-            writeMutex.release();
+-        }
+-        
+-        synchronized boolean preInvalidate(Object newVal) {
+-            
+-            boolean result = false;
+-            if (newVal instanceof Comparable) {
+-                if (current == null || ((Comparable) newVal).compareTo(current) > 0) {
+-                    preInval = current = newVal;
+-                    preInvalidated = true;
+-                    result = true;
+-                }
+-            }
+-            else {
+-                preInval = current = newVal;
+-                result = true;
+-            }
+-            
+-            return result;
+-        }
+-        
+-        synchronized boolean invalidate(Object newVal, Object preInvalidateValue) {
+-            
+-            boolean result = false;
+-            
+-            if (current == null) {
+-                // Initial load from JBC
+-                current = newVal;
+-                preInval = preInvalidateValue;
+-                preInvalidated = false;
+-                result = true;     
+-            }
+-            else if (preInvalidated) {
+-                if (newVal instanceof Comparable) {
+-                    if (safeEquals(preInvalidateValue, this.preInval)
+-                            || ((Comparable) newVal).compareTo(preInval) > 0) {
+-                        current = newVal;
+-                        preInval = preInvalidateValue;
+-                        preInvalidated = false;
+-                        result =  true;                    
+-                    }
+-                }
+-                else {
+-                    current = newVal;
+-                    preInval = preInvalidateValue;
+-                    result =  true;
+-                }
+-            }
+-            else if (newVal instanceof Comparable) {
+-                // See if we had a 2nd invalidation from the same initial
+-                // preinvalidation timestamp. If so, only increment
+-                // if the new current value is an increase
+-                if (safeEquals(preInvalidateValue, this.preInval)
+-                        && ((Comparable) newVal).compareTo(current) > 0) {
+-                    current = newVal;
+-                    preInval = preInvalidateValue;
+-                    result =  true;                    
+-                }
+-            }  
+-            
+-            return result;
+-        }
+-        
+-        synchronized Object getCurrent() {
+-            return current;
+-        }
+-        
+-        synchronized Object getPreInval() {
+-            return preInval;
+-        }
+-        
+-        synchronized Object[] getJBCUpdateValues() {
+-            return new Object[] {current, preInval};
+-        }
+-        
+-        private boolean safeEquals(Object a, Object b) {
+-            return (a == b || (a != null && a.equals(b)));
+-        }
+-    }
+-    
+-    
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/timestamp/TimestampsRegionImpl.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/timestamp/TimestampsRegionImpl.java
+deleted file mode 100644
+index d98612bfa6..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/timestamp/TimestampsRegionImpl.java
++++ /dev/null
+@@ -1,222 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-
+-package org.hibernate.cache.jbc.timestamp;
+-
+-import java.util.Map;
+-import java.util.Properties;
+-import java.util.Set;
+-import java.util.concurrent.ConcurrentHashMap;
+-
+-import javax.transaction.Transaction;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.TimestampsRegion;
+-import org.hibernate.cache.jbc.TransactionalDataRegionAdapter;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.config.Option;
+-import org.jboss.cache.notifications.annotation.CacheListener;
+-import org.jboss.cache.notifications.annotation.NodeModified;
+-import org.jboss.cache.notifications.annotation.NodeRemoved;
+-import org.jboss.cache.notifications.event.NodeInvalidatedEvent;
+-import org.jboss.cache.notifications.event.NodeModifiedEvent;
+-import org.jboss.cache.notifications.event.NodeRemovedEvent;
+-
+-/**
+- * Defines the behavior of the timestamps cache region for JBossCache 2.x.
+- * 
+- * TODO Need to define a way to ensure asynchronous replication events
+- * do not result in timestamps moving backward, while dealing with the fact
+- * that the normal sequence of UpdateTimestampsCache.preinvalidate() then
+- * UpdateTimestampsCache.invalidate() will result in 2 calls to put() with
+- * the latter call having an earlier timestamp.
+- * 
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-@CacheListener
+-public class TimestampsRegionImpl extends TransactionalDataRegionAdapter implements TimestampsRegion {
+-
+-    public static final String TYPE = "TS";
+-
+-    private Map localCache = new ConcurrentHashMap();
+-    
+-    /**
+-     * Create a new TimestampsRegionImpl.
+-	 *
+-     * @param jbcCache The JBC cache instance to use to store the timestamps data
+-     * @param regionName The name of the region (within the JBC cache)
+-     * @param regionPrefix Any region prefix to apply
+-	 * @param properties The configuration properties.
+-     */
+-    public TimestampsRegionImpl(Cache jbcCache, String regionName, String regionPrefix, Properties properties) {
+-        super(jbcCache, regionName, regionPrefix, null);
+-
+-        jbcCache.addCacheListener(this);
+-
+-        populateLocalCache();
+-    }
+-
+-    @Override
+-    protected Fqn<String> createRegionFqn(String regionName, String regionPrefix) {
+-        return getTypeFirstRegionFqn(regionName, regionPrefix, TYPE);
+-    }
+-
+-    public void evict(Object key) throws CacheException {
+-       
+-        ensureRegionRootExists();
+-        
+-        // TODO Is this a valid operation on a timestamps cache?
+-        Option opt = getNonLockingDataVersionOption(true);
+-        CacheHelper.removeNode(getCacheInstance(), getRegionFqn(), key, opt);
+-    }
+-
+-    public void evictAll() throws CacheException {
+-        // TODO Is this a valid operation on a timestamps cache?
+-        Transaction tx = suspend();
+-        try {        
+-           ensureRegionRootExists();
+-           Option opt = getNonLockingDataVersionOption(true);
+-           CacheHelper.sendEvictAllNotification(jbcCache, regionFqn, getMemberId(), opt);
+-        }
+-        finally {
+-           resume(tx);
+-        }        
+-    }
+-
+-    public Object get(Object key) throws CacheException {
+-
+-        Object value = localCache.get(key);
+-        if (value == null && checkValid()) {
+-           
+-            ensureRegionRootExists();
+-            
+-            value = suspendAndGet(key, null, false);
+-            if (value != null)
+-                localCache.put(key, value);
+-        }
+-        return value;
+-    }
+-
+-    public void put(Object key, Object value) throws CacheException {
+-       
+-        ensureRegionRootExists();
+-
+-        // Don't hold the JBC node lock throughout the tx, as that
+-        // prevents reads and other updates
+-        Transaction tx = suspend();
+-        try {
+-            // TODO Why not use the timestamp in a DataVersion?
+-            Option opt = getNonLockingDataVersionOption(false);
+-            // We ensure ASYNC semantics (JBCACHE-1175)
+-            opt.setForceAsynchronous(true);
+-            CacheHelper.put(getCacheInstance(), getRegionFqn(), key, value, opt);
+-        } catch (Exception e) {
+-            throw new CacheException(e);
+-        } finally {
+-            resume(tx);
+-        }
+-    }
+-
+-    @Override
+-    public void destroy() throws CacheException {
+-        localCache.clear();
+-        getCacheInstance().removeCacheListener(this);
+-        super.destroy();
+-    }
+-
+-    /**
+-     * Monitors cache events and updates the local cache
+-     * 
+-     * @param event
+-     */
+-    @NodeModified
+-    public void nodeModified(NodeModifiedEvent event) {
+-       
+-        if (!handleEvictAllModification(event) && !event.isPre()) {
+-   
+-           Fqn fqn = event.getFqn();
+-           Fqn regFqn = getRegionFqn();
+-           if (fqn.size() == regFqn.size() + 1 && fqn.isChildOf(regFqn)) {
+-               Object key = fqn.get(regFqn.size());
+-               localCache.put(key, event.getData().get(ITEM));
+-           }
+-        }
+-    }
+-
+-    /**
+-     * Monitors cache events and updates the local cache
+-     * 
+-     * @param event
+-     */
+-    @NodeRemoved
+-    public void nodeRemoved(NodeRemovedEvent event) {
+-        if (event.isPre())
+-            return;
+-
+-        Fqn fqn = event.getFqn();
+-        Fqn regFqn = getRegionFqn();
+-        if (fqn.size() == regFqn.size() + 1 && fqn.isChildOf(regFqn)) {
+-            Object key = fqn.get(regFqn.size());
+-            localCache.remove(key);
+-        }
+-        else if (fqn.equals(regFqn)) {
+-            localCache.clear();
+-        }
+-    }
+-    
+-    
+-
+-    @Override
+-   protected boolean handleEvictAllInvalidation(NodeInvalidatedEvent event)
+-   {
+-      boolean result = super.handleEvictAllInvalidation(event);
+-      if (result) {
+-         localCache.clear();
+-      }
+-      return result;
+-   }
+-
+-   @Override
+-   protected boolean handleEvictAllModification(NodeModifiedEvent event)
+-   {
+-      boolean result = super.handleEvictAllModification(event);
+-      if (result) {
+-         localCache.clear();
+-      }
+-      return result;
+-   }
+-
+-   /**
+-     * Brings all data from the distributed cache into our local cache.
+-     */
+-    private void populateLocalCache() {
+-        Set children = CacheHelper.getChildrenNames(getCacheInstance(), getRegionFqn());
+-        for (Object key : children) {
+-            get(key);
+-        }
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/CacheHelper.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/CacheHelper.java
+deleted file mode 100644
+index aaa13a8518..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/CacheHelper.java
++++ /dev/null
+@@ -1,491 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.util;
+-
+-import java.util.Collections;
+-import java.util.Set;
+-
+-import org.hibernate.cache.CacheException;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.InvocationContext;
+-import org.jboss.cache.Node;
+-import org.jboss.cache.config.Configuration;
+-import org.jboss.cache.config.Option;
+-import org.jboss.cache.lock.TimeoutException;
+-import org.jboss.cache.optimistic.DataVersion;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Helper for dealing with JBossCache {@link Configuration.CacheMode}.
+- * 
+- * @author Steve Ebersole
+- * @author Brian Stansberry
+- */
+-public class CacheHelper {
+-
+-    public static enum Internal { NODE, LOCAL };
+-    
+-    /** Key under which items are cached */
+-    public static final String ITEM = "item";
+-    /** Key and value used in a hack to create region root nodes */
+-    public static final String DUMMY = "dummy";
+-    
+-    private static final Logger log = LoggerFactory.getLogger(CacheHelper.class);
+-
+-    /**
+-     * Disallow external instantiation of CacheHelper.
+-     */
+-    private CacheHelper() {
+-    }
+-
+-    /**
+-     * Is this cache participating in a cluster with invalidation?
+-     * 
+-     * @param cache
+-     *            The cache to check.
+-     * @return True if the cache is configured for synchronous/asynchronous
+-     *         invalidation; false otherwise.
+-     */
+-    public static boolean isClusteredInvalidation(Cache cache) {
+-        return isClusteredInvalidation(cache.getConfiguration().getCacheMode());
+-    }
+-
+-    /**
+-     * Does this cache mode indicate clustered invalidation?
+-     * 
+-     * @param cacheMode
+-     *            The cache to check
+-     * @return True if the cache mode is confiogured for
+-     *         synchronous/asynchronous invalidation; false otherwise.
+-     */
+-    public static boolean isClusteredInvalidation(Configuration.CacheMode cacheMode) {
+-        return cacheMode == Configuration.CacheMode.INVALIDATION_ASYNC
+-                || cacheMode == Configuration.CacheMode.INVALIDATION_SYNC;
+-    }
+-
+-    /**
+-     * Is this cache participating in a cluster with replication?
+-     * 
+-     * @param cache
+-     *            The cache to check.
+-     * @return True if the cache is configured for synchronous/asynchronous
+-     *         invalidation; false otherwise.
+-     */
+-    public static boolean isClusteredReplication(Cache cache) {
+-        return isClusteredReplication(cache.getConfiguration().getCacheMode());
+-    }
+-
+-    /**
+-     * Does this cache mode indicate clustered replication?
+-     * 
+-     * @param cacheMode
+-     *            The cache to check
+-     * @return True if the cache mode is confiogured for
+-     *         synchronous/asynchronous invalidation; false otherwise.
+-     */
+-    public static boolean isClusteredReplication(Configuration.CacheMode cacheMode) {
+-        return cacheMode == Configuration.CacheMode.REPL_ASYNC || cacheMode == Configuration.CacheMode.REPL_SYNC;
+-    }
+-    
+-    public static boolean isSynchronous(Cache cache) {
+-        return isSynchronous(cache.getConfiguration().getCacheMode());
+-    }
+-    
+-    public static boolean isSynchronous(Configuration.CacheMode cacheMode) {
+-        return cacheMode == Configuration.CacheMode.REPL_SYNC || cacheMode == Configuration.CacheMode.INVALIDATION_SYNC;
+-    }
+-    
+-    public static Set getChildrenNames(Cache cache, Fqn fqn) {
+-        Node node = cache.getRoot().getChild(fqn);
+-        return (node != null) ? node.getChildrenNames() : Collections.emptySet();
+-    }
+-
+-    /**
+-     * Builds an {@link Fqn} from <code>region</code> and <code>key</code>
+-     * and performs a JBoss Cache <code>get(Fqn, Object)</code>, wrapping any
+-     * exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param key
+-     *            specific key to append to the <code>region</code> to form
+-     *            the full Fqn
+-     */
+-    public static Object get(Cache cache, Fqn region, Object key) throws CacheException {
+-        try {
+-            return cache.get(new Fqn(region, key), ITEM);
+-        } catch (Exception e) {
+-            throw new CacheException(e);
+-        }
+-    }
+-
+-    /**
+-     * Builds an {@link Fqn} from <code>region</code> and <code>key</code>
+-     * and performs a JBoss Cache <code>get(Fqn, Object)</code>, wrapping any
+-     * exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param key
+-     *            specific key to append to the <code>region</code> to form
+-     *            the full Fqn
+-     */
+-    public static Object getAllowingTimeout(Cache cache, Fqn region, Object key) throws CacheException {
+-        try {
+-            return cache.get(new Fqn(region, key), ITEM);        
+-        } 
+-        catch (TimeoutException ignored) {
+-            // ignore it
+-            return null;
+-        }
+-        catch (Exception e) {
+-            throw new CacheException(e);
+-        }
+-    }
+-
+-    /**
+-     * Builds an {@link Fqn} from <code>region</code> and <code>key</code>
+-     * and performs a JBoss Cache <code>put(Object, Object)</code>, wrapping
+-     * any exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param key
+-     *            specific key to append to the <code>region</code> to form
+-     *            the full Fqn
+-     * @param value
+-     *            data to store in the cache node
+-     */
+-    public static void put(Cache cache, Fqn region, Object key, Object value) throws CacheException {
+-
+-        put(cache, region, key, value, null);
+-    }
+-
+-    /**
+-     * Builds an {@link Fqn} from <code>region</code> and <code>key</code>
+-     * and performs a JBoss Cache <code>put(Object, Object)</code>, wrapping
+-     * any exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param key
+-     *            specific key to append to the <code>region</code> to form
+-     *            the full Fqn
+-     * @param value
+-     *            data to store in the cache node
+-     * @param option
+-     *            invocation Option to set for this invocation. May be
+-     *            <code>null</code>.
+-     */
+-    public static void put(Cache cache, Fqn region, Object key, Object value, Option option) throws CacheException {
+-        try {
+-            setInvocationOption(cache, option);
+-            cache.put(new Fqn(region, key), ITEM, value);
+-        } catch (Exception e) {
+-            throw new CacheException(e);
+-        }
+-    }
+-
+-    /**
+-     * Builds an {@link Fqn} from <code>region</code> and <code>key</code>
+-     * and performs a JBoss Cache <code>put(Object, Object)</code>, ignoring any
+-     * {@link TimeoutException} and wrapping any other exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param key
+-     *            specific key to append to the <code>region</code> to form
+-     *            the full Fqn
+-     * @param value
+-     *            data to store in the cache node
+-     * @param option
+-     *            invocation Option to set for this invocation. May be
+-     *            <code>null</code>.
+-     */
+-    public static void putAllowingTimeout(Cache cache, Fqn region, Object key, Object value, Option option) throws CacheException {
+-        try {
+-            setInvocationOption(cache, option);
+-            cache.put(new Fqn(region, key), ITEM, value);
+-        }
+-        catch (TimeoutException allowed) {
+-            // ignore it
+-        }
+-        catch (Exception e) {
+-            throw new CacheException(e);
+-        }
+-    }
+-
+-    /**
+-     * Builds an {@link Fqn} from <code>region</code> and <code>key</code>
+-     * and performs a JBoss Cache
+-     * <code>putForExternalRead(Object, Object)</code>, wrapping any
+-     * exception in a {@link CacheException}. Ignores any JBoss Cache
+-     * {@link TimeoutException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param key
+-     *            specific key to append to the <code>region</code> to form
+-     *            the full Fqn
+-     * @param value
+-     *            data to store in the cache node
+-     */
+-    public static boolean putForExternalRead(Cache cache, Fqn region, Object key, Object value) throws CacheException {
+-
+-        return putForExternalRead(cache, region, key, value, null);
+-    }
+-
+-    /**
+-     * Builds an {@link Fqn} from <code>region</code> and <code>key</code>
+-     * and performs a JBoss Cache
+-     * <code>putForExternalRead(Object, Object)</code>, wrapping any
+-     * exception in a {@link CacheException}. Ignores any JBoss Cache
+-     * {@link TimeoutException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param key
+-     *            specific key to append to the <code>region</code> to form
+-     *            the full Fqn
+-     * @param value
+-     *            data to store in the cache node
+-     * @param option
+-     *            invocation Option to set for this invocation. May be
+-     *            <code>null</code>.
+-     */
+-    public static boolean putForExternalRead(Cache cache, Fqn region, Object key, Object value, Option option)
+-            throws CacheException {
+-        try {
+-            setInvocationOption(cache, option);
+-            cache.putForExternalRead(new Fqn(region, key), ITEM, value);
+-            return true;
+-        } catch (TimeoutException te) {
+-            // ignore!
+-            log.debug("ignoring write lock acquisition failure");
+-            return false;
+-        } catch (Throwable t) {
+-            throw new CacheException(t);
+-        }
+-    }
+-
+-    /**
+-     * Builds an {@link Fqn} from <code>region</code> and <code>key</code>
+-     * and performs a JBoss Cache <code>removeNode(Fqn)</code>, wrapping any
+-     * exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param key
+-     *            specific key to append to the <code>region</code> to form
+-     *            the full Fqn
+-     */
+-    public static void remove(Cache cache, Fqn region, Object key) throws CacheException {
+-
+-        remove(cache, region, key, null);
+-    }
+-
+-    /**
+-     * Builds an {@link Fqn} from <code>region</code> and <code>key</code>
+-     * and performs a JBoss Cache <code>removeNode(Fqn)</code>, wrapping any
+-     * exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param key
+-     *            specific key to append to the <code>region</code> to form
+-     *            the full Fqn
+-     * @param option
+-     *            invocation Option to set for this invocation. May be
+-     *            <code>null</code>.
+-     */
+-    public static void remove(Cache cache, Fqn region, Object key, Option option) throws CacheException {
+-        try {
+-            setInvocationOption(cache, option);
+-            cache.removeNode(new Fqn(region, key));
+-        } catch (Exception e) {
+-            throw new CacheException(e);
+-        }
+-    }
+-
+-    /**
+-     * Performs a JBoss Cache <code>removeNode(Fqn)</code>, wrapping any
+-     * exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     */
+-    public static void removeAll(Cache cache, Fqn region) throws CacheException {
+-
+-        removeAll(cache, region, null);
+-    }
+-
+-    /**
+-     * Performs a JBoss Cache <code>removeNode(Fqn)</code>, wrapping any
+-     * exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param option
+-     *            invocation Option to set for this invocation. May be
+-     *            <code>null</code>.
+-     */
+-    public static void removeAll(Cache cache, Fqn region, Option option) throws CacheException {
+-        try {
+-            setInvocationOption(cache, option);
+-            cache.removeNode(region);
+-        } catch (Exception e) {
+-            throw new CacheException(e);
+-        }
+-    }
+-
+-    /**
+-     * Performs a JBoss Cache <code>removeNode(Fqn)</code>, wrapping any
+-     * exception in a {@link CacheException}.
+-     * 
+-     * @param cache
+-     *            the cache to invoke on
+-     * @param region
+-     *            base Fqn for the cache region
+-     * @param option
+-     *            invocation Option to set for this invocation. May be
+-     *            <code>null</code>.
+-     */
+-    public static void removeNode(Cache cache, Fqn region, Object key, Option option) throws CacheException {
+-        try {
+-            setInvocationOption(cache, option);
+-            cache.removeNode(new Fqn(region, key));
+-        } catch (Exception e) {
+-            throw new CacheException(e);
+-        }
+-    }
+-    
+-    public static Node addNode(Cache cache, Fqn fqn, boolean localOnly, boolean resident, DataVersion version)
+-            throws CacheException {
+-        try {
+-            Option option = null;
+-            if (localOnly || version != null) {
+-                option = new Option();
+-                option.setCacheModeLocal(localOnly);
+-                option.setDataVersion(version);
+-            }
+-            
+-            Node root = cache.getRoot();
+-            setInvocationOption(cache, option);
+-            // FIXME hack to work around fact that calling
+-            // Node added = root.addChild( fqn ); doesn't 
+-            // properly set the version on the node
+-            Node added = null;
+-            if (version == null) {
+-                added = root.addChild( fqn );
+-            }
+-            else {
+-                cache.put(fqn, DUMMY, DUMMY);
+-                added = root.getChild(fqn);
+-            }
+-            if (resident)
+-                added.setResident(true);
+-            return added;
+-        }
+-        catch (Exception e) {
+-            throw new CacheException(e);
+-        }
+-    }
+-    
+-
+-    /**
+-     * Assigns the given Option to the cache's {@link InvocationContext}. Does
+-     * nothing if <code>option</code> is <code>null</code>.
+-     * 
+-     * @param cache
+-     *            the cache. Cannot be <code>null</code>.
+-     * @param option
+-     *            the option. May be <code>null</code>.
+-     * 
+-     * @see {@link Cache#getInvocationContext()}
+-     * @see {@link InvocationContext#setOptionOverrides(Option)}
+-     */
+-    public static void setInvocationOption(Cache cache, Option option) {
+-        if (option != null) {
+-            cache.getInvocationContext().setOptionOverrides(option);
+-        }
+-    }
+-
+-    /**
+-     * Creates an {@link Option} using the given {@link DataVersion} and passes
+-     * it to {@link #setInvocationOption(Cache, Option)}.
+-     * 
+-     * @param cache
+-     *            the cache to set the Option on. Cannot be <code>null</code>.
+-     * @param version
+-     *            the DataVersion to set. Cannot be <code>null</code>.
+-     */
+-    public static void setDataVersionOption(Cache cache, DataVersion version) {
+-        Option option = new Option();
+-        option.setDataVersion(version);
+-        setInvocationOption(cache, option);
+-    }
+-    
+-    public static Fqn getInternalFqn(Fqn region)
+-    {
+-       return Fqn.fromRelativeElements(region, Internal.NODE);
+-    }
+-    
+-    public static void sendEvictNotification(Cache cache, Fqn region, Object member, Object key, Option option)
+-    {
+-       setInvocationOption(cache, option);
+-       Fqn f = Fqn.fromRelativeElements(region, Internal.NODE, member  == null ? Internal.LOCAL : member, key);
+-       cache.put(f, ITEM, DUMMY);
+-    }
+-    
+-    public static void sendEvictAllNotification(Cache cache, Fqn region, Object member, Option option)
+-    {
+-       setInvocationOption(cache, option);
+-       Fqn f = Fqn.fromRelativeElements(region, Internal.NODE, member  == null ? Internal.LOCAL : member);
+-       cache.put(f, ITEM, DUMMY);
+-    }
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/CircumventChecksDataVersion.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/CircumventChecksDataVersion.java
+deleted file mode 100755
+index 81092587e8..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/CircumventChecksDataVersion.java
++++ /dev/null
+@@ -1,54 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.util;
+-
+-import org.hibernate.cache.CacheException;
+-import org.jboss.cache.config.Option;
+-import org.jboss.cache.optimistic.DataVersion;
+-
+-/**
+- * Used to signal to a DataVersionAdapter to simply not perform any checks. This
+- * is currently needed for proper handling of remove() calls for entity cache
+- * regions (we do not know the version info...).
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class CircumventChecksDataVersion implements DataVersion {
+-
+-    private static final long serialVersionUID = 7996980646166032369L;
+-
+-    public static final DataVersion INSTANCE = new CircumventChecksDataVersion();
+-
+-    public static Option getInvocationOption() {
+-        Option option = new Option();
+-        option.setDataVersion(INSTANCE);
+-        return option;
+-    }
+-
+-    public boolean newerThan(DataVersion dataVersion) {
+-        throw new CacheException("optimistic locking checks should never happen on CircumventChecksDataVersion");
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/DataVersionAdapter.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/DataVersionAdapter.java
+deleted file mode 100755
+index a08f25191b..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/DataVersionAdapter.java
++++ /dev/null
+@@ -1,166 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-
+-package org.hibernate.cache.jbc.util;
+-
+-import java.io.IOException;
+-import java.util.Comparator;
+-
+-import org.hibernate.cache.jbc.entity.TransactionalAccess;
+-import org.hibernate.util.CalendarComparator;
+-import org.hibernate.util.ComparableComparator;
+-import org.jboss.cache.optimistic.DataVersion;
+-import org.jboss.cache.optimistic.DefaultDataVersion;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * A DataVersionAdapter.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class DataVersionAdapter implements DataVersion {
+-
+-    private static final Logger log = LoggerFactory.getLogger(TransactionalAccess.class);
+-
+-    private static final long serialVersionUID = 5564692336076405571L;
+-
+-    private final Object currentVersion;
+-
+-    private final Object previousVersion;
+-
+-    /** 
+-     * Comparator does not extend Serializable and the std impls don't either,
+-     * so we make the field transient to allow special handling
+-     */
+-    private transient Comparator versionComparator;
+-
+-    private final String sourceIdentifer;
+-
+-    public DataVersionAdapter(Object currentVersion, Object previousVersion, Comparator versionComparator,
+-            String sourceIdentifer) {
+-        this.currentVersion = currentVersion;
+-        this.previousVersion = previousVersion;
+-        this.versionComparator = versionComparator;
+-        this.sourceIdentifer = sourceIdentifer;
+-        log.trace("created " + this);
+-    }
+-
+-    /**
+-     * newerThan() call is dispatched against the DataVersion currently
+-     * associated with the node; the passed dataVersion param is the DataVersion
+-     * associated with the data we are trying to put into the node. <p/> we are
+-     * expected to return true in the case where we (the current node
+-     * DataVersion) are newer that then incoming value. Returning true here
+-     * essentially means that a optimistic lock failure has occured (because
+-     * conversely, the value we are trying to put into the node is "older than"
+-     * the value already there...)
+-     */
+-    public boolean newerThan(DataVersion dataVersion) {
+-        log.trace("checking [" + this + "] against [" + dataVersion + "]");
+-        if (dataVersion instanceof CircumventChecksDataVersion) {
+-            log.trace("skipping lock checks...");
+-            return false;
+-        } else if (dataVersion instanceof NonLockingDataVersion) {
+-            // can happen because of the multiple ways Cache.remove()
+-            // can be invoked :(
+-            log.trace("skipping lock checks...");
+-            return false;
+-        } else if (dataVersion instanceof DefaultDataVersion) {
+-            // JBC put a version in the node when it created as part of
+-            // some internal operation. We are always newer, but if
+-            // the JBC version is > 1 something odd has happened
+-            if (((DefaultDataVersion) dataVersion).getRawVersion() > 1) {
+-                log.warn("Unexpected comparison to " + dataVersion +
+-                         " -- we are " + toString());
+-            }
+-            return true;
+-        }
+-        
+-        DataVersionAdapter other = (DataVersionAdapter) dataVersion;
+-        if (other.previousVersion == null) {
+-            log.warn("Unexpected optimistic lock check on inserting data");
+-            // work around the "feature" where tree cache is validating the
+-            // inserted node during the next transaction. no idea...
+-            if (this == dataVersion) {
+-                log.trace("skipping lock checks due to same DV instance");
+-                return false;
+-            }
+-        }
+-
+-        if (currentVersion == null) {
+-            // If the workspace node has null as well, OK; if not we've
+-            // been modified in a non-comparable manner, which we have to
+-            // treat as us being newer
+-            return (other.previousVersion != null);
+-        }
+-        
+-        // Can't be newer than itself
+-        if ( this == dataVersion ) {
+-            return false;
+-        }
+-
+-        return versionComparator.compare(currentVersion, other.previousVersion) >= 1;
+-    }
+-
+-    public String toString() {
+-        return super.toString() + " [current=" + currentVersion + ", previous=" + previousVersion + ", src="
+-                + sourceIdentifer + "]";
+-    }
+-    
+-    
+-    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+-        out.defaultWriteObject();
+-        
+-        // The standard comparator types are not Serializable but are singletons
+-        if (versionComparator instanceof ComparableComparator)
+-            out.writeByte(0);
+-        else if (versionComparator instanceof CalendarComparator)
+-            out.writeByte(1);
+-        else {
+-            out.writeByte(999);
+-            out.writeObject(versionComparator);
+-        }
+-    }
+-    
+-    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException  {
+-        
+-        in.defaultReadObject();
+-        byte comparatorType = in.readByte();
+-        switch (comparatorType) {
+-            case 0:
+-                versionComparator = ComparableComparator.INSTANCE;
+-                break;
+-            case 1:
+-                versionComparator = CalendarComparator.INSTANCE;
+-                break;
+-            default:
+-                versionComparator = (Comparator) in.readObject();
+-        }
+-    }
+-    
+-    
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/NonLockingDataVersion.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/NonLockingDataVersion.java
+deleted file mode 100755
+index 85519643c2..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc/util/NonLockingDataVersion.java
++++ /dev/null
+@@ -1,65 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc.util;
+-
+-import org.hibernate.cache.jbc.entity.TransactionalAccess;
+-import org.jboss.cache.config.Option;
+-import org.jboss.cache.optimistic.DataVersion;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * {@link DataVersion} used in regions where no locking should ever occur. This
+- * includes query-caches, update-timestamps caches, collection caches, and
+- * entity caches where the entity is not versioned.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class NonLockingDataVersion implements DataVersion {
+-
+-    private static final Logger log = LoggerFactory.getLogger(TransactionalAccess.class);
+-
+-    private static final long serialVersionUID = 7050722490368630553L;
+-
+-    public static final DataVersion INSTANCE = new NonLockingDataVersion();
+-
+-    public static Option getInvocationOption() {
+-        Option option = new Option();
+-        option.setDataVersion(INSTANCE);
+-        return option;
+-    }
+-
+-    public boolean newerThan(DataVersion dataVersion) {
+-//        if (dataVersion instanceof DefaultDataVersion) {
+-//            log.info("unexpectedly validating against a DefaultDataVersion", new Exception("Just a stack trace"));
+-//            return true;
+-//        }
+-//        else {
+-            log.trace("non locking lock check...");
+-            return false;
+-//        }
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/JBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/JBossCacheRegionFactory.java
+deleted file mode 100755
+index 81212368ad..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/JBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,69 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2009, Red Hat, Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat, Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc2;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-
+-/**
+- * Deprecated version of superclass maintained solely for forwards
+- * compatibility.
+- *  
+- * @deprecated use {@link org.hibernate.cache.jbc.JBossCacheRegionFactory}
+- * 
+- * @author Steve Ebersole
+- * @author Brian Stansberry
+- */
+-@Deprecated
+-public class JBossCacheRegionFactory extends org.hibernate.cache.jbc.JBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public JBossCacheRegionFactory(Properties props) {
+-        super(props);
+-    }
+-
+-    /**
+-     *  Create a new JBossCacheRegionFactory.
+-     */
+-    public JBossCacheRegionFactory() {
+-    	super();
+-    }
+-
+-    /**
+-     * Create a new JBossCacheRegionFactory that uses the provided
+-     * {@link CacheInstanceManager}.
+-     * 
+-     * @param cacheInstanceManager The contract for how we get JBC cache instances.
+-     */
+-    public JBossCacheRegionFactory(CacheInstanceManager cacheInstanceManager) {
+-        super(cacheInstanceManager);
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/JndiMultiplexedJBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/JndiMultiplexedJBossCacheRegionFactory.java
+deleted file mode 100644
+index 42f91f2849..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/JndiMultiplexedJBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2009, Red Hat, Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat, Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc2;
+-
+-import java.util.Properties;
+-
+-/**
+- * Deprecated version of superclass maintained solely for forwards
+- * compatibility.
+- * 
+- * @deprecated use {@link org.hibernate.cache.jbc.JndiMultiplexedJBossCacheRegionFactory}
+- * 
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-@Deprecated
+-public class JndiMultiplexedJBossCacheRegionFactory extends org.hibernate.cache.jbc.JndiMultiplexedJBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public JndiMultiplexedJBossCacheRegionFactory(Properties props) {
+-        super(props);
+-    }
+-
+-    /**
+-     * Create a new MultiplexedJBossCacheRegionFactory.
+-     * 
+-     */
+-    public JndiMultiplexedJBossCacheRegionFactory() {
+-        super();
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/JndiSharedJBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/JndiSharedJBossCacheRegionFactory.java
+deleted file mode 100644
+index 7612ac12ea..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/JndiSharedJBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2009, Red Hat, Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat, Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc2;
+-
+-import java.util.Properties;
+-
+-/**
+- * Deprecated version of superclass maintained solely for forwards
+- * compatibility.
+- * 
+- * @deprecated use {@link org.hibernate.cache.jbc.JndiSharedJBossCacheRegionFactory}
+- * 
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-@Deprecated
+-public class JndiSharedJBossCacheRegionFactory extends org.hibernate.cache.jbc.JndiSharedJBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public JndiSharedJBossCacheRegionFactory(Properties props) {
+-        super(props);
+-    }
+-
+-    /**
+-     * Create a new JndiSharedJBossCacheRegionFactory.
+-     * 
+-     */
+-    public JndiSharedJBossCacheRegionFactory() {
+-        super();
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/MultiplexedJBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/MultiplexedJBossCacheRegionFactory.java
+deleted file mode 100644
+index 2285dbe1e7..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/MultiplexedJBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,57 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2009, Red Hat, Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat, Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc2;
+-
+-import java.util.Properties;
+-
+-/**
+- * Deprecated version of superclass maintained solely for forwards
+- * compatibility.
+- * 
+- * @deprecated use {@link org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory}
+- * 
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-public class MultiplexedJBossCacheRegionFactory extends org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public MultiplexedJBossCacheRegionFactory(Properties props) {
+-        super(props);
+-    }
+-
+-    /**
+-     * Create a new MultiplexedJBossCacheRegionFactory.
+-     * 
+-     */
+-    public MultiplexedJBossCacheRegionFactory() {
+-        super();
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/SharedJBossCacheRegionFactory.java b/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/SharedJBossCacheRegionFactory.java
+deleted file mode 100644
+index 89bb9a04ee..0000000000
+--- a/cache-jbosscache/src/main/java/org/hibernate/cache/jbc2/SharedJBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2009, Red Hat, Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat, Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.cache.jbc2;
+-
+-import java.util.Properties;
+-
+-/**
+- * Deprecated version of superclass maintained solely for forwards
+- * compatibility.
+- * 
+- * @deprecated use {@link org.hibernate.cache.jbc.SharedJBossCacheRegionFactory}
+- * 
+- * @author Brian Stansberry
+- * @version $Revision$
+- */
+-@Deprecated
+-public class SharedJBossCacheRegionFactory extends org.hibernate.cache.jbc.SharedJBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public SharedJBossCacheRegionFactory(Properties props) {
+-        super(props);
+-    }
+-
+-    /**
+-     * Create a new SharedJBossCacheRegionFactory.
+-     * 
+-     */
+-    public SharedJBossCacheRegionFactory() {
+-        super();
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/main/resources/org/hibernate/cache/jbc/builder/jbc-configs.xml b/cache-jbosscache/src/main/resources/org/hibernate/cache/jbc/builder/jbc-configs.xml
+deleted file mode 100644
+index baad4f9ec7..0000000000
+--- a/cache-jbosscache/src/main/resources/org/hibernate/cache/jbc/builder/jbc-configs.xml
++++ /dev/null
+@@ -1,1143 +0,0 @@
+-﻿<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-<cache-configs>
+-
+-    <!-- 
+-     Various JBoss Cache configurations, suitable for different caching
+-     uses (e.g. entities vs. queries).
+-     
+-     In all cases, TransactionManager configuration not required.
+-     Hibernate will plug in its own transaction manager integration. 
+-    -->
+-    
+-    
+-    <!-- A config appropriate for entity/collection caching. -->
+-    <cache-config name="optimistic-entity">
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">OPTIMISTIC</attribute>
+-
+-        <!-- Mode of communication with peer caches.
+-        
+-             INVALIDATION_SYNC is highly recommended as the mode for use
+-             with entity and collection caches.
+-        -->
+-        <attribute name="CacheMode">INVALIDATION_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">optimistic-entity</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. A udp-sync stack might be
+-             slightly better (no JGroups FC) but we stick with udp to
+-             help ensure this cache and others like timestamps-cache
+-             that require FC can use the same underlying JGroups resources. -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Whether or not to fetch state on joining a cluster. -->
+-        <attribute name="FetchInMemoryState">false</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup. Ignored if FetchInMemoryState=false.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-           Indicate whether to use marshalling or not. Set this to true if you 
+-           are running under a scoped class loader, e.g., inside an application 
+-           server.
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-      <!--  Eviction policy configurations. -->
+-      <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>   
+-    
+-    
+-    <!-- A config appropriate for entity/collection caching that
+-         uses pessimistic locking -->
+-    <cache-config name="pessimistic-entity">
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">PESSIMISTIC</attribute>
+-
+-        <!--
+-            READ_COMMITTED is as strong as necessary for most 
+-            2nd Level Cache use cases.
+-        -->
+-        <attribute name="IsolationLevel">READ_COMMITTED</attribute>
+-
+-        <!-- Mode of communication with peer caches.
+-        
+-             INVALIDATION_SYNC is highly recommended as the mode for use
+-             with entity and collection caches.
+-        -->
+-        <attribute name="CacheMode">INVALIDATION_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">pessimistic-entity</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. A udp-sync stack might be
+-             slightly better (no JGroups FC) but we stick with udp to
+-             help ensure this cache and others like timestamps-cache
+-             that require FC can use the same underlying JGroups resources. -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Whether or not to fetch state on joining a cluster. -->
+-        <attribute name="FetchInMemoryState">false</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup. Ignored if FetchInMemoryState=false.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-       <!--
+-          Indicate whether to use marshalling or not. Set this to true if you 
+-          are running under a scoped class loader, e.g., inside an application 
+-          server.
+-       -->
+-       <attribute name="UseRegionBasedMarshalling">true</attribute>
+-       <!-- Must match the value of "useRegionBasedMarshalling" -->
+-       <attribute name="InactiveOnStartup">true</attribute>
+-
+-       <!-- For now. disable asynchronous RPC marshalling/sending -->
+-       <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-       <!--  Eviction policy configurations. -->
+-       <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>      
+-
+-    <!-- A config appropriate for entity/collection caching that
+-         uses mvcc locking -->
+-    <cache-config name="mvcc-entity">
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">MVCC</attribute>
+-
+-        <!--
+-            READ_COMMITTED is as strong as necessary for most 
+-            2nd Level Cache use cases.
+-        -->
+-        <attribute name="IsolationLevel">READ_COMMITTED</attribute>
+-
+-        <!-- Mode of communication with peer caches.
+-        
+-             INVALIDATION_SYNC is highly recommended as the mode for use
+-             with entity and collection caches.
+-        -->
+-        <attribute name="CacheMode">INVALIDATION_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">mvcc-entity</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. A udp-sync stack might be
+-             slightly better (no JGroups FC) but we stick with udp to
+-             help ensure this cache and others like timestamps-cache
+-             that require FC can use the same underlying JGroups resources. -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Whether or not to fetch state on joining a cluster. -->
+-        <attribute name="FetchInMemoryState">false</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup. Ignored if FetchInMemoryState=false.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-       <!--
+-          Indicate whether to use marshalling or not. Set this to true if you 
+-          are running under a scoped class loader, e.g., inside an application 
+-          server.
+-       -->
+-       <attribute name="UseRegionBasedMarshalling">true</attribute>
+-       <!-- Must match the value of "useRegionBasedMarshalling" -->
+-       <attribute name="InactiveOnStartup">true</attribute>
+-
+-       <!-- For now. disable asynchronous RPC marshalling/sending -->
+-       <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-       <!--  Eviction policy configurations. -->
+-       <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>      
+-    
+-    
+-
+-    <!-- Same as "pessimistic-entity" but here we use REPEATABLE_READ
+-         instead of READ_COMMITTED. REPEATABLE_READ is only useful if the 
+-         application evicts/clears entities from the Hibernate Session and 
+-         then expects to repeatably re-read them in the same transaction.
+-         Otherwise, the Session's internal cache provides a repeatable-read 
+-         semantic. Before choosing this config, carefully read the docs
+-         and make sure you really need REPEATABLE_READ.
+-    -->
+-    <cache-config name="pessimistic-entity-repeatable">
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">PESSIMISTIC</attribute>
+-
+-        <!-- Here we  use REPEATABLE_READ. -->
+-        <attribute name="IsolationLevel">REPEATABLE_READ</attribute>
+-
+-        <!-- Mode of communication with peer caches.
+-        
+-             INVALIDATION_SYNC is highly recommended as the mode for use
+-             with entity and collection caches.
+-        -->
+-        <attribute name="CacheMode">INVALIDATION_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">pessimistic-entity-rr</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. A udp-sync stack might be
+-             slightly better (no JGroups FC) but we stick with udp to
+-             help ensure this cache and others like timestamps-cache
+-             that require FC can use the same underlying JGroups resources. -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Whether or not to fetch state on joining a cluster. -->
+-        <attribute name="FetchInMemoryState">false</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup. Ignored if FetchInMemoryState=false.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-           Indicate whether to use marshalling or not. Set this to true if you 
+-           are running under a scoped class loader, e.g., inside an application 
+-           server.
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-       <!--  Eviction policy configurations. -->
+-       <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>    
+-
+-
+-    <!-- Same as "mvcc-entity" but here we use REPEATABLE_READ
+-         instead of READ_COMMITTED. REPEATABLE_READ is only useful if the 
+-         application evicts/clears entities from the Hibernate Session and 
+-         then expects to repeatably re-read them in the same transaction.
+-         Otherwise, the Session's internal cache provides a repeatable-read 
+-         semantic. Before choosing this config, carefully read the docs
+-         and make sure you really need REPEATABLE_READ.
+-    -->
+-    <cache-config name="mvcc-entity-repeatable">
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">MVCC</attribute>
+-
+-        <!-- Here we  use REPEATABLE_READ. -->
+-        <attribute name="IsolationLevel">REPEATABLE_READ</attribute>
+-
+-        <!-- Mode of communication with peer caches.
+-        
+-             INVALIDATION_SYNC is highly recommended as the mode for use
+-             with entity and collection caches.
+-        -->
+-        <attribute name="CacheMode">INVALIDATION_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">mvcc-entity-rr</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. A udp-sync stack might be
+-             slightly better (no JGroups FC) but we stick with udp to
+-             help ensure this cache and others like timestamps-cache
+-             that require FC can use the same underlying JGroups resources. -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Whether or not to fetch state on joining a cluster. -->
+-        <attribute name="FetchInMemoryState">false</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup. Ignored if FetchInMemoryState=false.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-           Indicate whether to use marshalling or not. Set this to true if you 
+-           are running under a scoped class loader, e.g., inside an application 
+-           server.
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-       <!--  Eviction policy configurations. -->
+-       <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>    
+-
+-    <!-- A config appropriate for query caching. Does not replicate
+-         queries. DO NOT STORE TIMESTAMPS IN THIS CACHE.
+-    -->
+-    <cache-config name="local-query">
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">OPTIMISTIC</attribute>
+-
+-        <!-- Mode of communication with peer caches.
+-        
+-             LOCAL means don't communicate with other caches.
+-        -->
+-        <attribute name="CacheMode">LOCAL</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--  Eviction policy configurations. -->
+-        <attribute name="EvictionPolicyConfig">
+-          <config>
+-            <attribute name="wakeUpIntervalSeconds">5</attribute>
+-            <!-- Name of the DEFAULT eviction policy class. -->
+-            <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-            <!--  Cache wide default -->
+-            <region name="/_default_">
+-               <!-- Evict LRU node once we have more than this number of nodes -->
+-               <attribute name="maxNodes">10000</attribute>
+-               <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-               <attribute name="timeToLiveSeconds">1000</attribute>
+-               <!-- Don't evict a node that's been accessed within this many seconds. 
+-                    Set this to a value greater than your max expected transaction length. -->
+-               <attribute name="minTimeToLiveSeconds">120</attribute>
+-            </region>
+-            <!--  Don't ever evict modification timestamps -->
+-            <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-          </config>
+-       </attribute>
+-
+-    </cache-config>   
+-    
+-    
+-
+-    <!-- A query cache that replicates queries. Replication is asynchronous.
+-         DO NOT STORE TIMESTAMPS IN THIS CACHE as no initial state transfer
+-         is performed.
+-    -->
+-    <cache-config name="replicated-query">
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">OPTIMISTIC</attribute>
+-
+-        <!-- Mode of communication with peer caches.
+-        
+-             REPL_ASYNC means replicate but sender does not block waiting for
+-             peers to acknowledge applying the change. Valid for queries as
+-             the timestamp cache mechanism will allow Hibernate to discard
+-             out-of-date queries.
+-        -->
+-        <attribute name="CacheMode">REPL_ASYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">replicated-query</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Whether or not to fetch state on joining a cluster. -->
+-        <attribute name="FetchInMemoryState">false</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup. Ignored if FetchInMemoryState=false.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-           Indicate whether to use marshalling or not. Set this to true if you 
+-           are running under a scoped class loader, e.g., inside an application 
+-           server. Default is "false".
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-       <!--  Eviction policy configurations. -->
+-       <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>     
+-    
+-    
+-
+-    <!-- Optimized for timestamp caching. A clustered timestamp cache
+-         is required if query caching is used, even if the query cache
+-         itself is configured with CacheMode=LOCAL.
+-    -->
+-    <cache-config name="timestamps-cache">
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">MVCC</attribute>
+-
+-        <!--
+-            READ_COMMITTED is as strong as necessary.
+-        -->
+-        <attribute name="IsolationLevel">READ_COMMITTED</attribute>
+-
+-        <!-- Cannot be INVALIDATION. ASYNC for improved performance. -->
+-        <attribute name="CacheMode">REPL_ASYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">timestamp-cache</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Used for timestamps, so must fetch state. -->
+-        <attribute name="FetchInMemoryState">true</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup. Ignored if FetchInMemoryState=false.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-           Indicate whether to use marshalling or not. Set this to true if you 
+-           are running under a scoped class loader, e.g., inside an application 
+-           server. Default is "false".
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-      <!--  Eviction policy configurations. -->
+-      <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>  
+-    
+-    
+-
+-    <!-- A config appropriate for a cache that's shared for
+-         entity, collection, query and timestamp caching. Not an advised
+-         configuration, since it requires cache mode REPL_SYNC, which is the 
+-         least efficient mode. Also requires a full state transfer at startup,
+-         which can be expensive. Uses optimistic locking -->
+-    <cache-config name="optimistic-shared">
+-
+-        <!-- Node locking scheme:
+-                OPTIMISTIC
+-                MVCC (default)
+-        -->
+-        <attribute name="NodeLockingScheme">OPTIMISTIC</attribute>
+-
+-        <!-- Must use REPL since used for timestamp caching. 
+-             Must use SYNC to maintain cache coherency for entities.
+-        -->
+-        <attribute name="CacheMode">REPL_SYNC</attribute>
+-        
+-        <!-- With OPTIMISTIC  with replication we need to use synchronous commits. -->
+-        <attribute name="SyncCommitPhase">true</attribute>
+-        <attribute name="SyncRollbackPhase">true</attribute>
+-        
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">optimistic-shared</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. Need JGroups flow control (FC)
+-             because timestamp communication will not require a synchronous response.
+-        -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Used for timestamps, so must fetch state. -->
+-        <attribute name="FetchInMemoryState">true</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup. Ignored if FetchInMemoryState=false.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-          Indicate whether to use marshalling or not. Set this to true if you are running under a scoped
+-          class loader, e.g., inside an application server. Default is "false".
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-      <!--  Eviction policy configurations. -->
+-      <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>   
+-    
+-    
+-
+-    <!-- A config appropriate for a cache that's shared for
+-         entity, collection, query and timestamp caching. Not an advised
+-         configuration, since it requires cache mode REPL_SYNC, which is the 
+-         least efficient mode. Also requires a full state transfer at startup,
+-         which can be expensive. Uses pessmistic locking.
+-    -->
+-    <cache-config name="pessimistic-shared">
+-
+-        <!-- TransactionManager configuration not required for Hibernate!
+-             Hibernate will plug in its own transaction manager integration. 
+-        -->
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">PESSIMISTIC</attribute>
+-
+-        <!--
+-            READ_COMMITTED is as strong as necessary for most 
+-            2nd Level Cache use cases.
+-        -->
+-        <attribute name="IsolationLevel">READ_COMMITTED</attribute>
+-
+-        <!-- Must use REPL since used for timestamp caching. 
+-             Must use SYNC to maintain cache coherency for entities.
+-        -->
+-        <attribute name="CacheMode">REPL_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">pessimistic-shared</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. Need JGroups flow control (FC)
+-             because timestamp communication will not require a synchronous response.
+-        -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Used for timestamps, so must fetch state. -->
+-        <attribute name="FetchInMemoryState">true</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-           Indicate whether to use marshalling or not. Set this to true if you 
+-           are running under a scoped class loader, e.g., inside an application 
+-           server.
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-       <!--  Eviction policy configurations. -->
+-       <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>   
+-    
+-    <!-- A config appropriate for a cache that's shared for
+-         entity, collection, query and timestamp caching. Not an advised
+-         configuration, since it requires cache mode REPL_SYNC, which is the 
+-         least efficient mode. Also requires a full state transfer at startup,
+-         which can be expensive. Uses mvcc locking.
+-    -->
+-    <cache-config name="mvcc-shared">
+-
+-        <!-- TransactionManager configuration not required for Hibernate!
+-             Hibernate will plug in its own transaction manager integration. 
+-        -->
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">MVCC</attribute>
+-
+-        <!--
+-            READ_COMMITTED is as strong as necessary for most 
+-            2nd Level Cache use cases.
+-        -->
+-        <attribute name="IsolationLevel">READ_COMMITTED</attribute>
+-
+-        <!-- Must use REPL since used for timestamp caching. 
+-             Must use SYNC to maintain cache coherency for entities.
+-        -->
+-        <attribute name="CacheMode">REPL_SYNC</attribute>
+-        <attribute name="SyncCommitPhase">true</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">mvcc-shared</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. Need JGroups flow control (FC)
+-             because timestamp communication will not require a synchronous response.
+-        -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Used for timestamps, so must fetch state. -->
+-        <attribute name="FetchInMemoryState">true</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-           Indicate whether to use marshalling or not. Set this to true if you 
+-           are running under a scoped class loader, e.g., inside an application 
+-           server.
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-       <!--  Eviction policy configurations. -->
+-       <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>   
+-
+-    <!-- Same as "pessimistic-shared" but here we use REPEATABLE_READ
+-         instead of READ_COMMITTED. REPEATABLE_READ is only useful if the 
+-         application evicts/clears entities from the Hibernate Session and 
+-         then expects to repeatably re-read them in the same transaction.
+-         Otherwise, the Session's internal cache provides a repeatable-read 
+-         semantic. Before choosing this config, carefully read the docs
+-         and make sure you really need REPEATABLE_READ.
+-    -->
+-    <cache-config name="pessimistic-shared-repeatable">
+-
+-        <!-- TransactionManager configuration not required for Hibernate!
+-             Hibernate will plug in its own transaction manager integration. 
+-        -->
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">PESSIMISTIC</attribute>
+-
+-        <!-- Here we  use REPEATABLE_READ. -->
+-        <attribute name="IsolationLevel">REPEATABLE_READ</attribute>
+-
+-        <!-- Must use REPL since used for timestamp caching. 
+-             Must use SYNC to maintain cache coherency for entities.
+-        -->
+-        <attribute name="CacheMode">REPL_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">pessimistic-shared-rr</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. Need JGroups flow control (FC)
+-             because timestamp communication will not require a synchronous response.
+-        -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Used for timestamps, so must fetch state. -->
+-        <attribute name="FetchInMemoryState">true</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-          Indicate whether to use marshalling or not. Set this to true if you 
+-          are running under a scoped class loader, e.g., inside an application 
+-          server.
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-       <!--  Eviction policy configurations. -->
+-       <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>
+-    
+-    <!-- Same as "mvcc-shared" but here we use REPEATABLE_READ
+-         instead of READ_COMMITTED. REPEATABLE_READ is only useful if the 
+-         application evicts/clears entities from the Hibernate Session and 
+-         then expects to repeatably re-read them in the same transaction.
+-         Otherwise, the Session's internal cache provides a repeatable-read 
+-         semantic. Before choosing this config, carefully read the docs
+-         and make sure you really need REPEATABLE_READ.
+-    -->
+-    <cache-config name="mvcc-shared-repeatable">
+-
+-        <!-- TransactionManager configuration not required for Hibernate!
+-             Hibernate will plug in its own transaction manager integration. 
+-        -->
+-
+-        <!-- Node locking scheme -->
+-        <attribute name="NodeLockingScheme">MVCC</attribute>
+-
+-        <!-- Here we  use REPEATABLE_READ. -->
+-        <attribute name="IsolationLevel">REPEATABLE_READ</attribute>
+-
+-        <!-- Must use REPL since used for timestamp caching. 
+-             Must use SYNC to maintain cache coherency for entities.
+-        -->
+-        <attribute name="CacheMode">REPL_SYNC</attribute>
+-        <attribute name="SyncCommitPhase">true</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">mvcc-shared-rr</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. Need JGroups flow control (FC)
+-             because timestamp communication will not require a synchronous response.
+-        -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Used for timestamps, so must fetch state. -->
+-        <attribute name="FetchInMemoryState">true</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!--
+-          Indicate whether to use marshalling or not. Set this to true if you 
+-          are running under a scoped class loader, e.g., inside an application 
+-          server.
+-        -->
+-        <attribute name="UseRegionBasedMarshalling">true</attribute>
+-        <!-- Must match the value of "useRegionBasedMarshalling" -->
+-        <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-       <!--  Eviction policy configurations. -->
+-       <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <!-- Evict LRU node once we have more than this number of nodes -->
+-            <attribute name="maxNodes">10000</attribute>
+-            <!-- And, evict any node that hasn't been accessed in this many seconds -->
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-            <!-- Don't evict a node that's been accessed within this many seconds. 
+-                 Set this to a value greater than your max expected transaction length. -->
+-            <attribute name="minTimeToLiveSeconds">120</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS" policyClass="org.jboss.cache.eviction.NullEvictionPolicy"/>
+-        </config>
+-     </attribute>
+-
+-    </cache-config>
+-</cache-configs>
+diff --git a/cache-jbosscache/src/main/resources/org/hibernate/cache/jbc/builder/jgroups-stacks.xml b/cache-jbosscache/src/main/resources/org/hibernate/cache/jbc/builder/jgroups-stacks.xml
+deleted file mode 100644
+index 1b871d0521..0000000000
+--- a/cache-jbosscache/src/main/resources/org/hibernate/cache/jbc/builder/jgroups-stacks.xml
++++ /dev/null
+@@ -1,327 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-
+-<!--
+-  Sample file that defines a number of stacks, used by the multiplexer
+-  Author: Bela Ban
+-  Version: $Id$
+--->
+-<protocol_stacks>
+-    <stack name="udp"
+-           description="Default: IP multicast based stack, with flow control and message bundling">
+-        <config>
+-            <UDP
+-                 mcast_addr="${jgroups.udp.mcast_addr:228.10.10.10}"
+-                 mcast_port="${jgroups.udp.mcast_port:45588}"
+-                 tos="8"
+-                 ucast_recv_buf_size="20000000"
+-                 ucast_send_buf_size="640000"
+-                 mcast_recv_buf_size="25000000"
+-                 mcast_send_buf_size="640000"
+-                 loopback="true"
+-                 discard_incompatible_packets="true"
+-                 max_bundle_size="64000"
+-                 max_bundle_timeout="30"
+-                 use_incoming_packet_handler="true"
+-                 ip_ttl="${jgroups.udp.ip_ttl:2}"
+-                 enable_bundling="${jgroup.udp.enable_bundling:true}"
+-                 
+-                 use_concurrent_stack="true"
+-
+-		         thread_pool.enabled="true"
+-		         thread_pool.min_threads="1"
+-		         thread_pool.max_threads="25"
+-		         thread_pool.keep_alive_time="5000"
+-		         thread_pool.queue_enabled="false"
+-		         thread_pool.queue_max_size="100"
+-		         thread_pool.rejection_policy="Run"
+-		
+-		         oob_thread_pool.enabled="true"
+-		         oob_thread_pool.min_threads="1"
+-		         oob_thread_pool.max_threads="8"
+-		         oob_thread_pool.keep_alive_time="5000"
+-		         oob_thread_pool.queue_enabled="false"
+-		         oob_thread_pool.queue_max_size="100"
+-		         oob_thread_pool.rejection_policy="Run"/>		         
+-            <PING timeout="${jgroups.ping.timeout:2000}"
+-                    num_initial_members="${jgroups.ping.num_initial_members:3}"/>
+-            <MERGE2 max_interval="100000"
+-                      min_interval="20000"/>
+-            <FD_SOCK/>
+-            <FD timeout="10000" max_tries="5" shun="true"/>
+-            <VERIFY_SUSPECT timeout="1500"  />
+-            <pbcast.NAKACK
+-                           use_mcast_xmit="false" gc_lag="0"
+-                           retransmit_timeout="300,600,1200,2400,4800"
+-                           discard_delivered_msgs="false"/>
+-            <UNICAST timeout="300,600,1200,2400,3600"/>
+-            <pbcast.STABLE stability_delay="1000" desired_avg_gossip="50000"
+-                           max_bytes="400000"/>
+-            <pbcast.GMS print_local_addr="true" 
+-                        join_timeout="3000"  
+-                        shun="false"
+-                        view_bundling="true"
+-                        view_ack_collection_timeout="5000"/>
+-            <FC max_credits="2000000"
+-                min_threshold="0.10"/>
+-            <FRAG2 frag_size="60000"  />
+-			<pbcast.STREAMING_STATE_TRANSFER/>
+-	        <!-- <pbcast.STATE_TRANSFER/> -->
+-	        <pbcast.FLUSH timeout="0"/>        
+-	    </config>
+-    </stack>
+-
+-
+-
+-    <stack name="udp-sync"
+-           description="IP multicast based stack, without flow control and without message bundling. This should be used
+-           instead of udp if (1) synchronous calls are used and (2) the message volume (rate and size)
+-            is not that large. Don't use this configuration if you send messages at a high sustained rate, or you might
+-            run out of memory">
+-        <config>
+-            <UDP
+-                 mcast_addr="${jgroups.udp.mcast_addr:229.10.10.10}"
+-                 mcast_port="${jgroups.udp.mcast_port:45599}"
+-                 tos="8"
+-                 ucast_recv_buf_size="20000000"
+-                 ucast_send_buf_size="640000"
+-                 mcast_recv_buf_size="25000000"
+-                 mcast_send_buf_size="640000"
+-                 loopback="true"
+-                 discard_incompatible_packets="true"
+-                 max_bundle_size="64000"
+-                 max_bundle_timeout="30"
+-                 use_incoming_packet_handler="true"
+-                 ip_ttl="${jgroups.udp.ip_ttl:2}"
+-                 enable_bundling="${jgroup.udp.enable_bundling:true}"
+-                 
+-                 use_concurrent_stack="true"
+-
+-		         thread_pool.enabled="true"
+-		         thread_pool.min_threads="1"
+-		         thread_pool.max_threads="25"
+-		         thread_pool.keep_alive_time="5000"
+-		         thread_pool.queue_enabled="false"
+-		         thread_pool.queue_max_size="100"
+-		         thread_pool.rejection_policy="Run"
+-		
+-		         oob_thread_pool.enabled="true"
+-		         oob_thread_pool.min_threads="1"
+-		         oob_thread_pool.max_threads="8"
+-		         oob_thread_pool.keep_alive_time="5000"
+-		         oob_thread_pool.queue_enabled="false"
+-		         oob_thread_pool.queue_max_size="100"
+-		         oob_thread_pool.rejection_policy="Run"/> 		         
+-            <PING timeout="${jgroups.ping.timeout:2000}"
+-                    num_initial_members="${jgroups.ping.num_initial_members:3}"/>
+-            <MERGE2 max_interval="100000"
+-                      min_interval="20000"/>
+-            <FD_SOCK/>
+-            <FD timeout="10000" max_tries="5" shun="true"/>
+-            <VERIFY_SUSPECT timeout="1500"  />
+-            <pbcast.NAKACK
+-                           use_mcast_xmit="false" gc_lag="0"
+-                           retransmit_timeout="300,600,1200,2400,4800"
+-                           discard_delivered_msgs="false"/>
+-            <UNICAST timeout="300,600,1200,2400,3600"/>
+-            <pbcast.STABLE stability_delay="1000" desired_avg_gossip="50000"
+-                           max_bytes="400000"/>
+-            <pbcast.GMS print_local_addr="true" 
+-                        join_timeout="3000" 
+-                        shun="false"
+-                        view_bundling="true"/>
+-            <FRAG2 frag_size="60000"  />
+-            <pbcast.STREAMING_STATE_TRANSFER/>
+-	        <!-- <pbcast.STATE_TRANSFER/> -->
+-	        <pbcast.FLUSH timeout="0"/>
+-        </config>
+-    </stack>
+-
+-
+-    <stack name="tcp"
+-           description="TCP based stack, with flow control and message bundling. This is usually used when IP
+-           multicasting cannot be used in a network, e.g. because it is disabled (routers discard multicast).
+-           Note that TCP.bind_addr and TCPPING.initial_hosts should be set, possibly via system properties, e.g.
+-           -Djgroups.bind_addr=192.168.5.2 and -Djgroups.tcpping.initial_hosts=192.168.5.2[7800]">
+-        <config>
+-            <TCP start_port="7800"
+-                 loopback="true"
+-                 recv_buf_size="20000000"
+-                 send_buf_size="640000"
+-                 discard_incompatible_packets="true"
+-                 max_bundle_size="64000"
+-                 max_bundle_timeout="30"
+-                 use_incoming_packet_handler="true"
+-                 enable_bundling="true"
+-                 use_send_queues="false"
+-                 sock_conn_timeout="300"
+-                 skip_suspected_members="true"
+-                 
+-                 use_concurrent_stack="true"
+-	
+-		         thread_pool.enabled="true"
+-		         thread_pool.min_threads="1"
+-		         thread_pool.max_threads="25"
+-		         thread_pool.keep_alive_time="5000"
+-		         thread_pool.queue_enabled="false"
+-		         thread_pool.queue_max_size="100"
+-		         thread_pool.rejection_policy="run"
+-		
+-		         oob_thread_pool.enabled="true"
+-		         oob_thread_pool.min_threads="1"
+-		         oob_thread_pool.max_threads="8"
+-		         oob_thread_pool.keep_alive_time="5000"
+-		         oob_thread_pool.queue_enabled="false"
+-		         oob_thread_pool.queue_max_size="100"
+-		         oob_thread_pool.rejection_policy="run"/>
+-		         
+-            <TCPPING timeout="3000"
+-                     initial_hosts="${jgroups.tcpping.initial_hosts:localhost[7800],localhost[7801]}"
+-                     port_range="1"
+-                     num_initial_members="3"/>
+-            <MERGE2 max_interval="100000"
+-                      min_interval="20000"/>
+-            <FD_SOCK/>
+-            <FD timeout="10000" max_tries="5"   shun="true"/>
+-            <VERIFY_SUSPECT timeout="1500"  />
+-            <pbcast.NAKACK
+-                           use_mcast_xmit="false" gc_lag="0"
+-                           retransmit_timeout="300,600,1200,2400,4800"
+-                           discard_delivered_msgs="false"/>
+-            <pbcast.STABLE stability_delay="1000" desired_avg_gossip="50000"
+-                           max_bytes="400000"/>
+-            <pbcast.GMS print_local_addr="true" 
+-                        join_timeout="3000" 
+-                        shun="false"
+-                        view_bundling="true"/>
+-            <FC max_credits="2000000"
+-                min_threshold="0.10"/>
+-            <FRAG2 frag_size="60000"  />
+-            <pbcast.STREAMING_STATE_TRANSFER/>
+-	        <!-- <pbcast.STATE_TRANSFER/> -->
+-	        <pbcast.FLUSH timeout="0"/>
+-        </config>
+-    </stack>
+-
+-
+-    <stack name="tcp-sync"
+-           description="TCP based stack, without flow control and without message bundling. This is usually used when IP
+-           multicasting cannot be used in a network, e.g. because it is disabled (routers discard multicast). This
+-           configuration should be used instead of tcp when (1) synchronous calls are used and (2) the message volume
+-           (rate and size) is not that large">
+-        <config>
+-            <TCP start_port="7900"
+-                 loopback="true"
+-                 recv_buf_size="20000000"
+-                 send_buf_size="640000"
+-                 discard_incompatible_packets="true"
+-                 max_bundle_size="64000"
+-                 max_bundle_timeout="30"
+-                 use_incoming_packet_handler="true"
+-                 enable_bundling="true"
+-                 use_send_queues="false"
+-                 sock_conn_timeout="300"
+-                 skip_suspected_members="true"
+-                 
+-                 thread_pool.enabled="true"
+-		         thread_pool.min_threads="1"
+-		         thread_pool.max_threads="25"
+-		         thread_pool.keep_alive_time="5000"
+-		         thread_pool.queue_enabled="false"
+-		         thread_pool.queue_max_size="100"
+-		         thread_pool.rejection_policy="run"
+-		
+-		         oob_thread_pool.enabled="true"
+-		         oob_thread_pool.min_threads="1"
+-		         oob_thread_pool.max_threads="8"
+-		         oob_thread_pool.keep_alive_time="5000"
+-		         oob_thread_pool.queue_enabled="false"
+-		         oob_thread_pool.queue_max_size="100"
+-		         oob_thread_pool.rejection_policy="run"/>
+-		         
+-            <TCPPING timeout="3000"
+-                     initial_hosts="${jgroups.tcpping.initial_hosts:localhost[7900],localhost[7901]}"
+-                     port_range="1"
+-                     num_initial_members="3"/>
+-            <MERGE2 max_interval="100000"
+-                      min_interval="20000"/>
+-            <FD_SOCK/>
+-            <FD timeout="10000" max_tries="5"   shun="true"/>
+-            <VERIFY_SUSPECT timeout="1500"  />
+-            <pbcast.NAKACK
+-                           use_mcast_xmit="false" gc_lag="0"
+-                           retransmit_timeout="300,600,1200,2400,4800"
+-                           discard_delivered_msgs="false"/>
+-            <pbcast.STABLE stability_delay="1000" desired_avg_gossip="50000"
+-                           max_bytes="400000"/>
+-            <pbcast.GMS print_local_addr="true" 
+-                        join_timeout="3000" 
+-                        shun="false"
+-                        view_bundling="true"/>
+-            <pbcast.STREAMING_STATE_TRANSFER/>
+-	        <!-- <pbcast.STATE_TRANSFER/> -->
+-	        <pbcast.FLUSH timeout="0"/>
+-        </config>
+-    </stack>
+-
+-    <stack name="tunnel"
+-           description="Used with a GossipRouter">
+-        <config>
+-            <TUNNEL router_port="12001" router_host="127.0.0.1"/>
+-            <PING timeout="2000"
+-                    num_initial_members="3"
+-                  gossip_refresh="10000"
+-                  gossip_host="127.0.0.1"
+-                  gossip_port="12001"/>
+-            <MERGE2 max_interval="20000"
+-                      min_interval="5000"/>            
+-            <FD timeout="2000" max_tries="3" shun="true"/>
+-            <VERIFY_SUSPECT timeout="1500"  />
+-            <pbcast.NAKACK
+-                           use_mcast_xmit="false" gc_lag="0"
+-                           retransmit_timeout="300,600,1200,2400,4800"
+-                           discard_delivered_msgs="false"/>
+-            <UNICAST timeout="300,600,1200,2400,3600"/>
+-            <pbcast.STABLE stability_delay="1000" desired_avg_gossip="5000"
+-                           max_bytes="400000"/>
+-            <pbcast.GMS print_local_addr="true" 
+-                        join_timeout="3000"
+-                        shun="false"
+-                        view_bundling="true"
+-                        view_ack_collection_timeout="5000"/>
+-            <FC max_credits="2000000"
+-                min_threshold="0.10"/>
+-            <FRAG2 frag_size="60000"  />
+-            <!-- <pbcast.STREAMING_STATE_TRANSFER/> -->
+-	        <pbcast.STATE_TRANSFER/>
+-	        <pbcast.FLUSH timeout="0"/>
+-        </config>
+-    </stack>
+-
+-
+-</protocol_stacks>
+-
+-
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractEntityCollectionRegionTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractEntityCollectionRegionTestCase.java
+deleted file mode 100644
+index c883c9d977..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractEntityCollectionRegionTestCase.java
++++ /dev/null
+@@ -1,147 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.TransactionalDataRegion;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.SharedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.cfg.Environment;
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-/**
+- * Base class for tests of EntityRegion and CollectionRegion implementations.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractEntityCollectionRegionTestCase extends AbstractRegionImplTestCase {
+-
+-    /**
+-     * Create a new EntityCollectionRegionTestCaseBase.
+-     * 
+-     * @param name
+-     */
+-    public AbstractEntityCollectionRegionTestCase(String name) {
+-        super(name);
+-    }
+-   
+-    /** 
+-     * Create a Region backed by an OPTIMISTIC locking JBoss Cache, and then 
+-     * ensure that it handles calls to buildAccessStrategy as expected when 
+-     * all the various {@link AccessType}s are passed as arguments.
+-     */
+-    public void testSupportedAccessTypesOptimistic() throws Exception {
+-        
+-        supportedAccessTypeTest(true);
+-    }
+-
+-    /** 
+-     * Creates a Region backed by an PESSIMISTIC locking JBoss Cache, and then 
+-     * ensures that it handles calls to buildAccessStrategy as expected when 
+-     * all the various {@link AccessType}s are passed as arguments.
+-     */
+-    public void testSupportedAccessTypesPessimistic() throws Exception {
+-        
+-        supportedAccessTypeTest(false);
+-    }
+-    
+-    private void supportedAccessTypeTest(boolean optimistic) throws Exception {
+-        
+-        Configuration cfg = CacheTestUtil.buildConfiguration("test", MultiplexedJBossCacheRegionFactory.class, true, false);
+-        String entityCfg = optimistic ? "optimistic-entity" : "pessimistic-entity";
+-        cfg.setProperty(MultiplexingCacheInstanceManager.ENTITY_CACHE_RESOURCE_PROP, entityCfg);
+-        
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        supportedAccessTypeTest(regionFactory, cfg.getProperties());
+-    }
+-    
+-    /** 
+-     * Creates a Region using the given factory, and then ensure that it
+-     * handles calls to buildAccessStrategy as expected when all the
+-     * various {@link AccessType}s are passed as arguments.
+-     */
+-    protected abstract void supportedAccessTypeTest(RegionFactory regionFactory, Properties properties);
+-    
+-    /**
+-     * Test that the Region properly implements 
+-     * {@link TransactionalDataRegion#isTransactionAware()}.
+-     * 
+-     * @throws Exception
+-     */
+-    public void testIsTransactionAware() throws Exception {
+-        
+-        Configuration cfg = CacheTestUtil.buildConfiguration("test", SharedJBossCacheRegionFactory.class, true, false);
+-        cfg.setProperty(SharedCacheInstanceManager.CACHE_RESOURCE_PROP, CacheTestUtil.LOCAL_PESSIMISTIC_CACHE);
+-        
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        TransactionalDataRegion region = (TransactionalDataRegion) createRegion(regionFactory, "test/test", cfg.getProperties(), getCacheDataDescription());
+-        
+-        assertTrue("Region is transaction-aware", region.isTransactionAware());
+-        
+-        CacheTestUtil.stopRegionFactory(regionFactory, getCacheTestSupport());
+-        
+-        cfg = CacheTestUtil.buildConfiguration("test", SharedJBossCacheRegionFactory.class, true, false);
+-        cfg.setProperty(SharedCacheInstanceManager.CACHE_RESOURCE_PROP, CacheTestUtil.LOCAL_PESSIMISTIC_CACHE);
+-        // Make it non-transactional
+-        cfg.getProperties().remove(Environment.TRANSACTION_MANAGER_STRATEGY);
+-        
+-        regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        region = (TransactionalDataRegion) createRegion(regionFactory, "test/test", cfg.getProperties(), getCacheDataDescription());
+-        
+-        assertFalse("Region is not transaction-aware", region.isTransactionAware());
+-        
+-        CacheTestUtil.stopRegionFactory(regionFactory, getCacheTestSupport());
+-    }
+-    
+-    public void testGetCacheDataDescription() throws Exception {
+-        Configuration cfg = CacheTestUtil.buildConfiguration("test", SharedJBossCacheRegionFactory.class, true, false);
+-        cfg.setProperty(SharedCacheInstanceManager.CACHE_RESOURCE_PROP, CacheTestUtil.LOCAL_PESSIMISTIC_CACHE);
+-        
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        TransactionalDataRegion region = (TransactionalDataRegion) createRegion(regionFactory, "test/test", cfg.getProperties(), getCacheDataDescription());
+-        
+-        CacheDataDescription cdd = region.getCacheDataDescription();
+-        
+-        assertNotNull(cdd);
+-        
+-        CacheDataDescription expected = getCacheDataDescription();
+-        assertEquals(expected.isMutable(), cdd.isMutable());
+-        assertEquals(expected.isVersioned(), cdd.isVersioned());
+-        assertEquals(expected.getVersionComparator(), cdd.getVersionComparator());
+-        
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractGeneralDataRegionTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractGeneralDataRegionTestCase.java
+deleted file mode 100644
+index 37df2953aa..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractGeneralDataRegionTestCase.java
++++ /dev/null
+@@ -1,259 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc;
+-
+-import java.util.Iterator;
+-
+-import org.hibernate.cache.GeneralDataRegion;
+-import org.hibernate.cache.QueryResultsRegion;
+-import org.hibernate.cache.Region;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.cache.jbc.util.NonLockingDataVersion;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.Node;
+-import org.jboss.cache.NodeSPI;
+-import org.jboss.cache.transaction.BatchModeTransactionManager;
+-
+-/**
+- * Base class for tests of QueryResultsRegion and TimestampsRegion.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractGeneralDataRegionTestCase extends AbstractRegionImplTestCase {
+-
+-    protected static final String KEY = "Key";
+-    protected static final String VALUE1 = "value1";
+-    protected static final String VALUE2 = "value2";
+-
+-    public AbstractGeneralDataRegionTestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected void putInRegion(Region region, Object key, Object value) {
+-        ((GeneralDataRegion) region).put(key, value);
+-    }
+-
+-    @Override
+-    protected void removeFromRegion(Region region, Object key) {
+-        ((GeneralDataRegion) region).evict(key);        
+-    }  
+-
+-    /**
+-     * Test method for {@link QueryResultsRegion#evict(java.lang.Object)}.
+-     * 
+-     * FIXME add testing of the "immediately without regard for transaction
+-     * isolation" bit in the CollectionRegionAccessStrategy API.
+-     */
+-    public void testEvictOptimistic() throws Exception {
+-        evictOrRemoveTest("optimistic-shared");
+-    }
+-
+-    /**
+-     * Test method for {@link QueryResultsRegion#evict(java.lang.Object)}.
+-     * 
+-     * FIXME add testing of the "immediately without regard for transaction
+-     * isolation" bit in the CollectionRegionAccessStrategy API.
+-     */
+-    public void testEvictPessimistic() throws Exception {
+-        evictOrRemoveTest("pessimistic-shared");
+-    }
+-
+-    private void evictOrRemoveTest(String configName) throws Exception {
+-    
+-        Configuration cfg = createConfiguration(configName);
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        Cache localCache = getJBossCache(regionFactory);
+-        boolean invalidation = CacheHelper.isClusteredInvalidation(localCache);
+-        
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-        
+-        GeneralDataRegion localRegion = (GeneralDataRegion) createRegion(regionFactory, getStandardRegionName(REGION_PREFIX), cfg.getProperties(), null);
+-        
+-        cfg = createConfiguration(configName);
+-        regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        GeneralDataRegion remoteRegion = (GeneralDataRegion) createRegion(regionFactory, getStandardRegionName(REGION_PREFIX), cfg.getProperties(), null);
+-        
+-        assertNull("local is clean", localRegion.get(KEY));
+-        assertNull("remote is clean", remoteRegion.get(KEY));
+-        
+-        localRegion.put(KEY, VALUE1);
+-        assertEquals(VALUE1, localRegion.get(KEY));
+-        
+-        // allow async propagation
+-        sleep(250);
+-        Object expected = invalidation ? null : VALUE1;
+-        assertEquals(expected, remoteRegion.get(KEY));
+-        
+-        localRegion.evict(KEY);
+-        
+-        assertEquals(null, localRegion.get(KEY));
+-        
+-        assertEquals(null, remoteRegion.get(KEY));
+-    }
+-
+-    protected abstract String getStandardRegionName(String regionPrefix);
+-    
+-    /**
+-     * Test method for {@link QueryResultsRegion#evictAll()}.
+-     * 
+-     * FIXME add testing of the "immediately without regard for transaction
+-     * isolation" bit in the CollectionRegionAccessStrategy API.
+-     */
+-    public void testEvictAllOptimistic() throws Exception {
+-        evictOrRemoveAllTest("optimistic-shared");
+-    }
+-
+-    /**
+-     * Test method for {@link QueryResultsRegion#evictAll()}.
+-     * 
+-     * FIXME add testing of the "immediately without regard for transaction
+-     * isolation" bit in the CollectionRegionAccessStrategy API.
+-     */
+-    public void testEvictAllPessimistic() throws Exception {
+-        evictOrRemoveAllTest("pessimistic-shared");
+-    }
+-
+-    private void evictOrRemoveAllTest(String configName) throws Exception {
+-    
+-        Configuration cfg = createConfiguration(configName);
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        Cache localCache = getJBossCache(regionFactory);
+-        boolean optimistic = "OPTIMISTIC".equals(localCache.getConfiguration().getNodeLockingSchemeString());
+-        boolean invalidation = CacheHelper.isClusteredInvalidation(localCache);
+-        
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-    
+-        GeneralDataRegion localRegion = (GeneralDataRegion) createRegion(regionFactory, getStandardRegionName(REGION_PREFIX), cfg.getProperties(), null);
+-        
+-        cfg = createConfiguration(configName);
+-        regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        Cache remoteCache = getJBossCache(regionFactory);
+-        
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-    
+-        GeneralDataRegion remoteRegion = (GeneralDataRegion) createRegion(regionFactory, getStandardRegionName(REGION_PREFIX), cfg.getProperties(), null);
+-        Fqn regionFqn = getRegionFqn(getStandardRegionName(REGION_PREFIX), REGION_PREFIX);
+-        
+-        Node regionRoot = localCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertEquals("No children in " + regionRoot, 0, getValidChildrenCount(regionRoot));
+-        assertTrue(regionRoot.isResident());
+-        
+-        if (optimistic) {
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-        }
+-    
+-        regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-        assertTrue(regionRoot.isResident());
+-        
+-        if (optimistic) {
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-        }
+-        
+-        assertNull("local is clean", localRegion.get(KEY));
+-        assertNull("remote is clean", remoteRegion.get(KEY));
+-        
+-        localRegion.put(KEY, VALUE1);
+-        assertEquals(VALUE1, localRegion.get(KEY));     
+-        
+-        // Allow async propagation
+-        sleep(250);
+-        
+-        remoteRegion.put(KEY, VALUE1);
+-        assertEquals(VALUE1, remoteRegion.get(KEY));     
+-        
+-        // Allow async propagation
+-        sleep(250);
+-        
+-        if (optimistic) {
+-            regionRoot = localCache.getRoot().getChild(regionFqn);
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-            regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-        }
+-        
+-        localRegion.evictAll();
+-        
+-        // This should re-establish the region root node
+-        assertNull(localRegion.get(KEY));
+-        
+-        regionRoot = localCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-        assertTrue(regionRoot.isValid());
+-        assertTrue(regionRoot.isResident());
+-
+-        // Re-establishing the region root on the local node doesn't 
+-        // propagate it to other nodes. Do a get on the remote node to re-establish
+-        assertEquals(null, remoteRegion.get(KEY));
+-        
+-        regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-        assertTrue(regionRoot.isValid());
+-        assertTrue(regionRoot.isResident());
+-        
+-        assertEquals("local is clean", null, localRegion.get(KEY));
+-        assertEquals("remote is clean", null, remoteRegion.get(KEY));
+-    }
+-
+-    private void checkNodeIsEmpty(Node node) {
+-        assertEquals("Known issue JBCACHE-1200. node " + node.getFqn() + " should not have keys", 0, node.getKeys().size());
+-        for (Iterator it = node.getChildren().iterator(); it.hasNext(); ) {
+-            checkNodeIsEmpty((Node) it.next());
+-        }
+-    }
+-
+-    protected Configuration createConfiguration(String configName) {
+-        Configuration cfg = CacheTestUtil.buildConfiguration("test", MultiplexedJBossCacheRegionFactory.class, false, true);
+-        cfg.setProperty(MultiplexingCacheInstanceManager.QUERY_CACHE_RESOURCE_PROP, configName);
+-        cfg.setProperty(MultiplexingCacheInstanceManager.TIMESTAMP_CACHE_RESOURCE_PROP, configName);
+-        return cfg;
+-    }
+-
+-    protected void rollback() {
+-        try {
+-            BatchModeTransactionManager.getInstance().rollback();
+-        }
+-        catch (Exception e) {
+-            log.error(e.getMessage(), e);
+-        }
+-        
+-    }
+-
+-}
+\ No newline at end of file
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractJBossCacheTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractJBossCacheTestCase.java
+deleted file mode 100644
+index 572c46368b..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractJBossCacheTestCase.java
++++ /dev/null
+@@ -1,115 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc;
+-
+-
+-
+-import java.util.Set;
+-
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.testing.junit.UnitTestCase;
+-import org.hibernate.test.util.CacheTestSupport;
+-
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Node;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Base class for all non-functional tests of JBoss Cache integration.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractJBossCacheTestCase extends UnitTestCase {
+-
+-    public static final String REGION_PREFIX = "test";
+-    
+-    private CacheTestSupport testSupport;
+-    protected final Logger log = LoggerFactory.getLogger(getClass());
+-    
+-    public AbstractJBossCacheTestCase(String name) {
+-        super(name);
+-        testSupport = new CacheTestSupport(log);
+-    }
+-
+-    @Override
+-    protected void setUp() throws Exception {
+-        super.setUp();
+-        
+-        testSupport.setUp();
+-    }
+-
+-    @Override
+-    protected void tearDown() throws Exception {
+-        super.tearDown();
+-        
+-        testSupport.tearDown();
+-    }
+-
+-    protected void registerCache(Cache cache) {
+-        testSupport.registerCache(cache);
+-    }
+-
+-    protected void unregisterCache(Cache cache) {
+-        testSupport.unregisterCache(cache);
+-    }
+-
+-    protected void registerFactory(RegionFactory factory) {
+-        testSupport.registerFactory(factory);
+-    }
+-
+-    protected void unregisterFactory(RegionFactory factory) {
+-        testSupport.unregisterFactory(factory);
+-    }
+-
+-    protected CacheTestSupport getCacheTestSupport() {
+-        return testSupport;
+-    }
+-    
+-    protected void sleep(long ms) {
+-        try {
+-            Thread.sleep(ms);
+-        }
+-        catch (InterruptedException e) {
+-            log.warn("Interrupted during sleep", e);
+-        }
+-    }
+-    
+-    protected void avoidConcurrentFlush() {
+-        testSupport.avoidConcurrentFlush();
+-    }
+-
+-    protected int getValidChildrenCount(Node node) {
+-        int result = 0;
+-        Set<Node> children = node.getChildren();
+-        for (Node child : children) {
+-           if (node.isValid() && CacheHelper.Internal.NODE.equals(child.getFqn().getLastElement()) == false) {
+-              result++;
+-           }
+-        }
+-        return result;
+-    }
+-}
+\ No newline at end of file
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractRegionImplTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractRegionImplTestCase.java
+deleted file mode 100644
+index 23432f6d39..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/AbstractRegionImplTestCase.java
++++ /dev/null
+@@ -1,160 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc;
+-
+-import java.util.Map;
+-import java.util.Properties;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.Region;
+-import org.hibernate.cache.impl.CacheDataDescriptionImpl;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.SharedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.hibernate.util.ComparableComparator;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.DefaultCacheFactory;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.Node;
+-import org.jboss.cache.config.Option;
+-import org.jgroups.JChannelFactory;
+-
+-/**
+- * Base class for tests of Region implementations.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractRegionImplTestCase extends AbstractJBossCacheTestCase {
+-
+-    /**
+-     * Create a new RegionImplTestCaseBase.
+-     * 
+-     * @param name
+-     */
+-    public AbstractRegionImplTestCase(String name) {
+-        super(name);
+-    }  
+-
+-    /**
+-     * Tests proper handling of region initialization and destruction.
+-     * 
+-     * @throws Exception
+-     */
+-    public void testActivationDeactivation() throws Exception {
+-        
+-        // Set up a cache to monitor affects of starting the region
+-        Cache remoteCache = DefaultCacheFactory.getInstance().createCache(SharedCacheInstanceManager.DEFAULT_CACHE_RESOURCE, false);
+-        
+-        // This test assumes replication; verify that's correct
+-        assertEquals("Cache is REPL_SYNC", "REPL_SYNC", remoteCache.getConfiguration().getCacheModeString());
+-        
+-        JChannelFactory channelFactory = new JChannelFactory();
+-        channelFactory.setMultiplexerConfig(SharedCacheInstanceManager.DEF_JGROUPS_RESOURCE);
+-        remoteCache.getConfiguration().getRuntimeConfig().setMuxChannelFactory(channelFactory);
+-        remoteCache.start();
+-        
+-        // Make sure we stop the remoteCache
+-        registerCache(remoteCache);
+-        
+-        Fqn regionFqn = getRegionFqn("test/test", "test");
+-        
+-        assertNull("No region node", remoteCache.getRoot().getChild( regionFqn ));
+-        
+-        Configuration cfg = CacheTestUtil.buildConfiguration("test", SharedJBossCacheRegionFactory.class, true, true);
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        Region region = createRegion(regionFactory, "test/test", cfg.getProperties(), getCacheDataDescription());
+-        
+-        Cache localCache = getJBossCache( regionFactory );
+-        
+-        // This test assumes replication; verify that's correct
+-        assertEquals("Cache is REPL_SYNC", "REPL_SYNC", localCache.getConfiguration().getCacheModeString());
+-        
+-        // Region creation should not have affected remoteCache
+-
+-        assertNull("No region node", remoteCache.getRoot().getChild( regionFqn ));
+-        Node regionRoot = localCache.getRoot().getChild( regionFqn );
+-        assertTrue("Has a node at " + regionFqn, regionRoot != null );
+-        assertTrue(regionFqn + " is resident", regionRoot.isResident() );
+-        
+-        // Confirm region destroy does not affect remote cache
+-        
+-        Option option = new Option();
+-        option.setCacheModeLocal(true);
+-        remoteCache.getInvocationContext().setOptionOverrides(option);
+-        remoteCache.put(regionFqn, "test", "test");
+-        
+-        assertEquals("Put succeeded", "test", remoteCache.get(regionFqn, "test"));
+-        assertNull("Put was local", localCache.get(regionFqn, "test"));
+-        
+-        region.destroy();
+-        
+-        assertEquals("Remote cache unchanged", "test", remoteCache.get(regionFqn, "test"));
+-        assertNull("No region node", localCache.getRoot().getChild( regionFqn ));
+-    }
+-    
+-    public void testToMap() throws Exception {
+-        Configuration cfg = CacheTestUtil.buildConfiguration("test", SharedJBossCacheRegionFactory.class, true, true);
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        Region region = createRegion(regionFactory, "test/test", cfg.getProperties(), getCacheDataDescription());
+-        
+-        Map map = region.toMap();
+-        assertNotNull(map);
+-        assertEquals(0, map.size());
+-        
+-        putInRegion(region, "key1", "value1");
+-        putInRegion(region, "key2", "value2");
+-        
+-        map = region.toMap();
+-        assertNotNull(map);
+-        assertEquals(2, map.size());
+-        assertEquals("value1", map.get("key1"));
+-        assertEquals("value2", map.get("key2"));
+-        
+-        removeFromRegion(region, "key1");
+-        
+-        map = region.toMap();
+-        assertNotNull(map);
+-        assertEquals(1, map.size());
+-        assertEquals("value2", map.get("key2"));
+-    }
+-    
+-    protected abstract Cache getJBossCache(JBossCacheRegionFactory regionFactory);
+-    
+-    protected abstract Fqn getRegionFqn(String regionName, String regionPrefix);
+-    
+-    protected abstract Region createRegion(JBossCacheRegionFactory regionFactory, String regionName, Properties properties, CacheDataDescription cdd);
+-    
+-    protected abstract void putInRegion(Region region, Object key, Object value);
+-    protected abstract void removeFromRegion(Region region, Object key);
+-    
+-    protected CacheDataDescription getCacheDataDescription() {
+-       return new CacheDataDescriptionImpl(true, true, ComparableComparator.INSTANCE);
+-    }   
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/JBossCacheComplianceTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/JBossCacheComplianceTest.java
+deleted file mode 100755
+index 314d66b7fa..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/JBossCacheComplianceTest.java
++++ /dev/null
+@@ -1,177 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc;
+-
+-import junit.framework.TestCase;
+-
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.cfg.Settings;
+-import org.hibernate.test.util.CacheTestSupport;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.config.Option;
+-import org.jboss.cache.optimistic.DataVersion;
+-import org.jboss.cache.transaction.BatchModeTransactionManager;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Tests that JBC itself functions as expected in certain areas where there
+- * may have been problems in the past.  Basically tests JBC itself, not the 
+- * Hibernate/JBC integration.
+- * 
+- * TODO if the equivalent tests are not in the JBC testsuite, add them.
+- * 
+- * @author Brian Stansberry
+- */
+-public class JBossCacheComplianceTest extends TestCase {
+-
+-    private CacheTestSupport testSupport;
+-    
+-    protected final Logger log = LoggerFactory.getLogger(getClass());
+-    
+-    public JBossCacheComplianceTest(String x) {
+-        super(x);
+-        testSupport = new CacheTestSupport(log);
+-    }
+-
+-    protected String getConfigResourceKey() {
+-        return SharedCacheInstanceManager.CACHE_RESOURCE_PROP;
+-    }
+-
+-    protected String getConfigResourceLocation() {
+-        return "org/hibernate/test/cache/jbc/functional/optimistic-treecache.xml";
+-    }
+-
+-    protected Class<? extends RegionFactory> getCacheRegionFactory() {
+-        return JBossCacheRegionFactory.class;
+-    }
+-
+-    @Override
+-    protected void setUp() throws Exception {
+-        super.setUp();
+-        
+-        testSupport.setUp();
+-    }
+-
+-    @Override
+-    protected void tearDown() throws Exception {
+-        
+-        testSupport.tearDown();
+-        
+-        super.tearDown();
+-    } 
+-
+-    @SuppressWarnings("unchecked")
+-    public void testCacheLevelStaleWritesFail() throws Throwable {
+-        
+-        Configuration cfg = CacheTestUtil.buildConfiguration("", MultiplexedJBossCacheRegionFactory.class, true, false);
+-        cfg.setProperty(getConfigResourceKey(), getConfigResourceLocation());
+-        
+-        Settings settings = cfg.buildSettings();
+-        
+-        Fqn<String> fqn = Fqn.fromString("/whatever");
+-        JBossCacheRegionFactory regionFactory = (JBossCacheRegionFactory) settings.getRegionFactory();
+-        regionFactory.start(settings, cfg.getProperties());
+-        
+-        // Make sure we clean up when done
+-        testSupport.registerFactory(regionFactory);
+-        
+-        Cache<Object, Object> treeCache = regionFactory.getCacheInstanceManager().getEntityCacheInstance();
+-
+-        // Make sure this is an OPTIMISTIC cache
+-        assertEquals("Cache is OPTIMISTIC", "OPTIMISTIC", treeCache.getConfiguration().getNodeLockingSchemeString());
+-        
+-        Long long1 = new Long(1);
+-        Long long2 = new Long(2);
+-
+-        try {
+-            System.out.println("****************************************************************");
+-            BatchModeTransactionManager.getInstance().begin();
+-            CacheHelper.setInvocationOption(treeCache, ManualDataVersion.gen(1));
+-            treeCache.put(fqn, "ITEM", long1);
+-            BatchModeTransactionManager.getInstance().commit();
+-
+-            System.out.println("****************************************************************");
+-            BatchModeTransactionManager.getInstance().begin();
+-            CacheHelper.setInvocationOption(treeCache, ManualDataVersion.gen(2));
+-            treeCache.put(fqn, "ITEM", long2);
+-            BatchModeTransactionManager.getInstance().commit();
+-
+-            try {
+-                System.out.println("****************************************************************");
+-                BatchModeTransactionManager.getInstance().begin();
+-                CacheHelper.setInvocationOption(treeCache, ManualDataVersion.gen(1));
+-                treeCache.put(fqn, "ITEM", long1);
+-                BatchModeTransactionManager.getInstance().commit();
+-                fail("stale write allowed");
+-            } catch (Throwable ignore) {
+-                // expected behavior
+-                try {
+-                    BatchModeTransactionManager.getInstance().rollback();
+-                }
+-                catch (IllegalStateException ignored) {
+-                    // tx is already cleared
+-                }
+-            }
+-
+-            Long current = (Long) treeCache.get(fqn, "ITEM");
+-            assertEquals("unexpected current value", 2, current.longValue());
+-        } finally {
+-            try {
+-                treeCache.remove(fqn, "ITEM");
+-            } catch (Throwable ignore) {
+-            }
+-        }
+-    }
+-
+-    private static class ManualDataVersion implements DataVersion {
+-
+-        /** The serialVersionUID */
+-        private static final long serialVersionUID = 1L;
+-
+-        private final int version;
+-
+-        public ManualDataVersion(int version) {
+-            this.version = version;
+-        }
+-
+-        public boolean newerThan(DataVersion dataVersion) {
+-            return this.version > ((ManualDataVersion) dataVersion).version;
+-        }
+-
+-        public static Option gen(int version) {
+-            ManualDataVersion mdv = new ManualDataVersion(version);
+-            Option option = new Option();
+-            option.setDataVersion(mdv);
+-            return option;
+-        }
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/JBossCacheRegionFactoryTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/JBossCacheRegionFactoryTestCase.java
+deleted file mode 100644
+index 406a4c7b73..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/JBossCacheRegionFactoryTestCase.java
++++ /dev/null
+@@ -1,93 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.cfg.Settings;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.CacheStatus;
+-
+-/**
+- * A JBossCacheRegionFactoryTestCase.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class JBossCacheRegionFactoryTestCase extends AbstractJBossCacheTestCase {
+-
+-    /**
+-     * Create a new JBossCacheRegionFactoryTestCase.
+-     * 
+-     * @param name
+-     */
+-    public JBossCacheRegionFactoryTestCase(String name) {
+-        super(name);
+-    }
+-
+-    public void testDefaultConfig() throws Exception {
+-
+-        Configuration cfg = CacheTestUtil.buildConfiguration("", JBossCacheRegionFactory.class, true, true);
+-        
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        CacheInstanceManager mgr = regionFactory.getCacheInstanceManager();
+-        assertTrue("Correct default CacheInstanceManager type", mgr instanceof SharedCacheInstanceManager);
+-        
+-        Cache cache = mgr.getEntityCacheInstance();
+-        assertTrue("entity cache exists", cache != null);
+-        assertEquals("Used correct config", "TestSharedCache", cache.getConfiguration().getClusterName());
+-        assertEquals("Cache started", CacheStatus.STARTED, cache.getCacheStatus());        
+-        
+-        CacheTestUtil.stopRegionFactory(regionFactory, getCacheTestSupport());
+-        
+-        assertEquals("Cache destroyed", CacheStatus.DESTROYED, cache.getCacheStatus());
+-    }
+-    
+-    public void testInjectedCacheInstanceManager() {
+-
+-        Configuration cfg = CacheTestUtil.buildConfiguration("", JBossCacheRegionFactory.class, true, true);
+-        
+-        CacheInstanceManager cim = new MultiplexingCacheInstanceManager();
+-        JBossCacheRegionFactory regionFactory = new JBossCacheRegionFactory(cim);
+-        
+-        Settings settings = cfg.buildSettings();
+-        Properties properties = cfg.getProperties();
+-        
+-        regionFactory.start(settings, properties);        
+-        // Ensure we clean up
+-        registerFactory(regionFactory);
+-        
+-        assertEquals("Used injected CacheInstanceManager", cim, regionFactory.getCacheInstanceManager());
+-        
+-        CacheTestUtil.stopRegionFactory(regionFactory, getCacheTestSupport());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/JbcConfigsXmlValidityTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/JbcConfigsXmlValidityTestCase.java
+deleted file mode 100644
+index 2f9205d137..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/JbcConfigsXmlValidityTestCase.java
++++ /dev/null
+@@ -1,172 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc;
+-
+-import java.util.HashSet;
+-import java.util.Set;
+-import java.util.concurrent.atomic.AtomicReference;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.test.util.CacheManagerTestSetup;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.CacheManager;
+-
+-/**
+- * Tests the validity of the JBC configs in jbc2-configs.xml.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class JbcConfigsXmlValidityTestCase extends AbstractJBossCacheTestCase
+-{
+-   private static final AtomicReference<CacheManager> cacheManagerRef = new AtomicReference<CacheManager>();
+-   
+-   private static final Set<String> stdConfigs = new HashSet<String>();
+-   
+-   static
+-   {
+-      stdConfigs.add("optimistic-entity");
+-      stdConfigs.add("pessimistic-entity");
+-      stdConfigs.add("pessimistic-entity-repeatable");
+-      stdConfigs.add("optimistic-shared");
+-      stdConfigs.add("pessimistic-shared");
+-      stdConfigs.add("pessimistic-shared-repeatable");
+-      stdConfigs.add("local-query");
+-      stdConfigs.add("replicated-query");
+-      stdConfigs.add("timestamps-cache");
+-   }
+-   
+-   private CacheManager mgr;
+-   private String cacheName;
+-   private Cache cache;
+-   
+-   /**
+-    * Create a new JbcConfigsXmlValidityTestCase.
+-    * 
+-    * @param name
+-    */
+-   public JbcConfigsXmlValidityTestCase(String name)
+-   {
+-      super(name);
+-   }
+-   
+-   public static Test suite() throws Exception {
+-       TestSuite suite = new TestSuite(JbcConfigsXmlValidityTestCase.class);
+-       return new CacheManagerTestSetup(suite, cacheManagerRef);
+-   }
+-   
+-   
+-   
+-   @Override
+-   protected void setUp() throws Exception
+-   {
+-      super.setUp();
+-      
+-      this.mgr = cacheManagerRef.get();
+-   }
+-
+-   @Override
+-   protected void tearDown() throws Exception
+-   {
+-      super.tearDown();
+-      
+-      if (cache != null)
+-      {
+-         try
+-         {
+-            mgr.releaseCache(this.cacheName);
+-         }
+-         catch (Exception ignored) {}
+-         
+-         cache = null;
+-      }
+-      
+-      mgr = null;
+-   }
+-
+-   public void testOptimisticEntity() throws Exception
+-   {
+-      stdConfigTest("optimistic-entity");
+-   }
+-   
+-   public void testPessimisticEntity() throws Exception
+-   {
+-      stdConfigTest("pessimistic-entity");
+-   }
+-   
+-   public void testPessimisticEntityRepeatable() throws Exception
+-   {
+-      stdConfigTest("pessimistic-entity-repeatable");
+-   }
+-   
+-   public void testOptimisticShared() throws Exception
+-   {
+-      stdConfigTest("optimistic-shared");
+-   }
+-   
+-   public void testPessimisticShared() throws Exception
+-   {
+-      stdConfigTest("pessimistic-shared");
+-   }
+-   
+-   public void testPessimisticSharedRepeatable() throws Exception
+-   {
+-      stdConfigTest("pessimistic-shared-repeatable");
+-   }
+-   
+-   public void testLocalQuery() throws Exception
+-   {
+-      stdConfigTest("local-query");
+-   }
+-   
+-   public void testReplicatedQuery() throws Exception
+-   {
+-      stdConfigTest("replicated-query");
+-   }
+-   
+-   public void testTimestampsCache() throws Exception
+-   {
+-      stdConfigTest("timestamps-cache");
+-   }
+-   
+-   public void testAdditionalConfigs() throws Exception
+-   {
+-      Set<String> names = new HashSet<String>(this.mgr.getConfigurationNames());
+-      names.removeAll(stdConfigs);
+-      for (String name : names)
+-      {
+-         configTest(name);
+-      }
+-   }
+-   
+-   private void stdConfigTest(String configName) throws Exception
+-   {
+-      assertTrue(this.mgr.getConfigurationNames().contains(configName));
+-      configTest(configName);
+-   }
+-   
+-   private void configTest(String configName) throws Exception
+-   {      
+-      this.cacheName = configName;
+-      this.cache = mgr.getCache(configName, true);
+-      this.cache.start();
+-      this.mgr.releaseCache(this.cacheName);
+-      this.cache = null;      
+-   }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/access/PutFromLoadValidatorUnitTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/access/PutFromLoadValidatorUnitTestCase.java
+deleted file mode 100644
+index 1261c4da3a..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/access/PutFromLoadValidatorUnitTestCase.java
++++ /dev/null
+@@ -1,586 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2009, Red Hat, Inc or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.access;
+-
+-import java.util.concurrent.Callable;
+-import java.util.concurrent.CountDownLatch;
+-import java.util.concurrent.ExecutorService;
+-import java.util.concurrent.Executors;
+-import java.util.concurrent.Future;
+-import java.util.concurrent.TimeUnit;
+-import java.util.concurrent.TimeoutException;
+-import java.util.concurrent.atomic.AtomicInteger;
+-import java.util.concurrent.atomic.AtomicReference;
+-
+-import javax.transaction.Transaction;
+-import javax.transaction.TransactionManager;
+-
+-import junit.framework.TestCase;
+-
+-import org.hibernate.cache.jbc.access.PutFromLoadValidator;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeJtaTransactionManagerImpl;
+-
+-/**
+- * Tests of {@link PutFromLoadValidator}.
+- * 
+- * @author Brian Stansberry
+- * 
+- * @version $Revision: $
+- */
+-public class PutFromLoadValidatorUnitTestCase extends TestCase {
+-	private Object KEY1 = "KEY1";
+-
+-	private TransactionManager tm;
+-
+-	public PutFromLoadValidatorUnitTestCase(String name) {
+-		super(name);
+-	}
+-
+-	@Override
+-	protected void setUp() throws Exception {
+-		super.setUp();
+-		tm = DualNodeJtaTransactionManagerImpl.getInstance("test");
+-	}
+-
+-	@Override
+-	protected void tearDown() throws Exception {
+-		try {
+-			super.tearDown();
+-		} finally {
+-			tm = null;
+-			try {
+-				DualNodeJtaTransactionManagerImpl.cleanupTransactions();
+-			} finally {
+-				DualNodeJtaTransactionManagerImpl.cleanupTransactionManagers();
+-			}
+-		}
+-	}
+-
+-	public void testNakedPut() throws Exception {
+-		nakedPutTest(false);
+-	}
+-
+-	public void testNakedPutTransactional() throws Exception {
+-		nakedPutTest(true);
+-	}
+-
+-	private void nakedPutTest(boolean transactional) throws Exception {
+-		PutFromLoadValidator testee = new PutFromLoadValidator(
+-				transactional ? tm : null);
+-		if (transactional) {
+-			tm.begin();
+-		}
+-		
+-		boolean lockable = testee.acquirePutFromLoadLock(KEY1);
+-		try {
+-			assertTrue(lockable);
+-		}
+-		finally {
+-			if (lockable) {
+-				testee.releasePutFromLoadLock(KEY1);
+-			}
+-		}
+-	}
+-
+-	public void testRegisteredPut() throws Exception {
+-		registeredPutTest(false);
+-	}
+-
+-	public void testRegisteredPutTransactional() throws Exception {
+-		registeredPutTest(true);
+-	}
+-
+-	private void registeredPutTest(boolean transactional) throws Exception {
+-		PutFromLoadValidator testee = new PutFromLoadValidator(
+-				transactional ? tm : null);
+-		if (transactional) {
+-			tm.begin();
+-		}
+-		testee.registerPendingPut(KEY1);
+-		
+-		boolean lockable = testee.acquirePutFromLoadLock(KEY1);
+-		try {
+-			assertTrue(lockable);
+-		}
+-		finally {
+-			if (lockable) {
+-				testee.releasePutFromLoadLock(KEY1);
+-			}
+-		}
+-	}
+-
+-	public void testNakedPutAfterKeyRemoval() throws Exception {
+-		nakedPutAfterRemovalTest(false, false);
+-	}
+-
+-	public void testNakedPutAfterKeyRemovalTransactional() throws Exception {
+-		nakedPutAfterRemovalTest(true, false);
+-	}
+-
+-	public void testNakedPutAfterRegionRemoval() throws Exception {
+-		nakedPutAfterRemovalTest(false, true);
+-	}
+-
+-	public void testNakedPutAfterRegionRemovalTransactional() throws Exception {
+-		nakedPutAfterRemovalTest(true, true);
+-	}
+-
+-	private void nakedPutAfterRemovalTest(boolean transactional,
+-			boolean removeRegion) throws Exception {
+-		PutFromLoadValidator testee = new PutFromLoadValidator(
+-				transactional ? tm : null);
+-		if (removeRegion) {
+-			testee.invalidateRegion();
+-		} else {
+-			testee.invalidateKey(KEY1);
+-		}
+-		if (transactional) {
+-			tm.begin();
+-		}
+-		
+-		boolean lockable = testee.acquirePutFromLoadLock(KEY1);
+-		try {
+-			assertFalse(lockable);
+-		}
+-		finally {
+-			if (lockable) {
+-				testee.releasePutFromLoadLock(KEY1);
+-			}
+-		}
+-
+-	}
+-
+-	public void testRegisteredPutAfterKeyRemoval() throws Exception {
+-		registeredPutAfterRemovalTest(false, false);
+-	}
+-
+-	public void testRegisteredPutAfterKeyRemovalTransactional()
+-			throws Exception {
+-		registeredPutAfterRemovalTest(true, false);
+-	}
+-
+-	public void testRegisteredPutAfterRegionRemoval() throws Exception {
+-		registeredPutAfterRemovalTest(false, true);
+-	}
+-
+-	public void testRegisteredPutAfterRegionRemovalTransactional()
+-			throws Exception {
+-		registeredPutAfterRemovalTest(true, true);
+-	}
+-
+-	private void registeredPutAfterRemovalTest(boolean transactional,
+-			boolean removeRegion) throws Exception {
+-		PutFromLoadValidator testee = new PutFromLoadValidator(
+-				transactional ? tm : null);
+-		if (removeRegion) {
+-			testee.invalidateRegion();
+-		} else {
+-			testee.invalidateKey(KEY1);
+-		}
+-		if (transactional) {
+-			tm.begin();
+-		}
+-		testee.registerPendingPut(KEY1);
+-		
+-		boolean lockable = testee.acquirePutFromLoadLock(KEY1);
+-		try {
+-			assertTrue(lockable);
+-		}
+-		finally {
+-			if (lockable) {
+-				testee.releasePutFromLoadLock(KEY1);
+-			}
+-		}
+-	}
+-
+-	public void testRegisteredPutWithInterveningKeyRemoval() throws Exception {
+-		registeredPutWithInterveningRemovalTest(false, false);
+-	}
+-
+-	public void testRegisteredPutWithInterveningKeyRemovalTransactional()
+-			throws Exception {
+-		registeredPutWithInterveningRemovalTest(true, false);
+-	}
+-
+-	public void testRegisteredPutWithInterveningRegionRemoval()
+-			throws Exception {
+-		registeredPutWithInterveningRemovalTest(false, true);
+-	}
+-
+-	public void testRegisteredPutWithInterveningRegionRemovalTransactional()
+-			throws Exception {
+-		registeredPutWithInterveningRemovalTest(true, true);
+-	}
+-
+-	private void registeredPutWithInterveningRemovalTest(boolean transactional,
+-			boolean removeRegion) throws Exception {
+-		PutFromLoadValidator testee = new PutFromLoadValidator(
+-				transactional ? tm : null);
+-		if (transactional) {
+-			tm.begin();
+-		}
+-		testee.registerPendingPut(KEY1);
+-		if (removeRegion) {
+-			testee.invalidateRegion();
+-		} else {
+-			testee.invalidateKey(KEY1);
+-		}
+-		
+-		boolean lockable = testee.acquirePutFromLoadLock(KEY1);
+-		try {
+-			assertFalse(lockable);
+-		}
+-		finally {
+-			if (lockable) {
+-				testee.releasePutFromLoadLock(KEY1);
+-			}
+-		}
+-	}
+-
+-	public void testDelayedNakedPutAfterKeyRemoval() throws Exception {
+-		delayedNakedPutAfterRemovalTest(false, false);
+-	}
+-
+-	public void testDelayedNakedPutAfterKeyRemovalTransactional()
+-			throws Exception {
+-		delayedNakedPutAfterRemovalTest(true, false);
+-	}
+-
+-	public void testDelayedNakedPutAfterRegionRemoval() throws Exception {
+-		delayedNakedPutAfterRemovalTest(false, true);
+-	}
+-
+-	public void testDelayedNakedPutAfterRegionRemovalTransactional()
+-			throws Exception {
+-		delayedNakedPutAfterRemovalTest(true, true);
+-	}
+-
+-	private void delayedNakedPutAfterRemovalTest(boolean transactional,
+-			boolean removeRegion) throws Exception {
+-		PutFromLoadValidator testee = new TestValidator(transactional ? tm
+-				: null, 100, 1000, 500, 10000);
+-		if (removeRegion) {
+-			testee.invalidateRegion();
+-		} else {
+-			testee.invalidateKey(KEY1);
+-		}
+-		if (transactional) {
+-			tm.begin();
+-		}
+-		Thread.sleep(110);
+-		
+-		boolean lockable = testee.acquirePutFromLoadLock(KEY1);
+-		try {
+-			assertTrue(lockable);
+-		}
+-		finally {
+-			if (lockable) {
+-				testee.releasePutFromLoadLock(KEY1);
+-			}
+-		}
+-
+-	}
+-	
+-	public void testMultipleRegistrations() throws Exception {
+-		multipleRegistrationtest(false);
+-	}
+-	
+-	public void testMultipleRegistrationsTransactional() throws Exception {
+-		multipleRegistrationtest(true);
+-	}
+-
+-	private void multipleRegistrationtest(final boolean transactional) throws Exception {
+-		final PutFromLoadValidator testee = new PutFromLoadValidator(transactional ? tm : null);
+-		
+-		final CountDownLatch registeredLatch = new CountDownLatch(3);
+-		final CountDownLatch finishedLatch = new CountDownLatch(3);
+-		final AtomicInteger success = new AtomicInteger();
+-		
+-		Runnable r = new Runnable() {
+-			public void run() {
+-				try {
+-					if (transactional) {
+-						tm.begin();
+-					}
+-					testee.registerPendingPut(KEY1);
+-					registeredLatch.countDown();
+-					registeredLatch.await(5, TimeUnit.SECONDS);
+-					if (testee.acquirePutFromLoadLock(KEY1)) {
+-						try {
+-							success.incrementAndGet();
+-						}
+-						finally {
+-							testee.releasePutFromLoadLock(KEY1);
+-						}
+-					}
+-					finishedLatch.countDown();
+-				}
+-				catch (Exception e)  {
+-					e.printStackTrace();
+-				}
+-			}
+-		};
+-		
+-		ExecutorService executor = Executors.newFixedThreadPool(3);
+-		
+-		// Start with a removal so the "isPutValid" calls will fail if
+-		// any of the concurrent activity isn't handled properly
+-		
+-		testee.invalidateRegion();
+-		
+-		// Do the registration + isPutValid calls
+-		executor.execute(r);
+-		executor.execute(r);
+-		executor.execute(r);
+-		
+-		finishedLatch.await(5, TimeUnit.SECONDS);
+-		
+-		assertEquals("All threads succeeded", 3, success.get());
+-	}
+-	
+-	/**
+-	 * White box test for ensuring key removals get cleaned up.
+-	 * 
+-	 * @throws Exception
+-	 */
+-	public void testRemovalCleanup() throws Exception {
+-		TestValidator testee = new TestValidator(null, 200, 1000, 500, 10000);
+-		testee.invalidateKey("KEY1");
+-		testee.invalidateKey("KEY2");
+-		Thread.sleep(210);
+-		assertEquals(2, testee.getRemovalQueueLength());
+-		testee.invalidateKey("KEY1");
+-		assertEquals(2, testee.getRemovalQueueLength());
+-		testee.invalidateKey("KEY2");
+-		assertEquals(2, testee.getRemovalQueueLength());
+-	}
+-	
+-	/** 
+-	 * Very much a white box test of the logic for ensuring pending
+-	 * put registrations get cleaned up.
+-	 *  
+-	 * @throws Exception
+-	 */
+-	public void testPendingPutCleanup() throws Exception {
+-		TestValidator testee = new TestValidator(tm, 5000, 600, 300, 900);
+-		
+-		// Start with a regionRemoval so we can confirm at the end that all
+-		// registrations have been cleaned out
+-		testee.invalidateRegion();
+-		
+-		testee.registerPendingPut("1");
+-		testee.registerPendingPut("2");
+-		testee.registerPendingPut("3");
+-		testee.registerPendingPut("4");
+-		testee.registerPendingPut("5");
+-		testee.registerPendingPut("6");
+-		testee.acquirePutFromLoadLock("6");
+-		testee.releasePutFromLoadLock("6");
+-		testee.acquirePutFromLoadLock("2");
+-		testee.releasePutFromLoadLock("2");
+-        // ppq = [1,2(c),3,4,5,6(c)]
+-		assertEquals(6, testee.getPendingPutQueueLength());
+-		assertEquals(0, testee.getOveragePendingPutQueueLength());
+-		
+-		// Sleep past "pendingPutRecentPeriod"
+-		Thread.sleep(310);
+-		testee.registerPendingPut("7");
+-        // White box -- should have cleaned out 2 (completed) but 
+-		// not gotten to 6 (also removed)
+-		// ppq = [1,3,4,5,6(c),7]
+-		assertEquals(0, testee.getOveragePendingPutQueueLength());
+-		assertEquals(6, testee.getPendingPutQueueLength());
+-		
+-		// Sleep past "pendingPutOveragePeriod"
+-		Thread.sleep(310);
+-		testee.registerPendingPut("8");
+-		// White box -- should have cleaned out 6 (completed) and 
+-		// moved 1, 3, 4  and 5 to overage queue
+-		// oppq = [1,3,4,5] ppq = [7,8]
+-        assertEquals(4, testee.getOveragePendingPutQueueLength());
+-		assertEquals(2, testee.getPendingPutQueueLength());
+-		
+-		// Sleep past "maxPendingPutDelay"
+-		Thread.sleep(310);
+-		testee.acquirePutFromLoadLock("3");
+-		testee.releasePutFromLoadLock("3");
+-		// White box -- should have cleaned out 1 (overage) and 
+-		// moved 7 to overage queue
+-		// oppq = [3(c),4,5,7] ppq=[8]
+-        assertEquals(4, testee.getOveragePendingPutQueueLength());
+-		assertEquals(1, testee.getPendingPutQueueLength());
+-		
+-		// Sleep past "maxPendingPutDelay"
+-		Thread.sleep(310);
+-		tm.begin();
+-		testee.registerPendingPut("7");
+-		Transaction tx = tm.suspend();
+-		
+-		// White box -- should have cleaned out 3 (completed) 
+-		// and 4 (overage) and moved 8 to overage queue
+-		// We now have 5,7,8 in overage and 7tx in pending
+-		// oppq = [5,7,8] ppq=[7tx]
+-        assertEquals(3, testee.getOveragePendingPutQueueLength());
+-		assertEquals(1, testee.getPendingPutQueueLength());
+-		
+-		// Validate that only expected items can do puts, thus indirectly
+-		// proving the others have been cleaned out of pendingPuts map
+-		boolean locked = testee.acquirePutFromLoadLock("1");
+-		if (locked) {
+-			testee.releasePutFromLoadLock("1");
+-		}
+-		assertFalse(locked);
+-		// 5 was overage, so should have been cleaned
+-		assertEquals(2, testee.getOveragePendingPutQueueLength());
+-		locked = testee.acquirePutFromLoadLock("2");
+-		if (locked) {
+-			testee.releasePutFromLoadLock("1");
+-		}
+-		assertFalse(locked);
+-		// 7 was overage, so should have been cleaned
+-		assertEquals(1, testee.getOveragePendingPutQueueLength());
+-		locked = testee.acquirePutFromLoadLock("3");
+-		if (locked) {
+-			testee.releasePutFromLoadLock("1");
+-		}
+-		assertFalse(locked);
+-		locked = testee.acquirePutFromLoadLock("4");
+-		if (locked) {
+-			testee.releasePutFromLoadLock("1");
+-		}
+-		assertFalse(locked);
+-		locked = testee.acquirePutFromLoadLock("5");
+-		if (locked) {
+-			testee.releasePutFromLoadLock("1");
+-		}
+-		assertFalse(locked);
+-		locked = testee.acquirePutFromLoadLock("1");
+-		if (locked) {
+-			testee.releasePutFromLoadLock("1");
+-		}
+-		assertFalse(testee.acquirePutFromLoadLock("6"));
+-		locked = testee.acquirePutFromLoadLock("7");
+-		if (locked) {
+-			testee.releasePutFromLoadLock("1");
+-		}
+-		assertFalse(locked);
+-		assertTrue(testee.acquirePutFromLoadLock("8"));
+-		testee.releasePutFromLoadLock("8");
+-		tm.resume(tx);
+-		assertTrue(testee.acquirePutFromLoadLock("7"));
+-		testee.releasePutFromLoadLock("7");
+-	}
+-	
+-	public void testInvalidateKeyBlocksForInProgressPut() throws Exception {
+-		invalidationBlocksForInProgressPutTest(true);
+-	}
+-	
+-	public void testInvalidateRegionBlocksForInProgressPut() throws Exception {
+-		invalidationBlocksForInProgressPutTest(false);
+-	}
+-	
+-	private void invalidationBlocksForInProgressPutTest(final boolean keyOnly) throws Exception {
+-		final PutFromLoadValidator testee = new PutFromLoadValidator(null);
+-		final CountDownLatch removeLatch = new CountDownLatch(1);
+-		final CountDownLatch pferLatch = new CountDownLatch(1);
+-		final AtomicReference<Object> cache = new AtomicReference<Object>("INITIAL");
+-		
+-		Callable<Boolean> pferCallable = new Callable<Boolean>() {
+-		    public Boolean call() throws Exception {
+-		        testee.registerPendingPut(KEY1);
+-		        if (testee.acquirePutFromLoadLock(KEY1)) {
+-		        	try {
+-		        		removeLatch.countDown();
+-		        		pferLatch.await();
+-				        cache.set("PFER");
+-				        return Boolean.TRUE;
+-		        	}
+-		        	finally {
+-		        		testee.releasePutFromLoadLock(KEY1);
+-		        	}
+-		        }
+-		        return Boolean.FALSE;
+-		    }
+-	    };
+-		
+-		Callable<Void> invalidateCallable = new Callable<Void>() {
+-		    public Void call() throws Exception {
+-		        removeLatch.await();
+-		        if (keyOnly) {
+-		        	testee.invalidateKey(KEY1);
+-		        }
+-		        else {
+-		        	testee.invalidateRegion();
+-		        }		        
+-		        cache.set(null);
+-		        return null;
+-		    }
+-	    };
+-	    
+-	    ExecutorService executorService = Executors.newCachedThreadPool();
+-	    Future<Boolean> pferFuture = executorService.submit(pferCallable);
+-	    Future<Void> invalidateFuture = executorService.submit(invalidateCallable);
+-	    
+-	    try {
+-	    	invalidateFuture.get(1, TimeUnit.SECONDS);
+-	    	fail("invalidateFuture did not block");
+-	    }
+-	    catch (TimeoutException good) {}
+-	    
+-	    pferLatch.countDown();
+-	    
+-	    assertTrue(pferFuture.get(5, TimeUnit.SECONDS));
+-	    invalidateFuture.get(5, TimeUnit.SECONDS);
+-	    
+-	    assertNull(cache.get());
+-	    
+-	}
+-
+-	private static class TestValidator extends PutFromLoadValidator {
+-
+-		protected TestValidator(TransactionManager transactionManager,
+-				long nakedPutInvalidationPeriod, long pendingPutOveragePeriod,
+-				long pendingPutRecentPeriod, long maxPendingPutDelay) {
+-			super(transactionManager, nakedPutInvalidationPeriod,
+-					pendingPutOveragePeriod, pendingPutRecentPeriod,
+-					maxPendingPutDelay);
+-		}
+-
+-		@Override
+-		public int getOveragePendingPutQueueLength() {
+-			return super.getOveragePendingPutQueueLength();
+-		}
+-
+-		@Override
+-		public int getPendingPutQueueLength() {
+-			return super.getPendingPutQueueLength();
+-		}
+-
+-		@Override
+-		public int getRemovalQueueLength() {
+-			return super.getRemovalQueueLength();
+-		}
+-
+-	}
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/builder/CacheInstanceManagerTestBase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/builder/CacheInstanceManagerTestBase.java
+deleted file mode 100644
+index 9108676afe..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/builder/CacheInstanceManagerTestBase.java
++++ /dev/null
+@@ -1,76 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.builder;
+-
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.cache.jbc.AbstractJBossCacheTestCase;
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-/**
+- * A CacheInstanceManagerTestBase.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class CacheInstanceManagerTestBase extends AbstractJBossCacheTestCase {
+-
+-    /**
+-     * Create a new CacheInstanceManagerTestBase.
+-     * 
+-     * @param name The test name
+-     */
+-    public CacheInstanceManagerTestBase(String name) {
+-        super(name);
+-    }
+-
+-    protected abstract Class getRegionFactoryClass();
+-    
+-    public void testUse2ndLevelCache() throws Exception {
+-        Configuration cfg = CacheTestUtil.buildConfiguration("", getRegionFactoryClass(), false, true);
+-        
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        CacheInstanceManager cim = regionFactory.getCacheInstanceManager();
+-        
+-        assertNull(cim.getCollectionCacheInstance());
+-        assertNull(cim.getEntityCacheInstance());
+-        assertNotNull(cim.getQueryCacheInstance());
+-        assertNotNull(cim.getTimestampsCacheInstance());
+-    }
+-    
+-    public void testUseQueryCache() throws Exception {
+-        Configuration cfg = CacheTestUtil.buildConfiguration("", getRegionFactoryClass(), true, false);
+-        
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        CacheInstanceManager cim = regionFactory.getCacheInstanceManager();
+-        
+-        assertNotNull(cim.getCollectionCacheInstance());
+-        assertNotNull(cim.getEntityCacheInstance());
+-        assertNull(cim.getQueryCacheInstance());
+-        assertNull(cim.getTimestampsCacheInstance());
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/builder/MultiplexedCacheInstanceManagerTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/builder/MultiplexedCacheInstanceManagerTestCase.java
+deleted file mode 100644
+index bbe587a3d5..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/builder/MultiplexedCacheInstanceManagerTestCase.java
++++ /dev/null
+@@ -1,51 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.builder;
+-
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-
+-
+-/**
+- * A SharedCacheInstanceManagerTestCase.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MultiplexedCacheInstanceManagerTestCase extends CacheInstanceManagerTestBase {
+-
+-    /**
+-     * Create a new SharedCacheInstanceManagerTestCase.
+-     * 
+-     * @param name test name
+-     */
+-    public MultiplexedCacheInstanceManagerTestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected Class getRegionFactoryClass() {
+-        return MultiplexedJBossCacheRegionFactory.class;
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/builder/SharedCacheInstanceManagerTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/builder/SharedCacheInstanceManagerTestCase.java
+deleted file mode 100644
+index 776e8f57c2..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/builder/SharedCacheInstanceManagerTestCase.java
++++ /dev/null
+@@ -1,50 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.builder;
+-
+-import org.hibernate.cache.jbc.SharedJBossCacheRegionFactory;
+-
+-/**
+- * A SharedCacheInstanceManagerTestCase.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class SharedCacheInstanceManagerTestCase extends CacheInstanceManagerTestBase {
+-
+-    /**
+-     * Create a new SharedCacheInstanceManagerTestCase.
+-     * 
+-     * @param name test name
+-     */
+-    public SharedCacheInstanceManagerTestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected Class getRegionFactoryClass() {
+-        return SharedJBossCacheRegionFactory.class;
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/AbstractCollectionRegionAccessStrategyTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/AbstractCollectionRegionAccessStrategyTestCase.java
+deleted file mode 100644
+index b2f2b66fdb..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/AbstractCollectionRegionAccessStrategyTestCase.java
++++ /dev/null
+@@ -1,587 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import java.util.concurrent.CountDownLatch;
+-import java.util.concurrent.TimeUnit;
+-
+-import junit.extensions.TestSetup;
+-import junit.framework.AssertionFailedError;
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.CollectionRegion;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-import org.hibernate.cache.impl.CacheDataDescriptionImpl;
+-import org.hibernate.cache.jbc.BasicRegionAdapter;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cache.jbc.collection.CollectionRegionImpl;
+-import org.hibernate.cache.jbc.entity.TransactionalAccess;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.cache.jbc.util.NonLockingDataVersion;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.cache.jbc.AbstractJBossCacheTestCase;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.hibernate.util.ComparableComparator;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.Node;
+-import org.jboss.cache.NodeSPI;
+-import org.jboss.cache.transaction.BatchModeTransactionManager;
+-
+-/**
+- * Base class for tests of CollectionRegionAccessStrategy impls.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractCollectionRegionAccessStrategyTestCase extends AbstractJBossCacheTestCase {
+-
+-    public static final String REGION_NAME = "test/com.foo.test";
+-    public static final String KEY_BASE = "KEY";
+-    public static final String VALUE1 = "VALUE1";
+-    public static final String VALUE2 = "VALUE2";
+-
+-    protected static int testCount;
+-
+-    protected static Configuration localCfg;
+-    protected static JBossCacheRegionFactory localRegionFactory;
+-    protected static Cache localCache;
+-    protected static Configuration remoteCfg;
+-    protected static JBossCacheRegionFactory remoteRegionFactory;
+-    protected static Cache remoteCache;
+-
+-    protected CollectionRegion localCollectionRegion;
+-    protected CollectionRegionAccessStrategy localAccessStrategy;
+-
+-    protected CollectionRegion remoteCollectionRegion;
+-    protected CollectionRegionAccessStrategy remoteAccessStrategy;
+-
+-    protected boolean invalidation;
+-    protected boolean optimistic;
+-    protected boolean synchronous;
+-
+-    protected Exception node1Exception;
+-    protected Exception node2Exception;
+-
+-    protected AssertionFailedError node1Failure;
+-    protected AssertionFailedError node2Failure;
+-
+-    public static Test getTestSetup(Class testClass, String configName) {
+-        TestSuite suite = new TestSuite(testClass);
+-        return new AccessStrategyTestSetup(suite, configName);
+-    }
+-
+-    public static Test getTestSetup(Test test, String configName) {
+-        return new AccessStrategyTestSetup(test, configName);
+-    }
+-
+-    /**
+-     * Create a new TransactionalAccessTestCase.
+-     *
+-     * @param name
+-     */
+-    public AbstractCollectionRegionAccessStrategyTestCase(String name) {
+-        super(name);
+-    }
+-
+-    protected abstract AccessType getAccessType();
+-
+-    protected void setUp() throws Exception {
+-        super.setUp();
+-
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-
+-        invalidation = CacheHelper.isClusteredInvalidation(localCache);
+-        synchronous = CacheHelper.isSynchronous(localCache);
+-        optimistic = localCache.getConfiguration().getNodeLockingScheme() == org.jboss.cache.config.Configuration.NodeLockingScheme.OPTIMISTIC;
+-        localCollectionRegion = localRegionFactory.buildCollectionRegion(REGION_NAME, localCfg.getProperties(), getCacheDataDescription());
+-        localAccessStrategy = localCollectionRegion.buildAccessStrategy(getAccessType());
+-
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-
+-        remoteCollectionRegion = remoteRegionFactory.buildCollectionRegion(REGION_NAME, remoteCfg.getProperties(), getCacheDataDescription());
+-        remoteAccessStrategy = remoteCollectionRegion.buildAccessStrategy(getAccessType());
+-
+-        node1Exception = null;
+-        node2Exception = null;
+-
+-        node1Failure = null;
+-        node2Failure  = null;
+-    }
+-
+-    protected void tearDown() throws Exception {
+-
+-        super.tearDown();
+-
+-        if (localCollectionRegion != null)
+-            localCollectionRegion.destroy();
+-        if (remoteCollectionRegion != null)
+-            remoteCollectionRegion.destroy();
+-
+-        try {
+-            localCache.getInvocationContext().getOptionOverrides().setCacheModeLocal(true);
+-            localCache.removeNode(Fqn.ROOT);
+-        }
+-        catch (Exception e) {
+-            log.error("Problem purging local cache" ,e);
+-        }
+-
+-        try {
+-            remoteCache.getInvocationContext().getOptionOverrides().setCacheModeLocal(true);
+-            remoteCache.removeNode(Fqn.ROOT);
+-        }
+-        catch (Exception e) {
+-            log.error("Problem purging remote cache" ,e);
+-        }
+-
+-        node1Exception = null;
+-        node2Exception = null;
+-
+-        node1Failure = null;
+-        node2Failure  = null;
+-    }
+-
+-    protected static Configuration createConfiguration(String configName, String configResource) {
+-        Configuration cfg = CacheTestUtil.buildConfiguration(REGION_PREFIX, MultiplexedJBossCacheRegionFactory.class, true, false);
+-        cfg.setProperty(MultiplexingCacheInstanceManager.ENTITY_CACHE_RESOURCE_PROP, configName);
+-        if (configResource != null) {
+-           cfg.setProperty(MultiplexingCacheInstanceManager.CACHE_FACTORY_RESOURCE_PROP, configResource);
+-        }
+-        return cfg;
+-    }
+-
+-    protected CacheDataDescription getCacheDataDescription() {
+-        return new CacheDataDescriptionImpl(true, true, ComparableComparator.INSTANCE);
+-    }
+-
+-    protected boolean isUsingOptimisticLocking() {
+-        return optimistic;
+-    }
+-
+-    public boolean isBlockingReads()
+-    {
+-    	return !isUsingOptimisticLocking();
+-    }
+-
+-    protected boolean isUsingInvalidation() {
+-        return invalidation;
+-    }
+-
+-    protected boolean isSynchronous() {
+-        return synchronous;
+-    }
+-
+-    protected Fqn getRegionFqn(String regionName, String regionPrefix) {
+-        return BasicRegionAdapter.getTypeLastRegionFqn(regionName, regionPrefix, CollectionRegionImpl.TYPE);
+-    }
+-
+-    /**
+-     * This is just a setup test where we assert that the cache config is
+-     * as we expected.
+-     */
+-    public abstract void testCacheConfiguration();
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#getRegion()}.
+-     */
+-    public void testGetRegion() {
+-        assertEquals("Correct region", localCollectionRegion, localAccessStrategy.getRegion());
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#putFromLoad(java.lang.Object, java.lang.Object, long, java.lang.Object)}.
+-     */
+-    public void testPutFromLoad() throws Exception {
+-        putFromLoadTest(false);
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#putFromLoad(java.lang.Object, java.lang.Object, long, java.lang.Object, boolean)}.
+-     */
+-    public void testPutFromLoadMinimal() throws Exception {
+-        putFromLoadTest(true);
+-    }
+-
+-    /**
+-     * Simulate 2 nodes, both start, tx do a get, experience a cache miss,
+-     * then 'read from db.' First does a putFromLoad, then an evict (to represent a change).
+-     * Second tries to do a putFromLoad with stale data (i.e. it took
+-     * longer to read from the db).  Both commit their tx. Then
+-     * both start a new tx and get. First should see the updated data;
+-     * second should either see the updated data (isInvalidation()( == false)
+-     * or null (isInvalidation() == true).
+-     *
+-     * @param useMinimalAPI
+-     * @throws Exception
+-     */
+-    private void putFromLoadTest(final boolean useMinimalAPI) throws Exception {
+-
+-        final String KEY = KEY_BASE + testCount++;
+-
+-        final CountDownLatch writeLatch1 = new CountDownLatch(1);
+-        final CountDownLatch writeLatch2 = new CountDownLatch(1);
+-        final CountDownLatch completionLatch = new CountDownLatch(2);
+-
+-        Thread node1 = new Thread() {
+-
+-            public void run() {
+-
+-                try {
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-
+-                    assertEquals("node1 starts clean", null, localAccessStrategy.get(KEY, txTimestamp));
+-
+-                    writeLatch1.await();
+-
+-                    if (useMinimalAPI) {
+-                        localAccessStrategy.putFromLoad(KEY, VALUE2, txTimestamp, new Integer(2), true);
+-                    }
+-                    else {
+-                        localAccessStrategy.putFromLoad(KEY, VALUE2, txTimestamp, new Integer(2));
+-                    }
+-
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node1 caught exception", e);
+-                    node1Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node1Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    // Let node2 write
+-                    writeLatch2.countDown();
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-
+-        Thread node2 = new Thread() {
+-
+-            public void run() {
+-
+-                try {
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-
+-                    assertNull("node2 starts clean", remoteAccessStrategy.get(KEY, txTimestamp));
+-
+-                    // Let node1 write
+-                    writeLatch1.countDown();
+-                    // Wait for node1 to finish
+-                    writeLatch2.await();
+-
+-                    // Let the first PFER propagate
+-                    sleep(200);
+-
+-                    if (useMinimalAPI) {
+-                        remoteAccessStrategy.putFromLoad(KEY, VALUE1, txTimestamp, new Integer(1), true);
+-                    }
+-                    else {
+-                        remoteAccessStrategy.putFromLoad(KEY, VALUE1, txTimestamp, new Integer(1));
+-                    }
+-
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node2 caught exception", e);
+-                    node2Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node2Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-
+-        node1.setDaemon(true);
+-        node2.setDaemon(true);
+-
+-        node1.start();
+-        node2.start();
+-
+-        assertTrue("Threads completed", completionLatch.await(2, TimeUnit.SECONDS));
+-
+-        if (node1Failure != null)
+-            throw node1Failure;
+-        if (node2Failure != null)
+-            throw node2Failure;
+-
+-        assertEquals("node1 saw no exceptions", null, node1Exception);
+-        assertEquals("node2 saw no exceptions", null, node2Exception);
+-
+-        // let the final PFER propagate
+-        sleep(100);
+-
+-        long txTimestamp = System.currentTimeMillis();
+-        String msg1 = "Correct node1 value";
+-        String msg2 = "Correct node2 value";
+-        Object expected1 = null;
+-        Object expected2 = null;
+-        if (isUsingInvalidation()) {
+-            // PFER does not generate any invalidation, so each node should
+-            // succeed. We count on database locking and Hibernate removing
+-            // the collection on any update to prevent the situation we have
+-            // here where the caches have inconsistent data
+-            expected1 = VALUE2;
+-            expected2 = VALUE1;
+-        }
+-        else {
+-            // the initial VALUE2 should prevent the node2 put
+-            expected1 = VALUE2;
+-            expected2 = VALUE2;
+-        }
+-
+-        assertEquals(msg1, expected1, localAccessStrategy.get(KEY, txTimestamp));
+-        assertEquals(msg2, expected2, remoteAccessStrategy.get(KEY, txTimestamp));
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#remove(java.lang.Object)}.
+-     */
+-    public void testRemove() {
+-        evictOrRemoveTest(false);
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#removeAll()}.
+-     */
+-    public void testRemoveAll() {
+-        evictOrRemoveAllTest(false);
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#evict(java.lang.Object)}.
+-     *
+-     * FIXME add testing of the "immediately without regard for transaction
+-     * isolation" bit in the CollectionRegionAccessStrategy API.
+-     */
+-    public void testEvict() {
+-        evictOrRemoveTest(true);
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#evictAll()}.
+-     *
+-     * FIXME add testing of the "immediately without regard for transaction
+-     * isolation" bit in the CollectionRegionAccessStrategy API.
+-     */
+-    public void testEvictAll() {
+-        evictOrRemoveAllTest(true);
+-    }
+-
+-    private void evictOrRemoveTest(boolean evict) {
+-
+-        final String KEY = KEY_BASE + testCount++;
+-
+-        assertNull("local is clean", localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        assertNull("remote is clean", remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        localAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        remoteAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        // Wait for async propagation
+-        sleep(250);
+-
+-        if (evict)
+-            localAccessStrategy.evict(KEY);
+-        else
+-            localAccessStrategy.remove(KEY);
+-
+-        assertEquals(null, localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        assertEquals(null, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-    }
+-
+-    private void evictOrRemoveAllTest(boolean evict) {
+-
+-        final String KEY = KEY_BASE + testCount++;
+-
+-        Fqn regionFqn = getRegionFqn(REGION_NAME, REGION_PREFIX);
+-
+-        Node regionRoot = localCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-        assertTrue(regionRoot.isResident());
+-
+-        if (isUsingOptimisticLocking()) {
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-        }
+-
+-        regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-        assertTrue(regionRoot.isResident());
+-
+-        if (isUsingOptimisticLocking()) {
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-        }
+-
+-        assertNull("local is clean", localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        assertNull("remote is clean", remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        localAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        remoteAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        // Wait for async propagation
+-        sleep(250);
+-
+-        if (isUsingOptimisticLocking()) {
+-            regionRoot = localCache.getRoot().getChild(regionFqn);
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-            regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-        }
+-
+-        if (evict)
+-            localAccessStrategy.evictAll();
+-        else
+-            localAccessStrategy.removeAll();
+-
+-        // This should re-establish the region root node
+-        assertNull(localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        regionRoot = localCache.getRoot().getChild(regionFqn);
+-         assertFalse(regionRoot == null);
+-         assertEquals(0, getValidChildrenCount(regionRoot));
+-         assertTrue(regionRoot.isValid());
+-         assertTrue(regionRoot.isResident());
+-
+-        // Re-establishing the region root on the local node doesn't
+-        // propagate it to other nodes. Do a get on the remote node to re-establish
+-        assertEquals(null, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertTrue(regionRoot.isValid());
+-        assertTrue(regionRoot.isResident());
+-        // Not invalidation, so we didn't insert a child above
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-
+-        // Test whether the get above messes up the optimistic version
+-        remoteAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        // Revalidate the region root
+-        regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertTrue(regionRoot.isValid());
+-        assertTrue(regionRoot.isResident());
+-        // Region root should have 1 child -- the one we added above
+-        assertEquals(1, getValidChildrenCount(regionRoot));
+-
+-        // Wait for async propagation of the putFromLoad
+-        sleep(250);
+-
+-        assertEquals("local is correct", (isUsingInvalidation() ? null : VALUE1), localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        assertEquals("remote is correct", VALUE1, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-    }
+-
+-    private void rollback() {
+-        try {
+-            BatchModeTransactionManager.getInstance().rollback();
+-        }
+-        catch (Exception e) {
+-            log.error(e.getMessage(), e);
+-        }
+-
+-    }
+-
+-    private static class AccessStrategyTestSetup extends TestSetup {
+-
+-        private static final String PREFER_IPV4STACK = "java.net.preferIPv4Stack";
+-
+-        private final String configResource;
+-        private final String configName;
+-        private String preferIPv4Stack;
+-
+-        public AccessStrategyTestSetup(Test test, String configName) {
+-            this(test, configName, null);
+-        }
+-
+-        public AccessStrategyTestSetup(Test test, String configName, String configResource) {
+-            super(test);
+-            this.configName = configName;
+-            this.configResource = configResource;
+-        }
+-
+-        @Override
+-        protected void setUp() throws Exception {
+-            super.setUp();
+-
+-            // Try to ensure we use IPv4; otherwise cluster formation is very slow
+-            preferIPv4Stack = System.getProperty(PREFER_IPV4STACK);
+-            System.setProperty(PREFER_IPV4STACK, "true");
+-
+-            localCfg = createConfiguration(configName, configResource);
+-            localRegionFactory = CacheTestUtil.startRegionFactory(localCfg);
+-            localCache = localRegionFactory.getCacheInstanceManager().getCollectionCacheInstance();
+-
+-            remoteCfg = createConfiguration(configName, configResource);
+-            remoteRegionFactory  = CacheTestUtil.startRegionFactory(remoteCfg);
+-            remoteCache = remoteRegionFactory.getCacheInstanceManager().getCollectionCacheInstance();
+-        }
+-
+-        @Override
+-        protected void tearDown() throws Exception {
+-            try {
+-                super.tearDown();
+-            }
+-            finally {
+-                if (preferIPv4Stack == null)
+-                    System.clearProperty(PREFER_IPV4STACK);
+-                else
+-                    System.setProperty(PREFER_IPV4STACK, preferIPv4Stack);
+-            }
+-
+-            if (localRegionFactory != null)
+-                localRegionFactory.stop();
+-
+-            if (remoteRegionFactory != null)
+-                remoteRegionFactory.stop();
+-        }
+-
+-
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/AbstractReadOnlyAccessTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/AbstractReadOnlyAccessTestCase.java
+deleted file mode 100644
+index 1010f09520..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/AbstractReadOnlyAccessTestCase.java
++++ /dev/null
+@@ -1,49 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.cache.access.AccessType;
+-
+-/**
+- * Base class for tests of TRANSACTIONAL access.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractReadOnlyAccessTestCase extends AbstractCollectionRegionAccessStrategyTestCase {
+-
+-    /**
+-     * Create a new AbstractTransactionalAccessTestCase.
+-     * 
+-     */
+-    public AbstractReadOnlyAccessTestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected AccessType getAccessType() {
+-        return AccessType.READ_ONLY;
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/AbstractTransactionalAccessTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/AbstractTransactionalAccessTestCase.java
+deleted file mode 100644
+index 45a2d62767..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/AbstractTransactionalAccessTestCase.java
++++ /dev/null
+@@ -1,49 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.cache.access.AccessType;
+-
+-/**
+- * Base class for tests of TRANSACTIONAL access.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractTransactionalAccessTestCase extends AbstractCollectionRegionAccessStrategyTestCase {
+-
+-    /**
+-     * Create a new AbstractTransactionalAccessTestCase.
+-     * 
+-     */
+-    public AbstractTransactionalAccessTestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected AccessType getAccessType() {
+-        return AccessType.TRANSACTIONAL;
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/CollectionRegionImplTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/CollectionRegionImplTestCase.java
+deleted file mode 100644
+index 79ba3a9f21..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/CollectionRegionImplTestCase.java
++++ /dev/null
+@@ -1,118 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.CollectionRegion;
+-import org.hibernate.cache.Region;
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-import org.hibernate.cache.jbc.BasicRegionAdapter;
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.collection.CollectionRegionImpl;
+-import org.hibernate.test.cache.jbc.AbstractEntityCollectionRegionTestCase;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-
+-/**
+- * Tests of CollectionRegionImpl.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class CollectionRegionImplTestCase extends AbstractEntityCollectionRegionTestCase {
+-
+-    /**
+-     * Create a new EntityRegionImplTestCase.
+-     * 
+-     * @param name
+-     */
+-    public CollectionRegionImplTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    @Override
+-    protected void supportedAccessTypeTest(RegionFactory regionFactory, Properties properties) {
+-        
+-        CollectionRegion region = regionFactory.buildCollectionRegion("test", properties, null);
+-        
+-        assertNull("Got TRANSACTIONAL", region.buildAccessStrategy(AccessType.TRANSACTIONAL).lockRegion());
+-        
+-        try
+-        {
+-            region.buildAccessStrategy(AccessType.READ_ONLY).lockRegion();
+-            fail("Did not get READ_ONLY");
+-        }
+-        catch (UnsupportedOperationException good) {}
+-        
+-        try
+-        {
+-            region.buildAccessStrategy(AccessType.NONSTRICT_READ_WRITE);
+-            fail("Incorrectly got NONSTRICT_READ_WRITE");
+-        }
+-        catch (CacheException good) {}
+-        
+-        try
+-        {
+-            region.buildAccessStrategy(AccessType.READ_WRITE);
+-            fail("Incorrectly got READ_WRITE");
+-        }
+-        catch (CacheException good) {}
+-    }
+-
+-    @Override
+-    protected Region createRegion(JBossCacheRegionFactory regionFactory, String regionName, Properties properties, CacheDataDescription cdd) {
+-        return regionFactory.buildCollectionRegion(regionName, properties, cdd);
+-    }
+-
+-    @Override
+-    protected Cache getJBossCache(JBossCacheRegionFactory regionFactory) {
+-        CacheInstanceManager mgr = regionFactory.getCacheInstanceManager();
+-        return mgr.getCollectionCacheInstance();
+-    }
+-
+-    @Override
+-    protected Fqn getRegionFqn(String regionName, String regionPrefix) {
+-        return BasicRegionAdapter.getTypeLastRegionFqn(regionName, regionPrefix, CollectionRegionImpl.TYPE);
+-    }
+-
+-    @Override
+-    protected void putInRegion(Region region, Object key, Object value) {
+-        CollectionRegionAccessStrategy strategy = ((CollectionRegion) region).buildAccessStrategy(AccessType.TRANSACTIONAL);
+-//        // putFromLoad is ignored if not preceded by a get, so do a get
+-//        strategy.get(key, System.currentTimeMillis());
+-        strategy.putFromLoad(key, value, System.currentTimeMillis(), new Integer(1));
+-    }
+-
+-    @Override
+-    protected void removeFromRegion(Region region, Object key) {
+-        ((CollectionRegion) region).buildAccessStrategy(AccessType.TRANSACTIONAL).remove(key);        
+-    }    
+-    
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccInvalidatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccInvalidatedTransactionalTestCase.java
+deleted file mode 100644
+index 3cca8b2e16..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccInvalidatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,62 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests TRANSACTIONAL access when pessimistic locking and invalidation are used.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccInvalidatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(MvccInvalidatedTransactionalTestCase.class);
+-        return getTestSetup(suite, "mvcc-entity");
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-
+-    // Known failures
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccReadOnlyExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccReadOnlyExtraAPITestCase.java
+deleted file mode 100644
+index 15b42b48a5..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccReadOnlyExtraAPITestCase.java
++++ /dev/null
+@@ -1,72 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this
+- * version using pessimistic locking with READ_ONLY access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccReadOnlyExtraAPITestCase extends OptimisticReadOnlyExtraAPITestCase {
+-
+-    private static CollectionRegionAccessStrategy localAccessStrategy;
+-
+-    /**
+-     * Create a new PessimisticAccessStrategyExtraAPITestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccReadOnlyExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected String getCacheConfigName() {
+-        return "mvcc-entity";
+-    }
+-
+-    @Override
+-    protected CollectionRegionAccessStrategy getCollectionAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-
+-    @Override
+-    protected void setCollectionAccessStrategy(CollectionRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccReadOnlyTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccReadOnlyTestCase.java
+deleted file mode 100644
+index 465e01a339..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccReadOnlyTestCase.java
++++ /dev/null
+@@ -1,63 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests READ_ONLY access when pessimistic locking and invalidation are used.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccReadOnlyTestCase(String name) {
+-        super(name);
+-    }
+-
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(MvccReadOnlyTestCase.class);
+-        return getTestSetup(suite, "mvcc-entity");
+-    }
+-
+-    // Known failures
+-
+-    // Overrides
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccReplicatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccReplicatedTransactionalTestCase.java
+deleted file mode 100644
+index 2c766c2a09..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccReplicatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import junit.framework.Test;
+-
+-/**
+- * Tests TRANSACTIONAL access when pessimistic locking and replication are used.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccReplicatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-
+-    public static Test suite() throws Exception {
+-        return getTestSetup(MvccReplicatedTransactionalTestCase.class, "mvcc-shared");
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-
+-
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccTransactionalExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccTransactionalExtraAPITestCase.java
+deleted file mode 100644
+index 0e93f84426..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/MvccTransactionalExtraAPITestCase.java
++++ /dev/null
+@@ -1,72 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this base
+- * version using Optimistic locking with TRANSACTIONAL access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccTransactionalExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-
+-    private static CollectionRegionAccessStrategy localAccessStrategy;
+-
+-    /**
+-     * Create a new PessimisticAccessStrategyExtraAPITestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccTransactionalExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected String getCacheConfigName() {
+-        return "mvcc-entity";
+-    }
+-
+-    @Override
+-    protected CollectionRegionAccessStrategy getCollectionAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-
+-    @Override
+-    protected void setCollectionAccessStrategy(CollectionRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticInvalidatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticInvalidatedTransactionalTestCase.java
+deleted file mode 100644
+index 051eb9c8d2..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticInvalidatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,61 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/** 
+- * Tests TRANSACTIONAL access when optimistic locking and invalidation are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticInvalidatedTransactionalTestCase 
+-    extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new TransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticInvalidatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(OptimisticInvalidatedTransactionalTestCase.class);   
+-        return getTestSetup(suite, "optimistic-entity");
+-    }
+-    
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertTrue("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-   
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticReadOnlyExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticReadOnlyExtraAPITestCase.java
+deleted file mode 100644
+index 3c9a27f262..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticReadOnlyExtraAPITestCase.java
++++ /dev/null
+@@ -1,93 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-import org.hibernate.cache.jbc.entity.TransactionalAccess;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this
+- * version using Optimistic locking with READ_ONLY access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the 
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticReadOnlyExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-
+-    private static CollectionRegionAccessStrategy localAccessStrategy;
+-    
+-    /**
+-     * Create a new TransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticReadOnlyExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected AccessType getAccessType() {
+-        return AccessType.READ_ONLY;
+-    }
+-    
+-    @Override
+-    protected CollectionRegionAccessStrategy getCollectionAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-    
+-    @Override
+-    protected void setCollectionAccessStrategy(CollectionRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-    
+-    /**
+-     * Test method for {@link TransactionalAccess#lockItem(java.lang.Object, java.lang.Object)}.
+-     */
+-    @Override
+-    public void testLockItem() {
+-        try {
+-            getCollectionAccessStrategy().lockItem(KEY, new Integer(1));
+-            fail("Call to lockItem did not throw exception");
+-        }
+-        catch (UnsupportedOperationException expected) {}
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#lockRegion()}.
+-     */
+-    @Override
+-    public void testLockRegion() {
+-        try {
+-            getCollectionAccessStrategy().lockRegion();
+-            fail("Call to lockRegion did not throw exception");
+-        }
+-        catch (UnsupportedOperationException expected) {}
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticReadOnlyTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticReadOnlyTestCase.java
+deleted file mode 100644
+index 9f10cf8615..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticReadOnlyTestCase.java
++++ /dev/null
+@@ -1,60 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests READ_ONLY access when optimistic locking and invalidation are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticReadOnlyTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(OptimisticReadOnlyTestCase.class);   
+-        return getTestSetup(suite, "optimistic-entity");
+-    }
+-    
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertTrue("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticReplicatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticReplicatedTransactionalTestCase.java
+deleted file mode 100644
+index 4fabd312f5..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticReplicatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import junit.framework.Test;
+-
+-/**
+- * Tests TRANSACTIONAL access when optimistic locking and replication are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticReplicatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        return getTestSetup(OptimisticReplicatedTransactionalTestCase.class, "optimistic-shared");
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Invalidation", isUsingInvalidation());
+-        assertTrue("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-    
+-    
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticTransactionalExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticTransactionalExtraAPITestCase.java
+deleted file mode 100644
+index 0557cd568f..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/OptimisticTransactionalExtraAPITestCase.java
++++ /dev/null
+@@ -1,158 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.cache.CollectionRegion;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-import org.hibernate.cache.access.SoftLock;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cache.jbc.entity.TransactionalAccess;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.cache.jbc.AbstractJBossCacheTestCase;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.jboss.cache.Cache;
+-
+-/**
+- * Tests for the "extra API" in CollectionRegionAccessStrategy; in this base
+- * version using Optimistic locking with TRANSACTIONAL access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the 
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticTransactionalExtraAPITestCase extends AbstractJBossCacheTestCase {
+-
+-    public static final String REGION_NAME = "test/com.foo.test";
+-    public static final String KEY = "KEY";
+-    public static final String VALUE1 = "VALUE1";
+-    public static final String VALUE2 = "VALUE2";
+-    
+-    private static CollectionRegionAccessStrategy localAccessStrategy;
+-    
+-    private static boolean optimistic;
+-    
+-    /**
+-     * Create a new TransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticTransactionalExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-
+-    protected void setUp() throws Exception {
+-        super.setUp();
+-        
+-        if (getCollectionAccessStrategy() == null) {
+-            Configuration cfg = createConfiguration();
+-            JBossCacheRegionFactory rf  = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-            Cache localCache = rf.getCacheInstanceManager().getEntityCacheInstance();
+-            optimistic = localCache.getConfiguration().getNodeLockingScheme() == org.jboss.cache.config.Configuration.NodeLockingScheme.OPTIMISTIC;
+-            
+-            // Sleep a bit to avoid concurrent FLUSH problem
+-            avoidConcurrentFlush();
+-            
+-            CollectionRegion localCollectionRegion = rf.buildCollectionRegion(REGION_NAME, cfg.getProperties(), null);
+-            setCollectionAccessStrategy(localCollectionRegion.buildAccessStrategy(getAccessType()));
+-        }
+-    }
+-
+-    protected void tearDown() throws Exception {
+-        
+-        super.tearDown();
+-    }
+-    
+-    protected Configuration createConfiguration() {
+-        Configuration cfg = CacheTestUtil.buildConfiguration(REGION_PREFIX, MultiplexedJBossCacheRegionFactory.class, true, false);
+-        cfg.setProperty(MultiplexingCacheInstanceManager.ENTITY_CACHE_RESOURCE_PROP, getCacheConfigName());
+-        return cfg;
+-    }
+-    
+-    protected String getCacheConfigName() {
+-        return "optimistic-entity";
+-    }
+-    
+-    protected boolean isUsingOptimisticLocking() {
+-        return optimistic;
+-    }
+-
+-    protected AccessType getAccessType() {
+-        return AccessType.TRANSACTIONAL;
+-    }
+-    
+-    protected CollectionRegionAccessStrategy getCollectionAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-    
+-    protected void setCollectionAccessStrategy(CollectionRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-    
+-    /**
+-     * This is just a setup test where we assert that the cache config is
+-     * as we expected.
+-     */
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-    
+-    /**
+-     * Test method for {@link TransactionalAccess#lockItem(java.lang.Object, java.lang.Object)}.
+-     */
+-    public void testLockItem() {
+-        assertNull(getCollectionAccessStrategy().lockItem(KEY, new Integer(1)));
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#lockRegion()}.
+-     */
+-    public void testLockRegion() {
+-        assertNull(getCollectionAccessStrategy().lockRegion());
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#unlockItem(java.lang.Object, org.hibernate.cache.access.SoftLock)}.
+-     */
+-    public void testUnlockItem() {
+-        getCollectionAccessStrategy().unlockItem(KEY, new MockSoftLock());
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#unlockRegion(org.hibernate.cache.access.SoftLock)}.
+-     */
+-    public void testUnlockRegion() {
+-        getCollectionAccessStrategy().unlockItem(KEY, new MockSoftLock());
+-    }
+-    
+-    public static class MockSoftLock implements SoftLock {
+-        
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticInvalidatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticInvalidatedTransactionalTestCase.java
+deleted file mode 100644
+index 51010fd082..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticInvalidatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,62 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests TRANSACTIONAL access when pessimistic locking and invalidation are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticInvalidatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(PessimisticInvalidatedTransactionalTestCase.class);   
+-        return getTestSetup(suite, "pessimistic-entity");
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-    
+-    // Known failures 
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticReadOnlyExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticReadOnlyExtraAPITestCase.java
+deleted file mode 100644
+index 16bda8ead5..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticReadOnlyExtraAPITestCase.java
++++ /dev/null
+@@ -1,72 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this 
+- * version using pessimistic locking with READ_ONLY access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the 
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticReadOnlyExtraAPITestCase extends OptimisticReadOnlyExtraAPITestCase {
+-
+-    private static CollectionRegionAccessStrategy localAccessStrategy;
+-    
+-    /**
+-     * Create a new PessimisticAccessStrategyExtraAPITestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticReadOnlyExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-    
+-    @Override
+-    protected String getCacheConfigName() {
+-        return "pessimistic-entity";
+-    }
+-    
+-    @Override
+-    protected CollectionRegionAccessStrategy getCollectionAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-    
+-    @Override
+-    protected void setCollectionAccessStrategy(CollectionRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-    
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticReadOnlyTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticReadOnlyTestCase.java
+deleted file mode 100644
+index b4bb59c2cc..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticReadOnlyTestCase.java
++++ /dev/null
+@@ -1,63 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests READ_ONLY access when pessimistic locking and invalidation are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticReadOnlyTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(PessimisticReadOnlyTestCase.class); 
+-        return getTestSetup(suite, "pessimistic-entity");
+-    }
+-    
+-    // Known failures
+-    
+-    // Overrides   
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticReplicatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticReplicatedTransactionalTestCase.java
+deleted file mode 100644
+index 5cc452921e..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticReplicatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import junit.framework.Test;
+-
+-/**
+- * Tests TRANSACTIONAL access when pessimistic locking and replication are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticReplicatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        return getTestSetup(PessimisticReplicatedTransactionalTestCase.class, "pessimistic-shared");
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-    
+-    
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticTransactionalExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticTransactionalExtraAPITestCase.java
+deleted file mode 100644
+index 412b19f106..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/collection/PessimisticTransactionalExtraAPITestCase.java
++++ /dev/null
+@@ -1,72 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.collection;
+-
+-import org.hibernate.cache.access.CollectionRegionAccessStrategy;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this base
+- * version using Optimistic locking with TRANSACTIONAL access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the 
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticTransactionalExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-
+-    private static CollectionRegionAccessStrategy localAccessStrategy;
+-    
+-    /**
+-     * Create a new PessimisticAccessStrategyExtraAPITestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticTransactionalExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-    
+-    @Override
+-    protected String getCacheConfigName() {
+-        return "pessimistic-entity";
+-    }
+-    
+-    @Override
+-    protected CollectionRegionAccessStrategy getCollectionAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-    
+-    @Override
+-    protected void setCollectionAccessStrategy(CollectionRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-    
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/AbstractEntityRegionAccessStrategyTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/AbstractEntityRegionAccessStrategyTestCase.java
+deleted file mode 100644
+index 3a50b14b60..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/AbstractEntityRegionAccessStrategyTestCase.java
++++ /dev/null
+@@ -1,809 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import java.util.concurrent.CountDownLatch;
+-import java.util.concurrent.TimeUnit;
+-
+-import junit.extensions.TestSetup;
+-import junit.framework.AssertionFailedError;
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.EntityRegion;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-import org.hibernate.cache.impl.CacheDataDescriptionImpl;
+-import org.hibernate.cache.jbc.BasicRegionAdapter;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cache.jbc.entity.EntityRegionImpl;
+-import org.hibernate.cache.jbc.entity.TransactionalAccess;
+-import org.hibernate.cache.jbc.util.CacheHelper;
+-import org.hibernate.cache.jbc.util.NonLockingDataVersion;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.cache.jbc.AbstractJBossCacheTestCase;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.hibernate.util.ComparableComparator;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.Node;
+-import org.jboss.cache.NodeSPI;
+-import org.jboss.cache.transaction.BatchModeTransactionManager;
+-
+-/**
+- * Base class for tests of EntityRegionAccessStrategy impls.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractEntityRegionAccessStrategyTestCase extends AbstractJBossCacheTestCase {
+-
+-    public static final String REGION_NAME = "test/com.foo.test";
+-    public static final String KEY_BASE = "KEY";
+-    public static final String VALUE1 = "VALUE1";
+-    public static final String VALUE2 = "VALUE2";
+-
+-    protected static int testCount;
+-
+-    protected static Configuration localCfg;
+-    protected static JBossCacheRegionFactory localRegionFactory;
+-    protected static Cache localCache;
+-    protected static Configuration remoteCfg;
+-    protected static JBossCacheRegionFactory remoteRegionFactory;
+-    protected static Cache remoteCache;
+-
+-    protected static boolean invalidation;
+-    protected static boolean optimistic;
+-    protected static boolean synchronous;
+-
+-    protected EntityRegion localEntityRegion;
+-    protected EntityRegionAccessStrategy localAccessStrategy;
+-
+-    protected EntityRegion remoteEntityRegion;
+-    protected EntityRegionAccessStrategy remoteAccessStrategy;
+-
+-    protected Exception node1Exception;
+-    protected Exception node2Exception;
+-
+-    protected AssertionFailedError node1Failure;
+-    protected AssertionFailedError node2Failure;
+-
+-
+-    public static Test getTestSetup(Class testClass, String configName) {
+-        return getTestSetup(testClass, configName, null);
+-    }
+-
+-    public static Test getTestSetup(Test test, String configName) {
+-       return getTestSetup(test, configName, null);
+-    }
+-
+-    public static Test getTestSetup(Class testClass, String configName, String configResource) {
+-        TestSuite suite = new TestSuite(testClass);
+-        return new AccessStrategyTestSetup(suite, configName, configResource);
+-    }
+-
+-    public static Test getTestSetup(Test test, String configName, String configResource) {
+-        return new AccessStrategyTestSetup(test, configName, configResource);
+-    }
+-
+-
+-    /**
+-     * Create a new TransactionalAccessTestCase.
+-     *
+-     * @param name
+-     */
+-    public AbstractEntityRegionAccessStrategyTestCase(String name) {
+-        super(name);
+-    }
+-
+-    protected abstract AccessType getAccessType();
+-
+-    protected void setUp() throws Exception {
+-        super.setUp();
+-
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-
+-        localEntityRegion = localRegionFactory.buildEntityRegion(REGION_NAME, localCfg.getProperties(), getCacheDataDescription());
+-        localAccessStrategy = localEntityRegion.buildAccessStrategy(getAccessType());
+-
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-
+-        remoteEntityRegion = remoteRegionFactory.buildEntityRegion(REGION_NAME, remoteCfg.getProperties(), getCacheDataDescription());
+-        remoteAccessStrategy = remoteEntityRegion.buildAccessStrategy(getAccessType());
+-
+-        node1Exception = null;
+-        node2Exception = null;
+-
+-        node1Failure = null;
+-        node2Failure  = null;
+-    }
+-
+-    protected void tearDown() throws Exception {
+-
+-        super.tearDown();
+-
+-        if (localEntityRegion != null)
+-            localEntityRegion.destroy();
+-        if (remoteEntityRegion != null)
+-            remoteEntityRegion.destroy();
+-
+-        try {
+-            localCache.getInvocationContext().getOptionOverrides().setCacheModeLocal(true);
+-            localCache.removeNode(Fqn.ROOT);
+-        }
+-        catch (Exception e) {
+-            log.error("Problem purging local cache" ,e);
+-        }
+-
+-        try {
+-            remoteCache.getInvocationContext().getOptionOverrides().setCacheModeLocal(true);
+-            remoteCache.removeNode(Fqn.ROOT);
+-        }
+-        catch (Exception e) {
+-            log.error("Problem purging remote cache" ,e);
+-        }
+-
+-        node1Exception = null;
+-        node2Exception = null;
+-
+-        node1Failure = null;
+-        node2Failure  = null;
+-    }
+-
+-    protected static Configuration createConfiguration(String configName, String configResource) {
+-        Configuration cfg = CacheTestUtil.buildConfiguration(REGION_PREFIX, MultiplexedJBossCacheRegionFactory.class, true, false);
+-        cfg.setProperty(MultiplexingCacheInstanceManager.ENTITY_CACHE_RESOURCE_PROP, configName);
+-        if (configResource != null) {
+-           cfg.setProperty(MultiplexingCacheInstanceManager.CACHE_FACTORY_RESOURCE_PROP, configResource);
+-        }
+-        return cfg;
+-    }
+-
+-    protected CacheDataDescription getCacheDataDescription() {
+-        return new CacheDataDescriptionImpl(true, true, ComparableComparator.INSTANCE);
+-    }
+-
+-    protected boolean isUsingOptimisticLocking() {
+-        return optimistic;
+-    }
+-
+-    protected boolean isUsingInvalidation() {
+-        return invalidation;
+-    }
+-
+-    protected boolean isSynchronous() {
+-        return synchronous;
+-    }
+-
+-    protected Fqn getRegionFqn(String regionName, String regionPrefix) {
+-        return BasicRegionAdapter.getTypeLastRegionFqn(regionName, regionPrefix, EntityRegionImpl.TYPE);
+-    }
+-
+-    protected void assertThreadsRanCleanly()
+-    {
+-        if (node1Failure != null)
+-            throw node1Failure;
+-        if (node2Failure != null)
+-            throw node2Failure;
+-
+-        if (node1Exception != null) {
+-            log.error("node1 saw an exception", node1Exception);
+-            assertEquals("node1 saw no exceptions", null, node1Exception);
+-        }
+-
+-        if (node2Exception != null) {
+-            log.error("node2 saw an exception", node2Exception);
+-            assertEquals("node2 saw no exceptions", null, node2Exception);
+-        }
+-    }
+-
+-    /**
+-     * This is just a setup test where we assert that the cache config is
+-     * as we expected.
+-     */
+-    public abstract void testCacheConfiguration();
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#getRegion()}.
+-     */
+-    public void testGetRegion() {
+-        assertEquals("Correct region", localEntityRegion, localAccessStrategy.getRegion());
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#putFromLoad(java.lang.Object, java.lang.Object, long, java.lang.Object)}.
+-     */
+-    public void testPutFromLoad() throws Exception {
+-        putFromLoadTest(false);
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#putFromLoad(java.lang.Object, java.lang.Object, long, java.lang.Object, boolean)}.
+-     */
+-    public void testPutFromLoadMinimal() throws Exception {
+-        putFromLoadTest(true);
+-    }
+-
+-    /**
+-     * Simulate 2 nodes, both start, tx do a get, experience a cache miss,
+-     * then 'read from db.' First does a putFromLoad, then an update.
+-     * Second tries to do a putFromLoad with stale data (i.e. it took
+-     * longer to read from the db).  Both commit their tx. Then
+-     * both start a new tx and get. First should see the updated data;
+-     * second should either see the updated data (isInvalidation() == false)
+-     * or null (isInvalidation() == true).
+-     *
+-     * @param useMinimalAPI
+-     * @throws Exception
+-     */
+-    private void putFromLoadTest(final boolean useMinimalAPI) throws Exception {
+-
+-        final String KEY = KEY_BASE + testCount++;
+-
+-        final CountDownLatch writeLatch1 = new CountDownLatch(1);
+-        final CountDownLatch writeLatch2 = new CountDownLatch(1);
+-        final CountDownLatch completionLatch = new CountDownLatch(2);
+-
+-        Thread node1 = new Thread() {
+-
+-            public void run() {
+-
+-                try {
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-
+-                    assertNull("node1 starts clean", localAccessStrategy.get(KEY, txTimestamp));
+-
+-                    writeLatch1.await();
+-
+-                    if (useMinimalAPI) {
+-                        localAccessStrategy.putFromLoad(KEY, VALUE1, txTimestamp, new Integer(1), true);
+-                    }
+-                    else {
+-                        localAccessStrategy.putFromLoad(KEY, VALUE1, txTimestamp, new Integer(1));
+-                    }
+-
+-                    localAccessStrategy.update(KEY, VALUE2, new Integer(2), new Integer(1));
+-
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node1 caught exception", e);
+-                    node1Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node1Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    // Let node2 write
+-                    writeLatch2.countDown();
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-
+-        Thread node2 = new Thread() {
+-
+-            public void run() {
+-
+-                try {
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-
+-                    assertNull("node1 starts clean", remoteAccessStrategy.get(KEY, txTimestamp));
+-
+-                    // Let node1 write
+-                    writeLatch1.countDown();
+-                    // Wait for node1 to finish
+-                    writeLatch2.await();
+-
+-                    if (useMinimalAPI) {
+-                        remoteAccessStrategy.putFromLoad(KEY, VALUE1, txTimestamp, new Integer(1), true);
+-                    }
+-                    else {
+-                        remoteAccessStrategy.putFromLoad(KEY, VALUE1, txTimestamp, new Integer(1));
+-                    }
+-
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node2 caught exception", e);
+-                    node2Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node2Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-
+-        node1.setDaemon(true);
+-        node2.setDaemon(true);
+-
+-        node1.start();
+-        node2.start();
+-
+-        assertTrue("Threads completed", completionLatch.await(2, TimeUnit.SECONDS));
+-
+-        assertThreadsRanCleanly();
+-
+-        long txTimestamp = System.currentTimeMillis();
+-        assertEquals("Correct node1 value", VALUE2, localAccessStrategy.get(KEY, txTimestamp));
+-
+-        if (isUsingInvalidation()) {
+-            if (isUsingOptimisticLocking())
+-                // The node is "deleted" but it's ghost data version prevents the stale node2 PFER
+-                assertEquals("Correct node2 value", null, remoteAccessStrategy.get(KEY, txTimestamp));
+-            else {
+-                // no data version to prevent the PFER; we count on db locks preventing this
+-                assertEquals("Expected node2 value", VALUE1, remoteAccessStrategy.get(KEY, txTimestamp));
+-            }
+-        }
+-        else {
+-            // The node1 update is replicated, preventing the node2 PFER
+-            assertEquals("Correct node2 value", VALUE2, remoteAccessStrategy.get(KEY, txTimestamp));
+-        }
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#insert(java.lang.Object, java.lang.Object, java.lang.Object)}.
+-     */
+-    public void testInsert() throws Exception {
+-
+-        final String KEY = KEY_BASE + testCount++;
+-
+-        final CountDownLatch readLatch = new CountDownLatch(1);
+-        final CountDownLatch commitLatch = new CountDownLatch(1);
+-        final CountDownLatch completionLatch = new CountDownLatch(2);
+-
+-        Thread inserter = new Thread() {
+-
+-            public void run() {
+-
+-                try {
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-
+-                    assertNull("Correct initial value", localAccessStrategy.get(KEY, txTimestamp));
+-
+-                    localAccessStrategy.insert(KEY, VALUE1, new Integer(1));
+-
+-                    readLatch.countDown();
+-                    commitLatch.await();
+-
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node1 caught exception", e);
+-                    node1Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node1Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-
+-        Thread reader = new Thread() {
+-
+-            public void run() {
+-
+-                try {
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-
+-                    readLatch.await();
+-                    Object expected = !isBlockingReads() ? null : VALUE1;
+-
+-                    assertEquals("Correct initial value", expected, localAccessStrategy.get(KEY, txTimestamp));
+-
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node1 caught exception", e);
+-                    node1Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node1Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    commitLatch.countDown();
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-
+-        inserter.setDaemon(true);
+-        reader.setDaemon(true);
+-        inserter.start();
+-        reader.start();
+-
+-        if (! isBlockingReads())
+-            assertTrue("Threads completed", completionLatch.await(1, TimeUnit.SECONDS));
+-        else {
+-            // Reader should be blocking for lock
+-            assertFalse("Threads completed", completionLatch.await(250, TimeUnit.MILLISECONDS));
+-            commitLatch.countDown();
+-            assertTrue("Threads completed", completionLatch.await(1, TimeUnit.SECONDS));
+-        }
+-
+-        assertThreadsRanCleanly();
+-
+-        long txTimestamp = System.currentTimeMillis();
+-        assertEquals("Correct node1 value", VALUE1, localAccessStrategy.get(KEY, txTimestamp));
+-        Object expected = isUsingInvalidation() ? null : VALUE1;
+-        assertEquals("Correct node2 value", expected, remoteAccessStrategy.get(KEY, txTimestamp));
+-    }
+-
+-    public boolean isBlockingReads()
+-    {
+-    	return !isUsingOptimisticLocking();
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#update(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)}.
+-     */
+-    public void testUpdate() throws Exception {
+-
+-        final String KEY = KEY_BASE + testCount++;
+-
+-        // Set up initial state
+-        localAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        remoteAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-
+-        // Let the async put propagate
+-        sleep(250);
+-
+-        final CountDownLatch readLatch = new CountDownLatch(1);
+-        final CountDownLatch commitLatch = new CountDownLatch(1);
+-        final CountDownLatch completionLatch = new CountDownLatch(2);
+-
+-        Thread updater = new Thread() {
+-
+-            public void run() {
+-
+-                try {
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-
+-                    assertEquals("Correct initial value", VALUE1, localAccessStrategy.get(KEY, txTimestamp));
+-
+-                    localAccessStrategy.update(KEY, VALUE2, new Integer(2), new Integer(1));
+-
+-                    readLatch.countDown();
+-                    commitLatch.await();
+-
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node1 caught exception", e);
+-                    node1Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node1Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-
+-        Thread reader = new Thread() {
+-
+-            public void run() {
+-                try {
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-
+-                    readLatch.await();
+-
+-                    // This will block w/ pessimistic locking and then
+-                    // read the new value; w/ optimistic it shouldn't
+-                    // block and will read the old value
+-                    Object expected = !isBlockingReads() ? VALUE1 : VALUE2;
+-                    assertEquals("Correct value", expected, localAccessStrategy.get(KEY, txTimestamp));
+-
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node1 caught exception", e);
+-                    node1Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node1Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    commitLatch.countDown();
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-
+-        updater.setDaemon(true);
+-        reader.setDaemon(true);
+-        updater.start();
+-        reader.start();
+-
+-        if (! isBlockingReads())
+-            // Should complete promptly
+-            assertTrue(completionLatch.await(1, TimeUnit.SECONDS));
+-        else {
+-            // Reader thread should be blocking
+-            assertFalse(completionLatch.await(250, TimeUnit.MILLISECONDS));
+-            // Let the writer commit down
+-            commitLatch.countDown();
+-            assertTrue(completionLatch.await(1, TimeUnit.SECONDS));
+-        }
+-
+-        assertThreadsRanCleanly();
+-
+-        long txTimestamp = System.currentTimeMillis();
+-        assertEquals("Correct node1 value", VALUE2, localAccessStrategy.get(KEY, txTimestamp));
+-        Object expected = isUsingInvalidation() ? null : VALUE2;
+-        assertEquals("Correct node2 value", expected, remoteAccessStrategy.get(KEY, txTimestamp));
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#remove(java.lang.Object)}.
+-     */
+-    public void testRemove() {
+-        evictOrRemoveTest(false);
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#removeAll()}.
+-     */
+-    public void testRemoveAll() {
+-        evictOrRemoveAllTest(false);
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#evict(java.lang.Object)}.
+-     *
+-     * FIXME add testing of the "immediately without regard for transaction
+-     * isolation" bit in the EntityRegionAccessStrategy API.
+-     */
+-    public void testEvict() {
+-        evictOrRemoveTest(true);
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#evictAll()}.
+-     *
+-     * FIXME add testing of the "immediately without regard for transaction
+-     * isolation" bit in the EntityRegionAccessStrategy API.
+-     */
+-    public void testEvictAll() {
+-        evictOrRemoveAllTest(true);
+-    }
+-
+-    private void evictOrRemoveTest(boolean evict) {
+-
+-        final String KEY = KEY_BASE + testCount++;
+-
+-        assertNull("local is clean", localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        assertNull("remote is clean", remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        localAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        remoteAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        // Wait for async propagation
+-        sleep(250);
+-
+-        if (evict)
+-            localAccessStrategy.evict(KEY);
+-        else
+-            localAccessStrategy.remove(KEY);
+-
+-        assertEquals(null, localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-//        sleep(1000);
+-
+-        assertEquals(null, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-    }
+-
+-    private void evictOrRemoveAllTest(boolean evict) {
+-
+-        final String KEY = KEY_BASE + testCount++;
+-
+-        Fqn regionFqn = getRegionFqn(REGION_NAME, REGION_PREFIX);
+-
+-        Node regionRoot = localCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-        assertTrue(regionRoot.isResident());
+-
+-        if (isUsingOptimisticLocking()) {
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-        }
+-
+-        regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-        assertTrue(regionRoot.isResident());
+-
+-        if (isUsingOptimisticLocking()) {
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-        }
+-
+-        assertNull("local is clean", localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        assertNull("remote is clean", remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        localAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        // Wait for async propagation
+-        sleep(250);
+-
+-        remoteAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        // Wait for async propagation
+-        sleep(250);
+-
+-        if (isUsingOptimisticLocking()) {
+-            regionRoot = localCache.getRoot().getChild(regionFqn);
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-            regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-            assertEquals(NonLockingDataVersion.class, ((NodeSPI) regionRoot).getVersion().getClass());
+-        }
+-
+-        if (evict)
+-            localAccessStrategy.evictAll();
+-        else
+-            localAccessStrategy.removeAll();
+-
+-        // This should re-establish the region root node in the optimistic case
+-        assertNull(localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        regionRoot = localCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-        assertTrue(regionRoot.isValid());
+-        assertTrue(regionRoot.isResident());
+-
+-        // Re-establishing the region root on the local node doesn't
+-        // propagate it to other nodes. Do a get on the remote node to re-establish
+-        assertEquals(null, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertTrue(regionRoot.isValid());
+-        assertTrue(regionRoot.isResident());
+-        // Not invalidation, so we didn't insert a child above
+-        assertEquals(0, getValidChildrenCount(regionRoot));
+-
+-        // Test whether the get above messes up the optimistic version
+-        remoteAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-        assertEquals(VALUE1, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-
+-        // Revalidate the region root
+-        regionRoot = remoteCache.getRoot().getChild(regionFqn);
+-        assertFalse(regionRoot == null);
+-        assertTrue(regionRoot.isValid());
+-        assertTrue(regionRoot.isResident());
+-        // Region root should have 1 child -- the one we added above
+-        assertEquals(1, getValidChildrenCount(regionRoot));
+-
+-        // Wait for async propagation
+-        sleep(250);
+-
+-        assertEquals("local is correct", (isUsingInvalidation() ? null : VALUE1), localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        assertEquals("remote is correct", VALUE1, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-    }
+-
+-    protected void rollback() {
+-        try {
+-            BatchModeTransactionManager.getInstance().rollback();
+-        }
+-        catch (Exception e) {
+-            log.error(e.getMessage(), e);
+-        }
+-    }
+-
+-    private static class AccessStrategyTestSetup extends TestSetup {
+-
+-        private static final String PREFER_IPV4STACK = "java.net.preferIPv4Stack";
+-
+-        private final String configResource;
+-        private final String configName;
+-        private String preferIPv4Stack;
+-
+-        public AccessStrategyTestSetup(Test test, String configName) {
+-            this(test, configName, null);
+-        }
+-
+-        public AccessStrategyTestSetup(Test test, String configName, String configResource) {
+-            super(test);
+-            this.configName = configName;
+-            this.configResource = configResource;
+-        }
+-
+-        @Override
+-        protected void setUp() throws Exception {
+-            try {
+-                super.tearDown();
+-            }
+-            finally {
+-                if (preferIPv4Stack == null)
+-                    System.clearProperty(PREFER_IPV4STACK);
+-                else
+-                    System.setProperty(PREFER_IPV4STACK, preferIPv4Stack);
+-            }
+-
+-            // Try to ensure we use IPv4; otherwise cluster formation is very slow
+-            preferIPv4Stack = System.getProperty(PREFER_IPV4STACK);
+-            System.setProperty(PREFER_IPV4STACK, "true");
+-
+-            localCfg = createConfiguration(configName, configResource);
+-            localRegionFactory = CacheTestUtil.startRegionFactory(localCfg);
+-            localCache = localRegionFactory.getCacheInstanceManager().getEntityCacheInstance();
+-
+-            remoteCfg = createConfiguration(configName, configResource);
+-            remoteRegionFactory  = CacheTestUtil.startRegionFactory(remoteCfg);
+-            remoteCache = remoteRegionFactory.getCacheInstanceManager().getEntityCacheInstance();
+-
+-            invalidation = CacheHelper.isClusteredInvalidation(localCache);
+-            synchronous = CacheHelper.isSynchronous(localCache);
+-            optimistic = localCache.getConfiguration().getNodeLockingScheme() == org.jboss.cache.config.Configuration.NodeLockingScheme.OPTIMISTIC;
+-        }
+-
+-        @Override
+-        protected void tearDown() throws Exception {
+-            super.tearDown();
+-
+-            if (localRegionFactory != null)
+-                localRegionFactory.stop();
+-
+-            if (remoteRegionFactory != null)
+-                remoteRegionFactory.stop();
+-        }
+-
+-
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/AbstractReadOnlyAccessTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/AbstractReadOnlyAccessTestCase.java
+deleted file mode 100644
+index 1df79d149a..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/AbstractReadOnlyAccessTestCase.java
++++ /dev/null
+@@ -1,93 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.cache.access.AccessType;
+-import org.jboss.cache.transaction.BatchModeTransactionManager;
+-
+-/**
+- * Base class for tests of TRANSACTIONAL access.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractReadOnlyAccessTestCase extends AbstractEntityRegionAccessStrategyTestCase {
+-
+-    /**
+-     * Create a new AbstractTransactionalAccessTestCase.
+-     * 
+-     */
+-    public AbstractReadOnlyAccessTestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected AccessType getAccessType() {
+-        return AccessType.READ_ONLY;
+-    }   
+-
+-    @Override
+-    public void testPutFromLoad() throws Exception {
+-        putFromLoadTest(false);
+-    }
+-
+-    @Override
+-    public void testPutFromLoadMinimal() throws Exception {
+-        putFromLoadTest(true);
+-    }
+-    
+-    private void putFromLoadTest(boolean minimal) throws Exception {
+-       
+-        final String KEY = KEY_BASE + testCount++;
+-        
+-        long txTimestamp = System.currentTimeMillis();
+-        BatchModeTransactionManager.getInstance().begin();
+-        assertNull(localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        if (minimal)
+-            localAccessStrategy.putFromLoad(KEY, VALUE1, txTimestamp, new Integer(1), true);
+-        else
+-            localAccessStrategy.putFromLoad(KEY, VALUE1, txTimestamp, new Integer(1));
+-        
+-        sleep(250);
+-        Object expected = isUsingInvalidation() ? null : VALUE1;
+-        assertEquals(expected, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        
+-        BatchModeTransactionManager.getInstance().commit();
+-        assertEquals(VALUE1, localAccessStrategy.get(KEY, System.currentTimeMillis()));
+-        assertEquals(expected, remoteAccessStrategy.get(KEY, System.currentTimeMillis()));
+-    }
+-
+-    @Override
+-    public void testUpdate() throws Exception {
+-       
+-        final String KEY = KEY_BASE + testCount++;
+-        
+-        try {
+-            localAccessStrategy.update(KEY, VALUE2, new Integer(2), new Integer(1));
+-            fail("Call to update did not throw exception");
+-        }
+-        catch (UnsupportedOperationException good) {}
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/AbstractTransactionalAccessTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/AbstractTransactionalAccessTestCase.java
+deleted file mode 100644
+index 0e963c9101..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/AbstractTransactionalAccessTestCase.java
++++ /dev/null
+@@ -1,140 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import java.util.concurrent.CountDownLatch;
+-import java.util.concurrent.TimeUnit;
+-
+-import junit.framework.AssertionFailedError;
+-
+-import org.hibernate.cache.access.AccessType;
+-import org.jboss.cache.transaction.BatchModeTransactionManager;
+-
+-/**
+- * Base class for tests of TRANSACTIONAL access.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractTransactionalAccessTestCase extends AbstractEntityRegionAccessStrategyTestCase {
+-
+-    /**
+-     * Create a new AbstractTransactionalAccessTestCase.
+-     * 
+-     */
+-    public AbstractTransactionalAccessTestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected AccessType getAccessType() {
+-        return AccessType.TRANSACTIONAL;
+-    }
+-    
+-    public void testContestedPutFromLoad() throws Exception {
+-       
+-        final String KEY = KEY_BASE + testCount++;
+-        
+-        localAccessStrategy.putFromLoad(KEY, VALUE1, System.currentTimeMillis(), new Integer(1));
+-               
+-        final CountDownLatch pferLatch = new CountDownLatch(1);
+-        final CountDownLatch pferCompletionLatch = new CountDownLatch(1);
+-        final CountDownLatch commitLatch = new CountDownLatch(1);
+-        final CountDownLatch completionLatch = new CountDownLatch(1);
+-        
+-        Thread blocker = new Thread("Blocker") {          
+-            
+-            public void run() {
+-                
+-                try {       
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-                    
+-                    assertEquals("Correct initial value", VALUE1, localAccessStrategy.get(KEY, txTimestamp));
+-                    
+-                    localAccessStrategy.update(KEY, VALUE2, new Integer(2), new Integer(1));
+-                    
+-                    pferLatch.countDown();
+-                    commitLatch.await();
+-                    
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node1 caught exception", e);
+-                    node1Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node1Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-        
+-        Thread putter = new Thread("Putter") {          
+-            
+-            public void run() {
+-                
+-                try {       
+-                    long txTimestamp = System.currentTimeMillis();
+-                    BatchModeTransactionManager.getInstance().begin();
+-                    
+-                    localAccessStrategy.putFromLoad(KEY, VALUE1, txTimestamp, new Integer(1));
+-                    
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    log.error("node1 caught exception", e);
+-                    node1Exception = e;
+-                    rollback();
+-                }
+-                catch (AssertionFailedError e) {
+-                    node1Failure = e;
+-                    rollback();
+-                }
+-                finally {
+-                    pferCompletionLatch.countDown();
+-                }
+-            }
+-        };
+-        
+-        blocker.start();
+-        assertTrue("Active tx has done an update", pferLatch.await(1, TimeUnit.SECONDS));
+-        putter.start();
+-        assertTrue("putFromLoadreturns promtly", pferCompletionLatch.await(10, TimeUnit.MILLISECONDS));
+-        
+-        commitLatch.countDown();       
+-        
+-        assertTrue("Threads completed", completionLatch.await(1, TimeUnit.SECONDS));
+-        
+-        assertThreadsRanCleanly();
+-        
+-        long txTimestamp = System.currentTimeMillis();
+-        assertEquals("Correct node1 value", VALUE2, localAccessStrategy.get(KEY, txTimestamp));
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/EntityRegionImplTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/EntityRegionImplTestCase.java
+deleted file mode 100644
+index 09d57efef9..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/EntityRegionImplTestCase.java
++++ /dev/null
+@@ -1,116 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.EntityRegion;
+-import org.hibernate.cache.Region;
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.jbc.BasicRegionAdapter;
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.entity.EntityRegionImpl;
+-import org.hibernate.test.cache.jbc.AbstractEntityCollectionRegionTestCase;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-
+-/**
+- * Tests of EntityRegionImpl.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class EntityRegionImplTestCase extends AbstractEntityCollectionRegionTestCase {
+-    
+-    /**
+-     * Create a new EntityRegionImplTestCase.
+-     * 
+-     * @param name
+-     */
+-    public EntityRegionImplTestCase(String name) {
+-        super(name);
+-    } 
+-    
+-    @Override
+-    protected void supportedAccessTypeTest(RegionFactory regionFactory, Properties properties) {
+-        
+-        EntityRegion region = regionFactory.buildEntityRegion("test", properties, null);
+-        
+-        assertNull("Got TRANSACTIONAL", region.buildAccessStrategy(AccessType.TRANSACTIONAL).lockRegion());
+-        
+-        try
+-        {
+-            region.buildAccessStrategy(AccessType.READ_ONLY).lockRegion();
+-            fail("Did not get READ_ONLY");
+-        }
+-        catch (UnsupportedOperationException good) {}
+-        
+-        try
+-        {
+-            region.buildAccessStrategy(AccessType.NONSTRICT_READ_WRITE);
+-            fail("Incorrectly got NONSTRICT_READ_WRITE");
+-        }
+-        catch (CacheException good) {}
+-        
+-        try
+-        {
+-            region.buildAccessStrategy(AccessType.READ_WRITE);
+-            fail("Incorrectly got READ_WRITE");
+-        }
+-        catch (CacheException good) {}      
+-        
+-    }
+-
+-    @Override
+-    protected Region createRegion(JBossCacheRegionFactory regionFactory, String regionName, Properties properties, CacheDataDescription cdd) {
+-        return regionFactory.buildEntityRegion(regionName, properties, cdd);
+-    }
+-
+-    @Override
+-    protected Cache getJBossCache(JBossCacheRegionFactory regionFactory) {
+-        CacheInstanceManager mgr = regionFactory.getCacheInstanceManager();
+-        return mgr.getEntityCacheInstance();
+-    }
+-
+-    @Override
+-    protected Fqn getRegionFqn(String regionName, String regionPrefix) {
+-        return BasicRegionAdapter.getTypeLastRegionFqn(regionName, regionPrefix, EntityRegionImpl.TYPE);
+-    }
+-
+-    @Override
+-    protected void putInRegion(Region region, Object key, Object value) {
+-        ((EntityRegion) region).buildAccessStrategy(AccessType.TRANSACTIONAL).insert(key, value, new Integer(1));
+-    }
+-
+-    @Override
+-    protected void removeFromRegion(Region region, Object key) {
+-        ((EntityRegion) region).buildAccessStrategy(AccessType.TRANSACTIONAL).remove(key);        
+-    }  
+-    
+-    
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccInvalidatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccInvalidatedTransactionalTestCase.java
+deleted file mode 100644
+index 42745215e1..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccInvalidatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,68 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests TRANSACTIONAL access when MVCC locking and invalidation are used.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccInvalidatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(MvccInvalidatedTransactionalTestCase.class);
+-        return getTestSetup(suite, "mvcc-entity");
+-    }
+-
+-    // Known failures
+-
+-    // Overrides
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-
+-	@Override
+-	public boolean isBlockingReads() {
+-		return false;
+-	}
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccReadOnlyExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccReadOnlyExtraAPITestCase.java
+deleted file mode 100644
+index ce42deff21..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccReadOnlyExtraAPITestCase.java
++++ /dev/null
+@@ -1,71 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this
+- * version using pessimistic locking with READ_ONLY access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccReadOnlyExtraAPITestCase extends OptimisticReadOnlyExtraAPITestCase {
+-
+-    private static EntityRegionAccessStrategy localAccessStrategy;
+-
+-    /**
+-     * Create a new PessimisticAccessStrategyExtraAPITestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccReadOnlyExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected String getCacheConfigName() {
+-        return "mvcc-entity";
+-    }
+-
+-    @Override
+-    protected EntityRegionAccessStrategy getEntityAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-
+-    @Override
+-    protected void setEntityRegionAccessStrategy(EntityRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccReadOnlyTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccReadOnlyTestCase.java
+deleted file mode 100644
+index 5a19655d9f..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccReadOnlyTestCase.java
++++ /dev/null
+@@ -1,68 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests READ_ONLY access when pessimistic locking and invalidation are used.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccReadOnlyTestCase(String name) {
+-        super(name);
+-    }
+-
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(MvccReadOnlyTestCase.class);
+-        return getTestSetup(suite, "mvcc-entity");
+-    }
+-
+-    // Known failures
+-
+-    // Overrides
+-
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-
+-    @Override
+-	public boolean isBlockingReads() {
+-		return false;
+-	}
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccReplicatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccReplicatedTransactionalTestCase.java
+deleted file mode 100644
+index 050c919d27..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccReplicatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,62 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import junit.framework.Test;
+-
+-/**
+- * Tests TRANSACTIONAL access when pessimistic locking and replication are used.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccReplicatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-
+-    public static Test suite() throws Exception {
+-        return getTestSetup(MvccReplicatedTransactionalTestCase.class, "mvcc-shared");
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-
+-    @Override
+-	public boolean isBlockingReads() {
+-		return false;
+-	}
+-
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccTransactionalExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccTransactionalExtraAPITestCase.java
+deleted file mode 100644
+index a67b190e67..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/MvccTransactionalExtraAPITestCase.java
++++ /dev/null
+@@ -1,71 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this base
+- * version using Optimistic locking with TRANSACTIONAL access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- *
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MvccTransactionalExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-
+-    private static EntityRegionAccessStrategy localAccessStrategy;
+-
+-    /**
+-     * Create a new PessimisticAccessStrategyExtraAPITestCase.
+-     *
+-     * @param name
+-     */
+-    public MvccTransactionalExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected String getCacheConfigName() {
+-        return "mvcc-entity";
+-    }
+-
+-    @Override
+-    protected EntityRegionAccessStrategy getEntityAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-
+-    @Override
+-    protected void setEntityRegionAccessStrategy(EntityRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticInvalidatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticInvalidatedTransactionalTestCase.java
+deleted file mode 100644
+index cc4067f04a..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticInvalidatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,60 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/** 
+- * Tests TRANSACTIONAL access when optimistic locking and invalidation are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    
+-    /**
+-     * Create a new OptimisticInvalidatedTransactionalTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticInvalidatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(OptimisticInvalidatedTransactionalTestCase.class);   
+-        return getTestSetup(suite, "optimistic-entity");
+-    }
+-    
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertTrue("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-    
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticReadOnlyExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticReadOnlyExtraAPITestCase.java
+deleted file mode 100644
+index c17f21e07c..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticReadOnlyExtraAPITestCase.java
++++ /dev/null
+@@ -1,105 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-import org.hibernate.cache.jbc.entity.TransactionalAccess;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this
+- * version using Optimistic locking with READ_ONLY access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the 
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticReadOnlyExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-
+-    private static EntityRegionAccessStrategy localAccessStrategy;
+-    
+-    /**
+-     * Create a new TransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticReadOnlyExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected AccessType getAccessType() {
+-        return AccessType.READ_ONLY;
+-    }
+-    
+-    @Override
+-    protected EntityRegionAccessStrategy getEntityAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-    
+-    @Override
+-    protected void setEntityRegionAccessStrategy(EntityRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-    
+-    /**
+-     * Test method for {@link TransactionalAccess#lockItem(java.lang.Object, java.lang.Object)}.
+-     */
+-    @Override
+-    public void testLockItem() {
+-        try {
+-            getEntityAccessStrategy().lockItem(KEY, new Integer(1));
+-            fail("Call to lockItem did not throw exception");
+-        }
+-        catch (UnsupportedOperationException expected) {}
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#lockRegion()}.
+-     */
+-    @Override
+-    public void testLockRegion() {
+-        try {
+-            getEntityAccessStrategy().lockRegion();
+-            fail("Call to lockRegion did not throw exception");
+-        }
+-        catch (UnsupportedOperationException expected) {}
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#afterUpdate(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, org.hibernate.cache.access.SoftLock)}.
+-     */
+-    @Override
+-    public void testAfterUpdate() {
+-        try {
+-            getEntityAccessStrategy().afterUpdate(KEY, VALUE2, new Integer(1), new Integer(2), new MockSoftLock());
+-            fail("Call to afterUpdate did not throw exception");
+-        }
+-        catch (UnsupportedOperationException expected) {}
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticReadOnlyTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticReadOnlyTestCase.java
+deleted file mode 100644
+index e786a2eec7..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticReadOnlyTestCase.java
++++ /dev/null
+@@ -1,60 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests READ_ONLY access when optimistic locking and invalidation are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticReadOnlyTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(OptimisticReadOnlyTestCase.class);        
+-        return getTestSetup(suite, "optimistic-entity");
+-    }
+-    
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertTrue("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticReplicatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticReplicatedTransactionalTestCase.java
+deleted file mode 100644
+index 4ca61bd983..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticReplicatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import junit.framework.Test;
+-
+-/**
+- * Tests TRANSACTIONAL access when optimistic locking and replication are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticReplicatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        return getTestSetup(OptimisticReplicatedTransactionalTestCase.class, "optimistic-shared");
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Invalidation", isUsingInvalidation());
+-        assertTrue("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-    
+-    
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticTransactionalExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticTransactionalExtraAPITestCase.java
+deleted file mode 100644
+index 07ff676434..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/OptimisticTransactionalExtraAPITestCase.java
++++ /dev/null
+@@ -1,172 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.cache.EntityRegion;
+-import org.hibernate.cache.access.AccessType;
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-import org.hibernate.cache.access.SoftLock;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cache.jbc.entity.TransactionalAccess;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.cache.jbc.AbstractJBossCacheTestCase;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.jboss.cache.Cache;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this base
+- * version using Optimistic locking with TRANSACTIONAL access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the 
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticTransactionalExtraAPITestCase extends AbstractJBossCacheTestCase {
+-
+-    public static final String REGION_NAME = "test/com.foo.test";
+-    public static final String KEY = "KEY";
+-    public static final String VALUE1 = "VALUE1";
+-    public static final String VALUE2 = "VALUE2";
+-    
+-    private static EntityRegionAccessStrategy localAccessStrategy;
+-    
+-    private static boolean optimistic;
+-    
+-    /**
+-     * Create a new TransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public OptimisticTransactionalExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-
+-    protected void setUp() throws Exception {
+-        super.setUp();
+-        
+-        if (getEntityAccessStrategy() == null) {
+-            Configuration cfg = createConfiguration();
+-            JBossCacheRegionFactory rf  = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-            Cache localCache = rf.getCacheInstanceManager().getEntityCacheInstance();
+-            optimistic = localCache.getConfiguration().getNodeLockingScheme() == org.jboss.cache.config.Configuration.NodeLockingScheme.OPTIMISTIC;
+-            
+-            // Sleep a bit to avoid concurrent FLUSH problem
+-            avoidConcurrentFlush();
+-            
+-            EntityRegion localEntityRegion = rf.buildEntityRegion(REGION_NAME, cfg.getProperties(), null);
+-            setEntityRegionAccessStrategy(localEntityRegion.buildAccessStrategy(getAccessType()));
+-        }
+-    }
+-
+-    protected void tearDown() throws Exception {
+-        
+-        super.tearDown();
+-    }
+-    
+-    protected Configuration createConfiguration() {
+-        Configuration cfg = CacheTestUtil.buildConfiguration(REGION_PREFIX, MultiplexedJBossCacheRegionFactory.class, true, false);
+-        cfg.setProperty(MultiplexingCacheInstanceManager.ENTITY_CACHE_RESOURCE_PROP, getCacheConfigName());
+-        return cfg;
+-    }
+-    
+-    protected String getCacheConfigName() {
+-        return "optimistic-entity";
+-    }
+-    
+-    protected boolean isUsingOptimisticLocking() {
+-        return optimistic;
+-    }
+-
+-    protected AccessType getAccessType() {
+-        return AccessType.TRANSACTIONAL;
+-    }
+-    
+-    protected EntityRegionAccessStrategy getEntityAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-    
+-    protected void setEntityRegionAccessStrategy(EntityRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-    
+-    /**
+-     * This is just a setup test where we assert that the cache config is
+-     * as we expected.
+-     */
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-    
+-    /**
+-     * Test method for {@link TransactionalAccess#lockItem(java.lang.Object, java.lang.Object)}.
+-     */
+-    public void testLockItem() {
+-        assertNull(getEntityAccessStrategy().lockItem(KEY, new Integer(1)));
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#lockRegion()}.
+-     */
+-    public void testLockRegion() {
+-        assertNull(getEntityAccessStrategy().lockRegion());
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#unlockItem(java.lang.Object, org.hibernate.cache.access.SoftLock)}.
+-     */
+-    public void testUnlockItem() {
+-        getEntityAccessStrategy().unlockItem(KEY, new MockSoftLock());
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#unlockRegion(org.hibernate.cache.access.SoftLock)}.
+-     */
+-    public void testUnlockRegion() {
+-        getEntityAccessStrategy().unlockItem(KEY, new MockSoftLock());
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#afterInsert(java.lang.Object, java.lang.Object, java.lang.Object)}.
+-     */
+-    public void testAfterInsert() {
+-        assertFalse("afterInsert always returns false", getEntityAccessStrategy().afterInsert(KEY, VALUE1, new Integer(1)));
+-    }
+-
+-    /**
+-     * Test method for {@link TransactionalAccess#afterUpdate(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, org.hibernate.cache.access.SoftLock)}.
+-     */
+-    public void testAfterUpdate() {
+-        assertFalse("afterInsert always returns false", getEntityAccessStrategy().afterUpdate(KEY, VALUE2, new Integer(1), new Integer(2), new MockSoftLock()));
+-    }
+-    
+-    public static class MockSoftLock implements SoftLock {
+-        
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticInvalidatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticInvalidatedTransactionalTestCase.java
+deleted file mode 100644
+index b80cbd3b87..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticInvalidatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,64 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests TRANSACTIONAL access when pessimistic locking and invalidation are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticInvalidatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(PessimisticInvalidatedTransactionalTestCase.class);
+-        return getTestSetup(suite, "pessimistic-entity");
+-    }
+-    
+-    // Known failures 
+-
+-    // Overrides
+-    
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticReadOnlyExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticReadOnlyExtraAPITestCase.java
+deleted file mode 100644
+index 5dafc5976c..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticReadOnlyExtraAPITestCase.java
++++ /dev/null
+@@ -1,72 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this 
+- * version using pessimistic locking with READ_ONLY access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the 
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticReadOnlyExtraAPITestCase extends OptimisticReadOnlyExtraAPITestCase {
+-
+-    private static EntityRegionAccessStrategy localAccessStrategy;
+-    
+-    /**
+-     * Create a new PessimisticAccessStrategyExtraAPITestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticReadOnlyExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-    
+-    @Override
+-    protected String getCacheConfigName() {
+-        return "pessimistic-entity";
+-    }
+-    
+-    @Override
+-    protected EntityRegionAccessStrategy getEntityAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-    
+-    @Override
+-    protected void setEntityRegionAccessStrategy(EntityRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-    
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticReadOnlyTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticReadOnlyTestCase.java
+deleted file mode 100644
+index 6e16d70c5e..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticReadOnlyTestCase.java
++++ /dev/null
+@@ -1,65 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-/**
+- * Tests READ_ONLY access when pessimistic locking and invalidation are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticReadOnlyTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        TestSuite suite = CacheTestUtil.createFailureExpectedSuite(PessimisticReadOnlyTestCase.class); 
+-        return getTestSetup(suite, "pessimistic-entity");
+-    }
+-    
+-    // Known failures
+-    
+-    // Overrides   
+-
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertTrue("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-    
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticReplicatedTransactionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticReplicatedTransactionalTestCase.java
+deleted file mode 100644
+index e609779cf4..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticReplicatedTransactionalTestCase.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import junit.framework.Test;
+-
+-/**
+- * Tests TRANSACTIONAL access when pessimistic locking and replication are used.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-
+-    /**
+-     * Create a new PessimisticTransactionalAccessTestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticReplicatedTransactionalTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    public static Test suite() throws Exception {
+-        return getTestSetup(PessimisticReplicatedTransactionalTestCase.class, "pessimistic-shared");
+-    }
+-
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Invalidation", isUsingInvalidation());
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-        assertTrue("Synchronous mode", isSynchronous());
+-    }
+-    
+-    
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticTransactionalExtraAPITestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticTransactionalExtraAPITestCase.java
+deleted file mode 100644
+index 5693179780..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/entity/PessimisticTransactionalExtraAPITestCase.java
++++ /dev/null
+@@ -1,72 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.entity;
+-
+-import org.hibernate.cache.access.EntityRegionAccessStrategy;
+-
+-/**
+- * Tests for the "extra API" in EntityRegionAccessStrategy; in this base
+- * version using Optimistic locking with TRANSACTIONAL access.
+- * <p>
+- * By "extra API" we mean those methods that are superfluous to the 
+- * function of the JBC integration, where the impl is a no-op or a static
+- * false return value, UnsupportedOperationException, etc.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticTransactionalExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-
+-    private static EntityRegionAccessStrategy localAccessStrategy;
+-    
+-    /**
+-     * Create a new PessimisticAccessStrategyExtraAPITestCase.
+-     * 
+-     * @param name
+-     */
+-    public PessimisticTransactionalExtraAPITestCase(String name) {
+-        super(name);
+-    }
+-    
+-    @Override
+-    protected String getCacheConfigName() {
+-        return "pessimistic-entity";
+-    }
+-    
+-    @Override
+-    protected EntityRegionAccessStrategy getEntityAccessStrategy() {
+-        return localAccessStrategy;
+-    }
+-    
+-    @Override
+-    protected void setEntityRegionAccessStrategy(EntityRegionAccessStrategy strategy) {
+-        localAccessStrategy = strategy;
+-    }
+-    
+-    @Override
+-    public void testCacheConfiguration() {
+-        assertFalse("Using Optimistic locking", isUsingOptimisticLocking());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/AbstractEntityCacheFunctionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/AbstractEntityCacheFunctionalTestCase.java
+deleted file mode 100644
+index 62cd713d7a..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/AbstractEntityCacheFunctionalTestCase.java
++++ /dev/null
+@@ -1,126 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import java.util.Map;
+-
+-import org.hibernate.Session;
+-import org.hibernate.Transaction;
+-import org.hibernate.cache.ReadWriteCache;
+-import org.hibernate.stat.SecondLevelCacheStatistics;
+-import org.hibernate.stat.Statistics;
+-
+-/**
+- * Common requirement entity caching testing for each
+- * {@link org.hibernate.cache.RegionFactory} impl.
+- * 
+- * @author Steve Ebersole
+- */
+-public abstract class AbstractEntityCacheFunctionalTestCase extends CacheTestCaseBase {
+-
+-    // note that a lot of the functionality here is intended to be used
+-    // in creating specific tests for each CacheProvider that would extend
+-    // from a base test case (this) for common requirement testing...
+-
+-    public AbstractEntityCacheFunctionalTestCase(String x) {
+-        super(x);
+-    }
+-
+-    @Override
+-    protected boolean getUseQueryCache() {
+-        return false;
+-    }
+-
+-    public void testEmptySecondLevelCacheEntry() throws Exception {
+-        getSessions().evictEntity(Item.class.getName());
+-        Statistics stats = getSessions().getStatistics();
+-        stats.clear();
+-        SecondLevelCacheStatistics statistics = stats.getSecondLevelCacheStatistics(getPrefixedRegionName(Item.class.getName()));
+-        Map cacheEntries = statistics.getEntries();
+-        assertEquals(0, cacheEntries.size());
+-    }
+-
+-    public void testStaleWritesLeaveCacheConsistent() {
+-        Session s = openSession();
+-        Transaction txn = s.beginTransaction();
+-        VersionedItem item = new VersionedItem();
+-        item.setName("steve");
+-        item.setDescription("steve's item");
+-        s.save(item);
+-        txn.commit();
+-        s.close();
+-
+-        Long initialVersion = item.getVersion();
+-
+-        // manually revert the version property
+-        item.setVersion(new Long(item.getVersion().longValue() - 1));
+-
+-        try {
+-            s = openSession();
+-            txn = s.beginTransaction();
+-            s.update(item);
+-            txn.commit();
+-            s.close();
+-            fail("expected stale write to fail");
+-        } catch (Throwable expected) {
+-            // expected behavior here
+-            if (txn != null) {
+-                try {
+-                    txn.rollback();
+-                } catch (Throwable ignore) {
+-                }
+-            }
+-        } finally {
+-            if (s != null && s.isOpen()) {
+-                try {
+-                    s.close();
+-                } catch (Throwable ignore) {
+-                }
+-            }
+-        }
+-
+-        // check the version value in the cache...
+-        SecondLevelCacheStatistics slcs = sfi().getStatistics().getSecondLevelCacheStatistics(
+-              getPrefixedRegionName(VersionedItem.class.getName()));
+-
+-        Object entry = slcs.getEntries().get(item.getId());
+-        Long cachedVersionValue;
+-        if (entry instanceof ReadWriteCache.Lock) {
+-            // FIXME don't know what to test here
+-            cachedVersionValue = new Long(((ReadWriteCache.Lock) entry).getUnlockTimestamp());
+-        } else {
+-            cachedVersionValue = (Long) ((Map) entry).get("_version");
+-            assertEquals(initialVersion.longValue(), cachedVersionValue.longValue());
+-        }
+-
+-        // cleanup
+-        s = openSession();
+-        txn = s.beginTransaction();
+-        item = (VersionedItem) s.load(VersionedItem.class, item.getId());
+-        s.delete(item);
+-        txn.commit();
+-        s.close();
+-
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/AbstractQueryCacheFunctionalTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/AbstractQueryCacheFunctionalTestCase.java
+deleted file mode 100755
+index 7fc871e39e..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/AbstractQueryCacheFunctionalTestCase.java
++++ /dev/null
+@@ -1,104 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import java.util.Map;
+-
+-import org.hibernate.Session;
+-import org.hibernate.Transaction;
+-import org.hibernate.cache.ReadWriteCache;
+-import org.hibernate.stat.SecondLevelCacheStatistics;
+-
+-/**
+- * A QueryCacheEnabledCacheProviderTestCase.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public abstract class AbstractQueryCacheFunctionalTestCase extends AbstractEntityCacheFunctionalTestCase {
+-
+-    /**
+-     * Create a new QueryCacheEnabledCacheProviderTestCase.
+-     * 
+-     * @param x
+-     */
+-    public AbstractQueryCacheFunctionalTestCase(String x) {
+-        super(x);
+-    }
+-
+-    @Override
+-    protected boolean getUseQueryCache() {
+-        return true;
+-    }
+-
+-    public void testQueryCacheInvalidation() {
+-        Session s = openSession();
+-        Transaction t = s.beginTransaction();
+-        Item i = new Item();
+-        i.setName("widget");
+-        i.setDescription("A really top-quality, full-featured widget.");
+-        s.persist(i);
+-        t.commit();
+-        s.close();
+-
+-        SecondLevelCacheStatistics slcs = s.getSessionFactory().getStatistics().getSecondLevelCacheStatistics(
+-              getPrefixedRegionName(Item.class.getName()));
+-
+-        assertEquals(slcs.getPutCount(), 1);
+-        assertEquals(slcs.getElementCountInMemory(), 1);
+-        assertEquals(slcs.getEntries().size(), 1);
+-
+-        s = openSession();
+-        t = s.beginTransaction();
+-        i = (Item) s.get(Item.class, i.getId());
+-
+-        assertEquals(slcs.getHitCount(), 1);
+-        assertEquals(slcs.getMissCount(), 0);
+-
+-        i.setDescription("A bog standard item");
+-
+-        t.commit();
+-        s.close();
+-
+-        assertEquals(slcs.getPutCount(), 2);
+-
+-        Object entry = slcs.getEntries().get(i.getId());
+-        Map map;
+-        if (entry instanceof ReadWriteCache.Item) {
+-            map = (Map) ((ReadWriteCache.Item) entry).getValue();
+-        } else {
+-            map = (Map) entry;
+-        }
+-        assertTrue(map.get("description").equals("A bog standard item"));
+-        assertTrue(map.get("name").equals("widget"));
+-
+-        // cleanup
+-        s = openSession();
+-        t = s.beginTransaction();
+-        s.delete(i);
+-        t.commit();
+-        s.close();
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/CacheTestCaseBase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/CacheTestCaseBase.java
+deleted file mode 100755
+index d9313effbd..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/CacheTestCaseBase.java
++++ /dev/null
+@@ -1,160 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.cfg.Environment;
+-import org.hibernate.cfg.Mappings;
+-import org.hibernate.dialect.Dialect;
+-import org.hibernate.testing.junit.functional.FunctionalTestCase;
+-import org.hibernate.testing.tm.ConnectionProviderImpl;
+-import org.hibernate.testing.tm.TransactionManagerLookupImpl;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Provides common configuration setups for cache testing.
+- * 
+- * @author Brian Stansberry
+- */
+-public abstract class CacheTestCaseBase extends FunctionalTestCase {
+-
+-    private static final Logger log = LoggerFactory.getLogger( CacheTestCaseBase.class );
+-    
+-    private static final String PREFER_IPV4STACK = "java.net.preferIPv4Stack";
+-
+-    private String preferIPv4Stack;
+-    
+-    // note that a lot of the functionality here is intended to be used
+-    // in creating specific tests for each CacheProvider that would extend
+-    // from a base test case (this) for common requirement testing...
+-
+-    public CacheTestCaseBase(String x) {
+-        super(x);
+-    }
+-
+-    public String[] getMappings() {
+-        return new String[] {
+-				"cache/jbc/functional/Item.hbm.xml",
+-				"cache/jbc/functional/Customer.hbm.xml",
+-				"cache/jbc/functional/Contact.hbm.xml"
+-		};
+-    }
+-
+-    public void configure(Configuration cfg) {
+-        super.configure(cfg);
+-
+-        if (getRegionPrefix() != null) {
+-            cfg.setProperty(Environment.CACHE_REGION_PREFIX, getRegionPrefix());
+-        }
+-        
+-        cfg.setProperty(Environment.USE_SECOND_LEVEL_CACHE, "true");
+-        cfg.setProperty(Environment.GENERATE_STATISTICS, "true");
+-        cfg.setProperty(Environment.USE_STRUCTURED_CACHE, "true");
+-        cfg.setProperty(Environment.CACHE_REGION_FACTORY, getCacheRegionFactory().getName());
+-
+-        cfg.setProperty(Environment.USE_QUERY_CACHE, String.valueOf(getUseQueryCache()));
+-        cfg.setProperty(Environment.CONNECTION_PROVIDER, getConnectionProviderClass().getName());
+-        cfg.setProperty(Environment.TRANSACTION_MANAGER_STRATEGY, getTransactionManagerLookupClass().getName());
+-        
+-        Class<?> transactionFactory = getTransactionFactoryClass();
+-        if (transactionFactory != null)
+-            cfg.setProperty( Environment.TRANSACTION_STRATEGY, transactionFactory.getName() );
+-        
+-        configureCacheFactory(cfg);
+-    }  
+-    
+-    protected String getRegionPrefix() {
+-        return "test";
+-    }
+-    
+-    protected String getPrefixedRegionName(String regionName)
+-    {
+-       String prefix = getRegionPrefix() == null ? "" : getRegionPrefix() + ".";
+-       return prefix + regionName;
+-    }
+-
+-    public String getCacheConcurrencyStrategy() {
+-        return "transactional";
+-    }    
+-
+-    /**
+-     * Apply any region-factory specific configurations.
+-     * 
+-     * @param cfg the Configuration to update.
+-     */
+-    protected abstract void configureCacheFactory(Configuration cfg);
+-
+-    protected abstract Class<?> getCacheRegionFactory();
+-
+-    protected abstract boolean getUseQueryCache();
+-    
+-    protected Class<?> getConnectionProviderClass() {
+-        return ConnectionProviderImpl.class;
+-    }
+-    
+-    protected Class<?> getTransactionManagerLookupClass() {
+-        return TransactionManagerLookupImpl.class;
+-    }
+-    
+-    protected Class<?> getTransactionFactoryClass() {
+-        return null;
+-    }
+-
+-    @Override
+-    public void afterConfigurationBuilt(Mappings mappings, Dialect dialect) {
+-        
+-        super.afterConfigurationBuilt(mappings, dialect);
+-        
+-        // Try to ensure we use IPv4; otherwise cluster formation is very slow 
+-        preferIPv4Stack = System.getProperty(PREFER_IPV4STACK);
+-        System.setProperty(PREFER_IPV4STACK, "true");  
+-    }
+-
+-    @Override
+-    protected void cleanupTest() throws Exception {
+-        try {
+-            super.cleanupTest();
+-        }
+-        finally {
+-            if (preferIPv4Stack == null)
+-                System.clearProperty(PREFER_IPV4STACK);
+-            else 
+-                System.setProperty(PREFER_IPV4STACK, preferIPv4Stack);
+-        }
+-        
+-    }
+-    
+-    protected void sleep(long ms) {
+-        try {
+-            Thread.sleep(ms);
+-        }
+-        catch (InterruptedException e) {
+-            log.warn("Interrupted during sleep", e);
+-        }
+-    }
+-    
+-    
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Contact.hbm.xml b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Contact.hbm.xml
+deleted file mode 100755
+index c32a30c6d5..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Contact.hbm.xml
++++ /dev/null
+@@ -1,48 +0,0 @@
+-<?xml version="1.0"?>
+-<!DOCTYPE hibernate-mapping PUBLIC 
+-	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+-	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-<hibernate-mapping
+-	package="org.hibernate.test.cache.jbc.functional">
+-
+-	<class name="Contact" table="Contacts">
+-      
+-      <cache usage="transactional"/>
+-      
+-		<id name="id">
+-			<generator class="increment"/>
+-		</id>
+-		
+-		<property name="name" not-null="true"/>
+-		<property name="tlf" not-null="true"/>
+-		
+-		<many-to-one name="customer" 
+-		      class="org.hibernate.test.cache.jbc.functional.Customer"
+-		      column="CUSTOMER_ID"/>
+-	</class>
+-
+-</hibernate-mapping>
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Contact.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Contact.java
+deleted file mode 100755
+index b1fbde5555..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Contact.java
++++ /dev/null
+@@ -1,86 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import java.io.Serializable;
+-
+-/**
+- * Entity that has a many-to-one relationship to a Customer
+- */
+-public class Contact implements Serializable
+-{
+-   /** The serialVersionUID */
+-   private static final long serialVersionUID = 1L;
+-   
+-   Integer id;
+-   String name;
+-   String tlf;
+-   Customer customer;
+-   
+-   public Contact()
+-   {
+-      
+-   }
+-   
+-   public Integer getId()
+-   {
+-      return id;
+-   }
+-
+-   public void setId(Integer id)
+-   {
+-      this.id = id;
+-   }
+-
+-   public String getName()
+-   {
+-      return name;
+-   }
+-   
+-   public void setName(String name)
+-   {
+-      this.name = name;
+-   }
+-   
+-   public String getTlf()
+-   {
+-      return tlf;
+-   }
+-   
+-   public void setTlf(String tlf)
+-   {
+-      this.tlf = tlf;
+-   }
+-   
+-   public Customer getCustomer()
+-   {
+-      return customer;
+-   }
+-   
+-   public void setCustomer(Customer customer)
+-   {
+-      this.customer = customer;
+-   }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Customer.hbm.xml b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Customer.hbm.xml
+deleted file mode 100755
+index b12e394884..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Customer.hbm.xml
++++ /dev/null
+@@ -1,50 +0,0 @@
+-<?xml version="1.0"?>
+-<!DOCTYPE hibernate-mapping PUBLIC 
+-	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+-	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-<hibernate-mapping
+-	package="org.hibernate.test.cache.jbc.functional">
+-
+-	<class name="Customer" table="Customers">
+-	   
+-	   <cache usage="transactional"/>
+-	   
+-		<id name="id">
+-			<generator class="increment"/>
+-		</id>
+-		
+-		<property name="name" not-null="true"/>
+-		    
+-		<set name="contacts" cascade="all" lazy="false">
+-        <cache usage="transactional"/>
+-        <key column="CUSTOMER_ID"/>
+-        <one-to-many class="org.hibernate.test.cache.jbc.functional.Contact"/>
+-      </set>
+-      
+-	</class>
+-
+-</hibernate-mapping>
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Customer.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Customer.java
+deleted file mode 100755
+index 5e67506d3e..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Customer.java
++++ /dev/null
+@@ -1,78 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import java.io.Serializable;
+-import java.util.Set;
+-
+-/**
+- * Company customer
+- *
+- * @author Emmanuel Bernard
+- * @author Kabir Khan
+- */
+-public class Customer implements Serializable
+-{
+-   /** The serialVersionUID */
+-   private static final long serialVersionUID = 1L;
+-   Integer id;
+-   String name;
+-
+-   private transient Set<Contact> contacts;
+-
+-   public Customer()
+-   {
+-   }
+-
+-   public Integer getId()
+-   {
+-      return id;
+-   }
+-
+-   public void setId(Integer id)
+-   {
+-      this.id = id;
+-   }
+-
+-   public String getName()
+-   {
+-      return name;
+-   }
+-
+-   public void setName(String string)
+-   {
+-      name = string;
+-   }
+-
+-   public Set<Contact> getContacts()
+-   {
+-      return contacts;
+-   }
+-
+-   public void setContacts(Set<Contact> contacts)
+-   {
+-      this.contacts = contacts;
+-   }
+-}
+-
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/DualNodeTestCaseBase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/DualNodeTestCaseBase.java
+deleted file mode 100644
+index 109e4c5ffe..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/DualNodeTestCaseBase.java
++++ /dev/null
+@@ -1,238 +0,0 @@
+-/*
+- * Copyright (c) 2008, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.cfg.Mappings;
+-import org.hibernate.dialect.Dialect;
+-import org.hibernate.engine.SessionFactoryImplementor;
+-import org.hibernate.testing.junit.functional.ExecutionEnvironment;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeConnectionProviderImpl;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeJtaTransactionManagerImpl;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeTestUtil;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeTransactionManagerLookup;
+-import org.hibernate.transaction.CMTTransactionFactory;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Base class for tests that need to create two separate SessionFactory
+- * instances to simulate a two-node cluster.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- */
+-public abstract class DualNodeTestCaseBase extends CacheTestCaseBase
+-{
+-   private static final Logger log = LoggerFactory.getLogger( CacheTestCaseBase.class );
+-   
+-   public static final String CACHE_MANAGER_NAME_PROP = "hibernate.test.cluster.node.id";
+-   
+-   private ExecutionEnvironment secondNodeEnvironment;
+-   private org.hibernate.classic.Session secondNodeSession;
+-   
+-   /**
+-    * Create a new DualNodeTestCaseBase.
+-    * 
+-    * @param x
+-    */
+-   public DualNodeTestCaseBase(String x)
+-   {
+-      super(x);
+-   }
+-
+-   @Override
+-   public void configure(Configuration cfg)
+-   {
+-      standardConfigure(cfg);
+-      configureFirstNode(cfg);
+-   }    
+-   
+-   private void standardConfigure(Configuration cfg) {
+-      super.configure(cfg);
+-   }
+-
+-   /**
+-    * Apply any node-specific configurations to our first node.
+-    * 
+-    * @param the Configuration to update.
+-    */
+-   protected void configureFirstNode(Configuration cfg)
+-   {
+-      cfg.setProperty(DualNodeTestUtil.NODE_ID_PROP, 
+-                      DualNodeTestUtil.LOCAL);      
+-   }
+-   /**
+-    * Apply any node-specific configurations to our second node.
+-    * 
+-    * @param the Configuration to update.
+-    */
+-   protected void configureSecondNode(Configuration cfg)
+-   {
+-      cfg.setProperty(DualNodeTestUtil.NODE_ID_PROP, 
+-                      DualNodeTestUtil.REMOTE);
+-   }
+-   
+-   @Override
+-   protected Class<?> getConnectionProviderClass() {
+-       return DualNodeConnectionProviderImpl.class;
+-   }
+-   
+-   @Override
+-   protected Class<?> getTransactionManagerLookupClass() {
+-       return DualNodeTransactionManagerLookup.class;
+-   }   
+-   
+-   @Override
+-   protected Class<?> getTransactionFactoryClass() {
+-       return CMTTransactionFactory.class;
+-   }
+-
+-   @Override
+-   protected void prepareTest() throws Exception
+-   {
+-      log.info( "Building second node locally managed execution env" );
+-      secondNodeEnvironment = new ExecutionEnvironment( new SecondNodeSettings() );
+-      secondNodeEnvironment.initialize();
+-      
+-      super.prepareTest();
+-   }
+-   
+-   @Override
+-   protected void runTest() throws Throwable
+-   {
+-      try {
+-          super.runTest();
+-      }
+-      finally {
+-
+-         if ( secondNodeSession != null && secondNodeSession.isOpen() ) {
+-             if ( secondNodeSession.isConnected() ) {
+-                secondNodeSession.connection().rollback();
+-             }
+-             secondNodeSession.close();
+-             secondNodeSession = null;
+-             fail( "unclosed session" );
+-         }
+-         else {
+-            secondNodeSession = null;
+-         }
+-         
+-      }
+-   }
+-
+-   @Override
+-   protected void cleanupTest() throws Exception
+-   {
+-      try {
+-          super.cleanupTest();
+-      
+-          log.info( "Destroying second node locally managed execution env" );
+-          secondNodeEnvironment.complete();
+-          secondNodeEnvironment = null;
+-      }
+-      finally {
+-         cleanupTransactionManagement();
+-      }
+-   }
+-   
+-   protected void cleanupTransactionManagement() {
+-      DualNodeJtaTransactionManagerImpl.cleanupTransactions();
+-      DualNodeJtaTransactionManagerImpl.cleanupTransactionManagers();
+-   }
+-
+-   public ExecutionEnvironment getSecondNodeEnvironment() {
+-      return secondNodeEnvironment;
+-   }
+-
+-   /**
+-    * Settings impl that delegates most calls to the DualNodeTestCase itself,
+-    * but overrides the configure method to allow separate cache settings
+-    * for the second node. 
+-    */
+-   public class SecondNodeSettings implements ExecutionEnvironment.Settings {
+-      
+-      private DualNodeTestCaseBase delegate;
+-      
+-      public SecondNodeSettings() {
+-          this.delegate = DualNodeTestCaseBase.this;
+-      }
+-
+-      /**
+-       * This is the important one -- we extend the delegate's work by
+-       * adding second-node specific settings
+-       */
+-      public void configure(Configuration arg0)
+-      {
+-         delegate.standardConfigure(arg0);
+-         configureSecondNode(arg0);         
+-      }
+-
+-      /**
+-       * Disable creating of schemas; we let the primary session factory
+-       * do that to our shared database.
+-       */
+-      public boolean createSchema()
+-      {
+-         return false;
+-      }
+-
+-      /**
+-       * Disable creating of schemas; we let the primary session factory
+-       * do that to our shared database.
+-       */
+-      public boolean recreateSchemaAfterFailure()
+-      {
+-         return false;
+-      }
+-
+-      public void afterConfigurationBuilt(Mappings arg0, Dialect arg1)
+-      {
+-         delegate.afterConfigurationBuilt(arg0, arg1);         
+-      }
+-
+-      public void afterSessionFactoryBuilt(SessionFactoryImplementor arg0)
+-      {
+-         delegate.afterSessionFactoryBuilt(arg0);
+-      }
+-
+-      public boolean appliesTo(Dialect arg0)
+-      {
+-         return delegate.appliesTo(arg0);
+-      }
+-
+-      public String getBaseForMappings()
+-      {
+-         return delegate.getBaseForMappings();
+-      }
+-
+-      public String getCacheConcurrencyStrategy()
+-      {
+-         return delegate.getCacheConcurrencyStrategy();
+-      }
+-
+-      public String[] getMappings()
+-      {
+-         return delegate.getMappings();
+-      }
+-
+-      public boolean overrideCacheStrategy()
+-      {
+-         return delegate.overrideCacheStrategy();
+-      }
+-   }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Item.hbm.xml b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Item.hbm.xml
+deleted file mode 100755
+index cede224c9b..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Item.hbm.xml
++++ /dev/null
+@@ -1,49 +0,0 @@
+-<?xml version="1.0"?>
+-<!DOCTYPE hibernate-mapping PUBLIC 
+-	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+-	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-<hibernate-mapping
+-	package="org.hibernate.test.cache.jbc.functional">
+-
+-	<class name="Item" table="Items">
+-		<id name="id">
+-			<generator class="increment"/>
+-		</id>
+-		<property name="name" not-null="true"/>
+-		<property name="description" not-null="true"/>
+-	</class>
+-
+-	<class name="VersionedItem" table="VersionedItems">
+-		<id name="id">
+-			<generator class="increment"/>
+-		</id>
+-        <version name="version" type="long"/>
+-        <property name="name" not-null="true"/>
+-		<property name="description" not-null="true"/>
+-	</class>
+-
+-</hibernate-mapping>
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Item.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Item.java
+deleted file mode 100755
+index c4df33965c..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/Item.java
++++ /dev/null
+@@ -1,57 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-/**
+- * @author Gavin King
+- */
+-public class Item {
+-    private Long id;
+-    private String name;
+-    private String description;
+-
+-    public String getDescription() {
+-        return description;
+-    }
+-
+-    public void setDescription(String description) {
+-        this.description = description;
+-    }
+-
+-    public Long getId() {
+-        return id;
+-    }
+-
+-    public void setId(Long id) {
+-        this.id = id;
+-    }
+-
+-    public String getName() {
+-        return name;
+-    }
+-
+-    public void setName(String name) {
+-        this.name = name;
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCConcurrentWriteTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCConcurrentWriteTest.java
+deleted file mode 100644
+index 9115083e05..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCConcurrentWriteTest.java
++++ /dev/null
+@@ -1,615 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2009, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import java.io.PrintWriter;
+-import java.io.StringWriter;
+-import java.util.HashSet;
+-import java.util.Random;
+-import java.util.Set;
+-import java.util.concurrent.CountDownLatch;
+-import java.util.concurrent.ExecutorService;
+-import java.util.concurrent.Executors;
+-import java.util.concurrent.TimeUnit;
+-
+-import javax.transaction.Transaction;
+-
+-import junit.framework.Test;
+-
+-import org.hibernate.FlushMode;
+-import org.hibernate.Session;
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.testing.junit.functional.FunctionalTestClassTestSuite;
+-import org.hibernate.stat.SecondLevelCacheStatistics;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeConnectionProviderImpl;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeJtaTransactionManagerImpl;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeTestUtil;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeTransactionManagerLookup;
+-import org.hibernate.transaction.CMTTransactionFactory;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- *
+- * @author nikita_tovstoles@mba.berkeley.edu
+- */
+-public class MVCCConcurrentWriteTest extends CacheTestCaseBase {
+-
+-    private static final String JBC_CONFIG = "org/hibernate/test/cache/jbc/functional/mvcc-treecache.xml";
+-
+-    private static final Logger LOG = LoggerFactory.getLogger(MVCCConcurrentWriteTest.class);
+-    /**
+-     * when USER_COUNT==1, tests pass, when >4 tests fail
+-     */
+-    final private int USER_COUNT = 5;
+-    final private int ITERATION_COUNT = 150;
+-    final private int THINK_TIME_MILLIS = 10;
+-    final private long LAUNCH_INTERVAL_MILLIS = 10;
+-    final private Random random = new Random();
+-    /**
+-     * kill switch used to stop all users when one fails
+-     */
+-    private static volatile boolean TERMINATE_ALL_USERS = false;
+-    /**
+-     * collection of IDs of all customers participating in this test
+-     */
+-    private Set<Integer> customerIDs = new HashSet<Integer>();
+-
+-    public MVCCConcurrentWriteTest(String x) {
+-        super(x);
+-    }
+-
+-    protected Class<? extends RegionFactory> getCacheRegionFactory() {
+-        return JBossCacheRegionFactory.class;
+-    }    
+-
+-    /**
+-     * Apply any region-factory specific configurations.
+-     * 
+-     * @param the Configuration to update.
+-     */
+-    protected void configureCacheFactory(Configuration cfg) {
+-        cfg.setProperty(SharedCacheInstanceManager.CACHE_RESOURCE_PROP, JBC_CONFIG);        
+-    }
+-    
+-    
+-
+-    /**
+-     * test that DB can be queried
+-     * @throws java.lang.Exception
+-     */
+-    public void testPingDb() throws Exception {
+-        try {
+-            beginTx();
+-            getEnvironment().getSessionFactory().getCurrentSession().createQuery("from " + Customer.class.getName()).list();
+-        } catch (Exception e) {
+-            setRollbackOnly();
+-            fail("failed to query DB; exception=" + e);
+-        }
+-        finally {
+-           commitTx();
+-        }
+-    }
+-
+-    @Override
+-    protected void prepareTest() throws Exception {
+-        super.prepareTest();
+-        TERMINATE_ALL_USERS = false;
+-    }
+-
+-    @Override
+-    protected void cleanupTest() throws Exception {
+-        try {
+-            super.cleanupTest();
+-
+-        } finally {
+-            cleanup();
+-        //DualNodeJtaTransactionManagerImpl.cleanupTransactions();
+-        //DualNodeJtaTransactionManagerImpl.cleanupTransactionManagers();
+-        }
+-    }
+-
+-    @Override
+-    public void configure(Configuration cfg) {
+-        super.configure(cfg);
+-        cfg.setProperty(DualNodeTestUtil.NODE_ID_PROP, DualNodeTestUtil.LOCAL);
+-    }
+-
+-    @Override
+-    protected boolean getUseQueryCache() {
+-        return true;
+-    }
+-
+-    @Override
+-    protected Class<?> getConnectionProviderClass() {
+-        return DualNodeConnectionProviderImpl.class;
+-    }
+-
+-    @Override
+-    protected Class<?> getTransactionManagerLookupClass() {
+-        return DualNodeTransactionManagerLookup.class;
+-    }
+-
+-    @Override
+-    protected Class<?> getTransactionFactoryClass() {
+-        return CMTTransactionFactory.class;
+-    }
+-
+-    public void testSingleUser() throws Exception {
+-        //setup
+-        Customer customer = createCustomer(0);
+-        final Integer customerId = customer.getId();
+-        getCustomerIDs().add(customerId);
+-
+-        assertNull("contact exists despite not being added", getFirstContact(customerId));
+-
+-        //check that cache was hit
+-        SecondLevelCacheStatistics customerSlcs = getEnvironment().getSessionFactory().getStatistics().getSecondLevelCacheStatistics(
+-                getPrefixedRegionName(Customer.class.getName()));
+-        assertEquals(customerSlcs.getPutCount(), 1);
+-        assertEquals(customerSlcs.getElementCountInMemory(), 1);
+-        assertEquals(customerSlcs.getEntries().size(), 1);
+-
+-        SecondLevelCacheStatistics contactsCollectionSlcs = getEnvironment().getSessionFactory().getStatistics().getSecondLevelCacheStatistics(
+-                getPrefixedRegionName(Customer.class.getName() + ".contacts"));
+-        assertEquals(1, contactsCollectionSlcs.getPutCount());
+-        assertEquals(1, contactsCollectionSlcs.getElementCountInMemory());
+-        assertEquals(1, contactsCollectionSlcs.getEntries().size());
+-
+-        final Contact contact = addContact(customerId);
+-        assertNotNull("contact returned by addContact is null", contact);
+-        assertEquals("Customer.contacts cache was not invalidated after addContact",
+-                0, contactsCollectionSlcs.getElementCountInMemory());
+-
+-        assertNotNull("Contact missing after successful add call", getFirstContact(customerId));
+-
+-
+-        //read everyone's contacts
+-        readEveryonesFirstContact();
+-
+-        removeContact(customerId);
+-        assertNull("contact still exists after successful remove call", getFirstContact(customerId));
+-
+-    }
+-    
+-    /**
+-     * This will fail until JBCACHE-1494 is done and integrated. Note that
+-     * having getUseQueryCache() return true will allows this to pass.
+-     * 
+-     * @throws Exception
+-     */
+-    public void testManyUsers() throws Exception {
+-
+-        //setup - create users
+-        for (int i = 0; i < USER_COUNT; i++) {
+-            Customer customer = createCustomer(0);
+-            getCustomerIDs().add(customer.getId());
+-        }
+-
+-        assertEquals("failed to create enough Customers", USER_COUNT, getCustomerIDs().size());
+-
+-        final ExecutorService pool = Executors.newFixedThreadPool(USER_COUNT);
+-        CountDownLatch completionLatch = new CountDownLatch(USER_COUNT);
+-        
+-        Set<UserRunner> runners = new HashSet<UserRunner>();
+-        for (Integer customerId : getCustomerIDs()) {
+-            UserRunner r = new UserRunner(customerId, completionLatch);
+-            runners.add(r);
+-            pool.execute(r);
+-            LOG.info("launched " + r);
+-            Thread.sleep(LAUNCH_INTERVAL_MILLIS); //rampup
+-        }
+-
+-        assertEquals("not all user threads launched", USER_COUNT, runners.size());
+-        
+-        boolean finishedInTime = completionLatch.await(10, TimeUnit.SECONDS);
+-        
+-        TERMINATE_ALL_USERS = true;
+-        
+-        if (!finishedInTime) { //timed out waiting for users to finish
+-            pool.shutdown();
+-            fail("Timed out waiting for user threads to finish. Their state at the time of forced shutdown: " + statusOfRunnersToString(runners));
+-        } else {
+-            //if here -> pool finished before timing out
+-            //check whether all runners suceeded
+-            boolean success = true;
+-            for (UserRunner r : runners) {
+-                if (!r.isSuccess()) {
+-                    success = false;
+-                    break;
+-                }
+-            }
+-            assertTrue("at least one UserRunner failed: " + statusOfRunnersToString(runners), success);
+-        }
+-    }
+-
+-    public void cleanup() throws Exception {
+-
+-        getCustomerIDs().clear();
+-
+-        String deleteContactHQL = "delete from Contact";
+-        String deleteCustomerHQL = "delete from Customer";
+-
+-        beginTx();
+-        try {
+-            Session session = getEnvironment().getSessionFactory().getCurrentSession();
+-            session.createQuery(deleteContactHQL).setFlushMode(FlushMode.AUTO).executeUpdate();
+-            session.createQuery(deleteCustomerHQL).setFlushMode(FlushMode.AUTO).executeUpdate();
+-        } catch (Exception e) {
+-            LOG.error("Caught exception in cleanup", e);
+-            setRollbackOnly();
+-        }
+-        finally {
+-           commitTx();
+-        }
+-
+-    }
+-
+-    private Customer createCustomer(int nameSuffix) throws Exception {
+-        Customer customer = null;
+-        beginTx();
+-        try {
+-            customer = new Customer();
+-            customer.setName("customer_" + nameSuffix);
+-            customer.setContacts(new HashSet<Contact>());
+-
+-            getEnvironment().getSessionFactory().getCurrentSession().persist(customer);
+-        } catch (Exception e) {
+-            setRollbackOnly();
+-            throw e;
+-        }
+-        finally {
+-           commitTx();
+-        }
+-        return customer;
+-    }
+-
+-    /**
+-     * delegate method since I'm trying to figure out which txManager to use
+-     * given that this test runs multiple threads (SimpleJtaTxMgrImpl isn't suited for that).
+-     *
+-     * What is needed is a thread-safe JTATransactionManager impl that can handle concurrent TXs
+-     * 
+-     * @throws java.lang.Exception
+-     */
+-    private void beginTx() throws Exception {
+-        DualNodeJtaTransactionManagerImpl.getInstance(DualNodeTestUtil.LOCAL).begin();
+-    }
+-
+-    /**
+-     * @see #beginTx()
+-     * @throws java.lang.Exception
+-     */
+-    private void commitTx() throws Exception {
+-        DualNodeJtaTransactionManagerImpl.getInstance(DualNodeTestUtil.LOCAL).commit();
+-    }
+-
+-//    /**
+-//     * @see #beginTx()
+-//     * @throws java.lang.Exception
+-//     */
+-//    private void rollbackTx() throws Exception {
+-//        DualNodeJtaTransactionManagerImpl.getInstance(DualNodeTestUtil.LOCAL).rollback();
+-//    }
+-    
+-    private void setRollbackOnly() throws Exception {
+-       Transaction tx = DualNodeJtaTransactionManagerImpl.getInstance(DualNodeTestUtil.LOCAL).getCurrentTransaction();
+-       if (tx != null) {
+-          tx.setRollbackOnly();
+-       }
+-    }
+-
+-    /**
+-     * read first contact of every Customer participating in this test.
+-     * this forces concurrent cache writes of Customer.contacts Collection cache node
+-     * 
+-     * @return who cares
+-     * @throws java.lang.Exception
+-     */
+-    private void readEveryonesFirstContact() throws Exception {
+-        beginTx();
+-        try {
+-            for (Integer customerId : getCustomerIDs()) {
+-               
+-               if (TERMINATE_ALL_USERS) {
+-                  setRollbackOnly();
+-                  return;
+-               }
+-               
+-                final Customer customer = (Customer) getEnvironment().getSessionFactory().getCurrentSession().load(Customer.class, customerId);
+-                Set<Contact> contacts = customer.getContacts();
+-                if (!contacts.isEmpty()) {
+-                   contacts.iterator().next();
+-                }
+-            }
+-        } catch (Exception e) {
+-            setRollbackOnly();
+-            throw e;
+-        }
+-        finally {
+-           commitTx();
+-        }
+-    }
+-
+-    /**
+-     * -load existing Customer
+-     * -get customer's contacts; return 1st one
+-     * 
+-     * @param customerId
+-     * @return first Contact or null if customer has none
+-     */
+-    private Contact getFirstContact(Integer customerId) throws Exception {
+-        assert customerId != null;
+-        
+-        Contact firstContact = null;
+-        beginTx();
+-        try {
+-            final Customer customer = (Customer) getEnvironment().getSessionFactory().getCurrentSession().load(Customer.class, customerId);
+-            Set<Contact> contacts = customer.getContacts();
+-            firstContact = contacts.isEmpty() ? null : contacts.iterator().next();
+-            
+-            if (TERMINATE_ALL_USERS)
+-               setRollbackOnly();
+-            
+-        } catch (Exception e) {
+-            setRollbackOnly();
+-            throw e;
+-        }
+-        finally {
+-           commitTx();
+-        }
+-        return firstContact;
+-    }
+-
+-    /**
+-     * -load existing Customer     
+-     * -create a new Contact and add to customer's contacts
+-     * 
+-     * @param customerId
+-     * @return added Contact
+-     */
+-    private Contact addContact(Integer customerId) throws Exception {
+-        assert customerId != null;
+-
+-        Contact contact = null;
+-        beginTx();
+-        try {
+-            final Customer customer = (Customer) getEnvironment().getSessionFactory().getCurrentSession().load(Customer.class, customerId);
+-
+-            contact = new Contact();
+-            contact.setName("contact name");
+-            contact.setTlf("wtf is tlf?");
+-
+-            contact.setCustomer(customer);
+-            customer.getContacts().add(contact);
+-
+-            //assuming contact is persisted via cascade from customer
+-            
+-            if (TERMINATE_ALL_USERS)
+-               setRollbackOnly();
+-            
+-        } catch (Exception e) {
+-            setRollbackOnly();
+-            throw e;
+-        }
+-        finally {
+-           commitTx();
+-        }
+-        return contact;
+-    }
+-
+-    /**
+-     * remove existing 'contact' from customer's list of contacts
+-     * 
+-     * @param contact contact to remove from customer's contacts
+-     * @param customerId
+-     * @throws IllegalStateException if customer does not own a contact
+-     */
+-    private void removeContact(Integer customerId) throws Exception {
+-        assert customerId != null;
+-
+-        beginTx();
+-        try {
+-            Customer customer = (Customer) getEnvironment().getSessionFactory().getCurrentSession().load(Customer.class, customerId);
+-            Set<Contact> contacts = customer.getContacts();
+-            if (contacts.size() != 1) {
+-                throw new IllegalStateException("can't remove contact: customer id=" + customerId + " expected exactly 1 contact, " +
+-                        "actual count=" + contacts.size());
+-            }
+-
+-            Contact contact = contacts.iterator().next();
+-            contacts.remove(contact);
+-            contact.setCustomer(null);
+-
+-            //explicitly delete Contact because hbm has no 'DELETE_ORPHAN' cascade?
+-            //getEnvironment().getSessionFactory().getCurrentSession().delete(contact); //appears to not be needed
+-
+-            //assuming contact is persisted via cascade from customer
+-            
+-            if (TERMINATE_ALL_USERS)
+-               setRollbackOnly();
+-            
+-        } catch (Exception e) {
+-            setRollbackOnly();
+-            throw e;
+-        }
+-        finally {
+-           commitTx();
+-        }
+-    }
+-
+-    /**
+-     * @return the customerIDs
+-     */
+-    public Set<Integer> getCustomerIDs() {
+-        return customerIDs;
+-    }
+-
+-    private String statusOfRunnersToString(Set<UserRunner> runners) {
+-        assert runners != null;
+-
+-        StringBuilder sb = new StringBuilder("TEST CONFIG [userCount=" + USER_COUNT +
+-                ", iterationsPerUser=" + ITERATION_COUNT +
+-                ", thinkTimeMillis=" + THINK_TIME_MILLIS + "] " +
+-                " STATE of UserRunners: ");
+-
+-        for (UserRunner r : runners) {
+-            sb.append(r.toString() + System.getProperty("line.separator"));
+-        }
+-        return sb.toString();
+-    }
+-
+-    class UserRunner implements Runnable {
+-        final private CountDownLatch completionLatch;
+-        final private Integer customerId;
+-        private int completedIterations = 0;
+-        private Throwable causeOfFailure;
+-
+-        public UserRunner(final Integer cId, CountDownLatch completionLatch) {
+-            assert cId != null;
+-            assert completionLatch != null;
+-            this.customerId = cId;
+-            this.completionLatch = completionLatch;
+-        }
+-
+-        private boolean contactExists() throws Exception {
+-            return getFirstContact(customerId) != null;
+-        }
+-
+-        public void run() {
+-
+-            //name this thread for easier log tracing
+-            Thread.currentThread().setName("UserRunnerThread-" + getCustomerId());
+-            try {
+-                for (int i = 0; i < ITERATION_COUNT && !TERMINATE_ALL_USERS; i++) {
+-
+-                    if (contactExists()) {
+-                        throw new IllegalStateException("contact already exists before add, customerId=" + customerId);
+-                    }
+-
+-                    addContact(customerId);
+-                    
+-                    thinkRandomTime();
+-                    
+-                    if (!contactExists()) {
+-                        throw new IllegalStateException("contact missing after successful add, customerId=" + customerId);
+-                    }
+-
+-                    thinkRandomTime();
+-
+-                    //read everyone's contacts
+-                    readEveryonesFirstContact();
+-
+-                    thinkRandomTime();
+-
+-                    removeContact(customerId);
+-
+-                    if (contactExists()) {
+-                        throw new IllegalStateException("contact still exists after successful remove call, customerId=" + customerId);
+-                    }
+-
+-                    thinkRandomTime();
+-
+-                    ++completedIterations;
+-                }
+-
+-            } catch (Throwable t) {
+-
+-                this.causeOfFailure = t;
+-                TERMINATE_ALL_USERS = true;
+-
+-                //rollback current transaction if any
+-                //really should not happen since above methods all follow begin-commit-rollback pattern
+-//                try {
+-//                    if (DualNodeJtaTransactionManagerImpl.getInstance(DualNodeTestUtil.LOCAL).getTransaction() != null) {
+-//                        DualNodeJtaTransactionManagerImpl.getInstance(DualNodeTestUtil.LOCAL).rollback();
+-//                    }
+-//                } catch (SystemException ex) {
+-//                    throw new RuntimeException("failed to rollback tx", ex);
+-//                }
+-            }
+-            finally {
+-               this.completionLatch.countDown();
+-            }
+-        }
+-
+-        public boolean isSuccess() {
+-            return ITERATION_COUNT == getCompletedIterations();
+-        }
+-
+-        public int getCompletedIterations() {
+-            return completedIterations;
+-        }
+-
+-        public Throwable getCauseOfFailure() {
+-            return causeOfFailure;
+-        }
+-
+-        public Integer getCustomerId() {
+-            return customerId;
+-        }
+-
+-        @Override
+-        public String toString() {
+-            return super.toString() +
+-                    "[customerId=" + getCustomerId() +
+-                    " iterationsCompleted=" + getCompletedIterations() +
+-                    " completedAll=" + isSuccess() +
+-                    " causeOfFailure=" + (this.causeOfFailure != null ? getStackTrace(causeOfFailure) : "") + "] ";
+-        }
+-    }
+-
+-
+-	public static String getStackTrace(Throwable throwable) {
+-		StringWriter sw = new StringWriter();
+-		PrintWriter pw = new PrintWriter( sw, true );
+-		throwable.printStackTrace( pw );
+-		return sw.getBuffer().toString();
+-	}
+-
+-    /**
+-     * sleep between 0 and THINK_TIME_MILLIS.
+-     * @throws RuntimeException if sleep is interrupted or TERMINATE_ALL_USERS flag was set to true i
+-n the meantime
+-     */
+-    private void thinkRandomTime() {
+-        try {
+-            Thread.sleep(random.nextInt(THINK_TIME_MILLIS));
+-        } catch (InterruptedException ex) {
+-            throw new RuntimeException("sleep interrupted", ex);
+-        }
+-
+-        if (TERMINATE_ALL_USERS) {
+-            throw new RuntimeException("told to terminate (because a UserRunner had failed)");
+-        }
+-    }
+-
+-    public static Test suite() {
+-        return new FunctionalTestClassTestSuite(MVCCConcurrentWriteTest.class);
+-    }
+-}
+-
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCEntityReplicationTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCEntityReplicationTest.java
+deleted file mode 100644
+index 71fb0d53ca..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCEntityReplicationTest.java
++++ /dev/null
+@@ -1,47 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-
+-/**
+- * Executes the superclass tests, but with Hibernate and JBoss Cache
+- * configured for optimistic locking.
+- * 
+- * @author Brian Stansberry
+- */
+-public class MVCCEntityReplicationTest extends PessimisticEntityReplicationTest
+-{
+-
+-   public MVCCEntityReplicationTest(String name)
+-   {
+-      super(name);
+-   }
+-
+-   @Override
+-   protected String getEntityCacheConfigName()
+-   {
+-      return "mvcc-shared";
+-   }   
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCJBossCacheTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCJBossCacheTest.java
+deleted file mode 100644
+index e75408442c..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCJBossCacheTest.java
++++ /dev/null
+@@ -1,64 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import junit.framework.Test;
+-
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.testing.junit.functional.FunctionalTestClassTestSuite;
+-
+-/**
+- * Basic functional test of a MVCC locking entity + query cache.
+- * 
+- * @author Brian Stansberry
+- */
+-public class MVCCJBossCacheTest extends AbstractQueryCacheFunctionalTestCase {
+-
+-    private static final String JBC_CONFIG = "org/hibernate/test/cache/jbc/functional/mvcc-treecache.xml";
+-    
+-    public MVCCJBossCacheTest(String x) {
+-        super(x);
+-    }
+-
+-    public static Test suite() {
+-        return new FunctionalTestClassTestSuite(MVCCJBossCacheTest.class);
+-    }
+-
+-    protected Class<? extends RegionFactory> getCacheRegionFactory() {
+-        return JBossCacheRegionFactory.class;
+-    }    
+-
+-    /**
+-     * Apply any region-factory specific configurations.
+-     * 
+-     * @param the Configuration to update.
+-     */
+-    protected void configureCacheFactory(Configuration cfg) {
+-        cfg.setProperty(SharedCacheInstanceManager.CACHE_RESOURCE_PROP, JBC_CONFIG);        
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCSessionRefreshTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCSessionRefreshTest.java
+deleted file mode 100644
+index 1f2469cc0a..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/MVCCSessionRefreshTest.java
++++ /dev/null
+@@ -1,56 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.test.cache.jbc.functional.util.IsolatedCacheTestSetup;
+-
+-/**
+- * A SessionRefreshTest that uses an OPTIMISTIC cache config.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MVCCSessionRefreshTest extends PessimisticSessionRefreshTest
+-{
+-   
+-   private static final String CACHE_CONFIG = "mvcc-entity";
+-
+-   /**
+-    * Create a new OptimisticSessionRefreshTest.
+-    * 
+-    * @param x
+-    */
+-   public MVCCSessionRefreshTest(String x)
+-   {
+-      super(x);
+-   }
+-   
+-   public static Test suite() throws Exception {
+-       TestSuite suite = new TestSuite(MVCCSessionRefreshTest.class);
+-       String[] acctClasses = { OUR_PACKAGE + ".Account", OUR_PACKAGE + ".AccountHolder" };
+-       return new IsolatedCacheTestSetup(suite, acctClasses, CACHE_CONFIG);
+-   }
+-
+-   @Override
+-   protected String getEntityCacheConfigName() {
+-       return CACHE_CONFIG;
+-   } 
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/OptimisticEntityReplicationTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/OptimisticEntityReplicationTest.java
+deleted file mode 100644
+index 27e8c56abe..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/OptimisticEntityReplicationTest.java
++++ /dev/null
+@@ -1,47 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-
+-/**
+- * Executes the superclass tests, but with Hibernate and JBoss Cache
+- * configured for optimistic locking.
+- * 
+- * @author Brian Stansberry
+- */
+-public class OptimisticEntityReplicationTest extends PessimisticEntityReplicationTest
+-{
+-
+-   public OptimisticEntityReplicationTest(String name)
+-   {
+-      super(name);
+-   }
+-
+-   @Override
+-   protected String getEntityCacheConfigName()
+-   {
+-      return "optimistic-shared";
+-   }   
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/OptimisticJBossCacheTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/OptimisticJBossCacheTest.java
+deleted file mode 100755
+index 5a168f999d..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/OptimisticJBossCacheTest.java
++++ /dev/null
+@@ -1,64 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import junit.framework.Test;
+-
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.testing.junit.functional.FunctionalTestClassTestSuite;
+-
+-/**
+- * Basic functional test of a optimistic locking entity + query cache.
+- * 
+- * @author Brian Stansberry
+- */
+-public class OptimisticJBossCacheTest extends AbstractQueryCacheFunctionalTestCase {
+-
+-    private static final String JBC_CONFIG = "org/hibernate/test/cache/jbc/functional/optimistic-treecache.xml";
+-   
+-    public OptimisticJBossCacheTest(String x) {
+-        super(x);
+-    }
+-
+-    public static Test suite() {
+-        return new FunctionalTestClassTestSuite(OptimisticJBossCacheTest.class);
+-    }
+-
+-    protected Class<? extends RegionFactory> getCacheRegionFactory() {
+-        return JBossCacheRegionFactory.class;
+-    }    
+-
+-    /**
+-     * Apply any region-factory specific configurations.
+-     * 
+-     * @param the Configuration to update.
+-     */
+-    protected void configureCacheFactory(Configuration cfg) {
+-        cfg.setProperty(SharedCacheInstanceManager.CACHE_RESOURCE_PROP, JBC_CONFIG);        
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/OptimisticSessionRefreshTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/OptimisticSessionRefreshTest.java
+deleted file mode 100644
+index 9fe365d3f0..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/OptimisticSessionRefreshTest.java
++++ /dev/null
+@@ -1,56 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.test.cache.jbc.functional.util.IsolatedCacheTestSetup;
+-
+-/**
+- * A SessionRefreshTest that uses an OPTIMISTIC cache config.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticSessionRefreshTest extends PessimisticSessionRefreshTest
+-{
+-   
+-   private static final String CACHE_CONFIG = "optimistic-entity";
+-
+-   /**
+-    * Create a new OptimisticSessionRefreshTest.
+-    * 
+-    * @param x
+-    */
+-   public OptimisticSessionRefreshTest(String x)
+-   {
+-      super(x);
+-   }
+-   
+-   public static Test suite() throws Exception {
+-       TestSuite suite = new TestSuite(OptimisticSessionRefreshTest.class);
+-       String[] acctClasses = { OUR_PACKAGE + ".Account", OUR_PACKAGE + ".AccountHolder" };
+-       return new IsolatedCacheTestSetup(suite, acctClasses, CACHE_CONFIG);
+-   }
+-
+-   @Override
+-   protected String getEntityCacheConfigName() {
+-       return CACHE_CONFIG;
+-   } 
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticEntityReplicationTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticEntityReplicationTest.java
+deleted file mode 100755
+index bbef94fb08..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticEntityReplicationTest.java
++++ /dev/null
+@@ -1,325 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import java.util.HashSet;
+-import java.util.Set;
+-
+-import javax.transaction.TransactionManager;
+-
+-import org.hibernate.Session;
+-import org.hibernate.SessionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeTestUtil;
+-import org.hibernate.test.cache.jbc.functional.util.TestCacheInstanceManager;
+-import org.hibernate.test.cache.jbc.functional.util.TestJBossCacheRegionFactory;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.CacheManager;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.notifications.annotation.CacheListener;
+-import org.jboss.cache.notifications.annotation.NodeVisited;
+-import org.jboss.cache.notifications.event.NodeVisitedEvent;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Port of the earlier JBoss EJB3 project's 
+- * org.jboss.ejb3.test.clusteredentity.unit.EntityUnitTestCase
+- *
+- */
+-public class PessimisticEntityReplicationTest
+-extends DualNodeTestCaseBase
+-{
+-   protected final Logger log = LoggerFactory.getLogger(getClass());
+-
+-   private static final long SLEEP_TIME = 50l;
+-   
+-   private static final Integer CUSTOMER_ID = new Integer(1);
+-   
+-   static int test = 0;
+-   
+-   public PessimisticEntityReplicationTest(String name)
+-   {
+-      super(name);
+-   }
+-
+-   @Override
+-   protected Class<?> getCacheRegionFactory()
+-   {
+-      return TestJBossCacheRegionFactory.class;
+-   }
+-
+-   @Override
+-   protected boolean getUseQueryCache()
+-   {
+-      return false;
+-   }
+-
+-   @Override
+-   protected void configureCacheFactory(Configuration cfg)
+-   {
+-      cfg.setProperty(MultiplexingCacheInstanceManager.ENTITY_CACHE_RESOURCE_PROP, 
+-                      getEntityCacheConfigName());      
+-   }
+-
+-   protected String getEntityCacheConfigName() {
+-       return "pessimistic-shared";
+-   }
+-   
+-
+-   public void testAll() throws Exception
+-   {
+-      System.out.println("*** testAll()");
+-      
+-      // Bind a listener to the "local" cache
+-      // Our region factory makes its CacheManager available to us
+-      CacheManager localManager = TestCacheInstanceManager.getTestCacheManager(DualNodeTestUtil.LOCAL);
+-      Cache<Object, Object> localCache = localManager.getCache(getEntityCacheConfigName(), true);
+-      MyListener localListener = new MyListener();
+-      localCache.addCacheListener(localListener);
+-      
+-      TransactionManager localTM = localCache.getConfiguration().getRuntimeConfig().getTransactionManager();
+-      
+-      // Bind a listener to the "remote" cache
+-      CacheManager remoteManager = TestCacheInstanceManager.getTestCacheManager(DualNodeTestUtil.REMOTE);
+-      Cache<Object, Object> remoteCache = remoteManager.getCache(getEntityCacheConfigName(), true);
+-      MyListener remoteListener = new MyListener();
+-      remoteCache.addCacheListener(remoteListener);      
+-      
+-      TransactionManager remoteTM = remoteCache.getConfiguration().getRuntimeConfig().getTransactionManager();
+-      
+-      SessionFactory localFactory = getEnvironment().getSessionFactory();
+-      SessionFactory remoteFactory = getSecondNodeEnvironment().getSessionFactory();
+-      
+-      try
+-      {
+-         System.out.println("Create node 0");
+-         IdContainer ids = createCustomer(localFactory, localTM);
+-         
+-         // Sleep a bit to let async commit propagate. Really just to
+-         // help keep the logs organized for debugging any issues
+-         sleep(SLEEP_TIME);
+-         
+-         System.out.println("Find node 0");
+-         // This actually brings the collection into the cache
+-         getCustomer(ids.customerId, localFactory, localTM);
+-         
+-         sleep(SLEEP_TIME);
+-         
+-         // Now the collection is in the cache so, the 2nd "get"
+-         // should read everything from the cache
+-         System.out.println("Find(2) node 0");         
+-         localListener.clear();
+-         getCustomer(ids.customerId, localFactory, localTM);
+-         
+-         //Check the read came from the cache
+-         System.out.println("Check cache 0");
+-         assertLoadedFromCache(localListener, ids.customerId, ids.contactIds);
+-         
+-         System.out.println("Find node 1");
+-         getCustomer(ids.customerId, remoteFactory, remoteTM);
+-   
+-         //Check everything was in cache
+-         System.out.println("Check cache 1");
+-         assertLoadedFromCache(remoteListener, ids.customerId, ids.contactIds);
+-      }
+-      finally
+-      {
+-         // cleanup the db
+-         System.out.println("Cleaning up");
+-         cleanup(localFactory, localTM);
+-      }
+-   }
+-   
+-   private IdContainer createCustomer(SessionFactory sessionFactory, TransactionManager tm)
+-      throws Exception
+-   {
+-      System.out.println("CREATE CUSTOMER");
+-      
+-      tm.begin(); 
+-
+-      try
+-      {
+-         Session session = sessionFactory.getCurrentSession();
+-         
+-         Customer customer = new Customer();
+-         customer.setName("JBoss");
+-         Set<Contact> contacts = new HashSet<Contact>();
+-         
+-         Contact kabir = new Contact();
+-         kabir.setCustomer(customer);
+-         kabir.setName("Kabir");
+-         kabir.setTlf("1111");
+-         contacts.add(kabir);
+-         
+-         Contact bill = new Contact();
+-         bill.setCustomer(customer);
+-         bill.setName("Bill");
+-         bill.setTlf("2222");
+-         contacts.add(bill);
+-
+-         customer.setContacts(contacts);
+-
+-         session.save(customer);
+-         tm.commit();
+-         
+-         IdContainer ids = new IdContainer();
+-         ids.customerId = customer.getId();
+-         Set<Integer> contactIds = new HashSet<Integer>();
+-         contactIds.add(kabir.getId());
+-         contactIds.add(bill.getId());
+-         ids.contactIds = contactIds;
+-         
+-         return ids;
+-      }
+-      catch (Exception e)
+-      {
+-         log.error("Caught exception creating customer", e);
+-         try {
+-            tm.rollback();
+-         }
+-         catch (Exception e1) {
+-            log.error("Exception rolling back txn", e1);
+-         }
+-         throw e;
+-      }
+-      finally
+-      {
+-         System.out.println("CREATE CUSTOMER -  END");         
+-      }
+-   }
+-
+-   private Customer getCustomer(Integer id, SessionFactory sessionFactory, TransactionManager tm)
+-       throws Exception
+-   {      
+-      System.out.println("FIND CUSTOMER");
+-      
+-      tm.begin();
+-      try
+-      {
+-         Session session = sessionFactory.getCurrentSession();
+-         Customer customer = (Customer) session.get(Customer.class, id);
+-         // Access all the contacts
+-         for (Contact contact : customer.getContacts()) {
+-            contact.getName();
+-         }
+-         tm.commit();
+-         return customer;
+-      }
+-      catch (Exception e)
+-      {
+-         try {
+-            tm.rollback();
+-         }
+-         catch (Exception e1) {
+-            log.error("Exception rolling back txn", e1);
+-         }
+-         throw e;
+-      }
+-      finally
+-      {
+-         System.out.println("FIND CUSTOMER -  END");         
+-      }
+-   }
+-   
+-   private void cleanup(SessionFactory sessionFactory, TransactionManager tm) throws Exception
+-   {
+-      tm.begin();
+-      try
+-      {
+-         Session session = sessionFactory.getCurrentSession();
+-         Customer c = (Customer) session.get(Customer.class, CUSTOMER_ID);
+-         if (c != null)
+-         {
+-            for (Contact contact : c.getContacts())
+-               session.delete(contact);
+-            c.setContacts(null);
+-            session.delete(c);
+-         }
+-         
+-         tm.commit();
+-      }
+-      catch (Exception e)
+-      {
+-         try {
+-            tm.rollback();
+-         }
+-         catch (Exception e1) {
+-            log.error("Exception rolling back txn", e1);
+-         }
+-         log.error("Caught exception in cleanup", e);
+-      }
+-   }
+-   
+-   private void assertLoadedFromCache(MyListener listener, Integer custId, Set<Integer> contactIds)
+-   {
+-      assertTrue("Customer#" + custId + " was in cache", listener.visited.contains("Customer#" + custId));
+-      for (Integer contactId : contactIds) {
+-          assertTrue("Contact#"+ contactId + " was in cache", listener.visited.contains("Contact#"+ contactId));
+-          assertTrue("Contact#"+ contactId + " was in cache", listener.visited.contains("Contact#"+ contactId));
+-      }
+-      assertTrue("Customer.contacts" + custId + " was in cache", 
+-                 listener.visited.contains("Customer.contacts#" + custId));      
+-   }
+-   
+-   @CacheListener
+-   public class MyListener
+-   {
+-      HashSet<String> visited = new HashSet<String>(); 
+-      
+-      public void clear()
+-      {
+-         visited.clear();
+-      }
+-      
+-      @NodeVisited
+-      public void nodeVisited(NodeVisitedEvent event)
+-      {
+-         System.out.println(event);
+-         
+-         if (!event.isPre())
+-         {
+-            @SuppressWarnings("unchecked")
+-            Fqn fqn = event.getFqn();
+-            System.out.println("MyListener - Visiting node " + fqn.toString());
+-            String name = fqn.toString();
+-            String token = ".functional.";
+-            int index = name.indexOf(token);
+-            if (index > -1)
+-            {
+-               index += token.length();
+-               name = name.substring(index);
+-               System.out.println("MyListener - recording visit to " + name);
+-               visited.add(name);
+-            }
+-         }
+-      }
+-   }
+-   
+-   private class IdContainer {
+-      Integer customerId;
+-      Set<Integer> contactIds;
+-   }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticJBossCacheTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticJBossCacheTest.java
+deleted file mode 100755
+index 8bc007d245..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticJBossCacheTest.java
++++ /dev/null
+@@ -1,64 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import junit.framework.Test;
+-
+-import org.hibernate.cache.RegionFactory;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.testing.junit.functional.FunctionalTestClassTestSuite;
+-
+-/**
+- * Basic functional test of a pessimistic locking entity + query cache.
+- * 
+- * @author Brian Stansberry
+- */
+-public class PessimisticJBossCacheTest extends AbstractQueryCacheFunctionalTestCase {
+-
+-    private static final String JBC_CONFIG = "org/hibernate/test/cache/jbc/functional/pessimistic-treecache.xml";
+-    
+-    public PessimisticJBossCacheTest(String x) {
+-        super(x);
+-    }
+-
+-    public static Test suite() {
+-        return new FunctionalTestClassTestSuite(PessimisticJBossCacheTest.class);
+-    }
+-
+-    protected Class<? extends RegionFactory> getCacheRegionFactory() {
+-        return JBossCacheRegionFactory.class;
+-    }    
+-
+-    /**
+-     * Apply any region-factory specific configurations.
+-     * 
+-     * @param the Configuration to update.
+-     */
+-    protected void configureCacheFactory(Configuration cfg) {
+-        cfg.setProperty(SharedCacheInstanceManager.CACHE_RESOURCE_PROP, JBC_CONFIG);        
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticRepeatableSessionRefreshTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticRepeatableSessionRefreshTest.java
+deleted file mode 100644
+index 265f2b9257..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticRepeatableSessionRefreshTest.java
++++ /dev/null
+@@ -1,56 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.test.cache.jbc.functional.util.IsolatedCacheTestSetup;
+-
+-/**
+- * A PessimisticSessionRefreshTest that uses a REPEATABLE_READ cache config.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticRepeatableSessionRefreshTest extends PessimisticSessionRefreshTest
+-{
+-   
+-   private static final String CACHE_CONFIG = "pessimistic-entity-repeatable";
+-
+-   /**
+-    * Create a new PessimisticRepeatableSessionRefreshTest.
+-    * 
+-    * @param x
+-    */
+-   public PessimisticRepeatableSessionRefreshTest(String x)
+-   {
+-      super(x);
+-   }
+-   
+-   public static Test suite() throws Exception {
+-       TestSuite suite = new TestSuite(PessimisticRepeatableSessionRefreshTest.class);
+-       String[] acctClasses = { OUR_PACKAGE + ".Account", OUR_PACKAGE + ".AccountHolder" };
+-       return new IsolatedCacheTestSetup(suite, acctClasses, CACHE_CONFIG);
+-   }
+-
+-   @Override
+-   protected String getEntityCacheConfigName() {
+-       return CACHE_CONFIG;
+-   } 
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticSessionRefreshTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticSessionRefreshTest.java
+deleted file mode 100644
+index 162df2d552..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/PessimisticSessionRefreshTest.java
++++ /dev/null
+@@ -1,179 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional;
+-
+-import javax.transaction.TransactionManager;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.SessionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.cfg.Environment;
+-import org.hibernate.test.cache.jbc.functional.classloader.Account;
+-import org.hibernate.test.cache.jbc.functional.classloader.ClassLoaderTestDAO;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeJtaTransactionManagerImpl;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeTestUtil;
+-import org.hibernate.test.cache.jbc.functional.util.IsolatedCacheTestSetup;
+-import org.hibernate.test.cache.jbc.functional.util.TestCacheInstanceManager;
+-import org.hibernate.test.cache.jbc.functional.util.TestJBossCacheRegionFactory;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.CacheManager;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * A test that a Session.refresh(...) operation works properly when the
+- * item being refreshed is in the 2nd level cache.
+- * 
+- * Uses the infrastructure of our dual-node tests, but 
+- * {@link #configureSecondNode(Configuration)} plays a trick and disables
+- * the 2nd level cache on the second node.  We then use that second node
+- * to simulate an external process that changes the DB while bypassing the 
+- * cache.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class PessimisticSessionRefreshTest extends DualNodeTestCaseBase
+-{
+-   public static final String OUR_PACKAGE = PessimisticSessionRefreshTest.class.getPackage().getName();
+-   
+-   private static final String CACHE_CONFIG = "pessimistic-entity";
+-   
+-   protected final Logger log = LoggerFactory.getLogger(getClass());
+-
+-   static int test = 0;
+-   
+-   private Cache<Object, Object> localCache;
+-   
+-   /**
+-    * Create a new PessimisticSessionRefreshTest.
+-    * 
+-    * @param x
+-    */
+-   public PessimisticSessionRefreshTest(String x)
+-   {
+-      super(x);
+-   }
+-   
+-   public static Test suite() throws Exception {
+-       TestSuite suite = new TestSuite(PessimisticSessionRefreshTest.class);
+-       String[] acctClasses = { OUR_PACKAGE + ".Account", OUR_PACKAGE + ".AccountHolder" };
+-       return new IsolatedCacheTestSetup(suite, acctClasses, CACHE_CONFIG);
+-   }
+-   
+-   // --------------------------------------------------------------- Overrides
+-
+-   /**
+-    * Disables use of the second level cache for this session factory.
+-    * 
+-    * {@inheritDoc} 
+-    */
+-   @Override
+-   protected void configureSecondNode(Configuration cfg)
+-   {
+-      super.configureSecondNode(cfg);
+-      cfg.setProperty(Environment.USE_SECOND_LEVEL_CACHE, "false");
+-   }
+-
+-   @Override
+-   protected void configureCacheFactory(Configuration cfg)
+-   {
+-      cfg.setProperty(MultiplexingCacheInstanceManager.ENTITY_CACHE_RESOURCE_PROP, 
+-            getEntityCacheConfigName()); 
+-   }
+-
+-   @Override
+-   protected Class<?> getCacheRegionFactory()
+-   {
+-      return TestJBossCacheRegionFactory.class;
+-   }
+-
+-   @Override
+-   protected boolean getUseQueryCache()
+-   {
+-      return false;
+-   }
+-
+-   protected String getEntityCacheConfigName() {
+-       return CACHE_CONFIG;
+-   } 
+-
+-   @Override
+-   public String[] getMappings()
+-   {
+-      return new String[] { "cache/jbc/functional/classloader/Account.hbm.xml" };
+-   }
+-   
+-   @Override
+-   protected void cleanupTransactionManagement() {
+-      // Don't clean up the managers, just the transactions
+-      // Managers are still needed by the long-lived caches
+-      DualNodeJtaTransactionManagerImpl.cleanupTransactions();
+-   }
+-   
+-   // ------------------------------------------------------------------  Tests
+-   
+-   public void testRefreshAfterExternalChange() throws Exception
+-   {
+-      // First session factory uses a cache
+-      CacheManager localManager = TestCacheInstanceManager.getTestCacheManager(DualNodeTestUtil.LOCAL);
+-      this.localCache = localManager.getCache(getEntityCacheConfigName(), true);      
+-      TransactionManager localTM = localCache.getConfiguration().getRuntimeConfig().getTransactionManager();
+-      SessionFactory localFactory = getEnvironment().getSessionFactory();
+-      
+-      // Second session factory doesn't; just needs a transaction manager
+-      TransactionManager remoteTM = DualNodeJtaTransactionManagerImpl.getInstance(DualNodeTestUtil.REMOTE);
+-      SessionFactory remoteFactory = getSecondNodeEnvironment().getSessionFactory();
+-      
+-      ClassLoaderTestDAO dao0 = new ClassLoaderTestDAO(localFactory, localTM);      
+-      ClassLoaderTestDAO dao1 = new ClassLoaderTestDAO(remoteFactory, remoteTM);
+-      
+-      Integer id = new Integer(1);
+-      dao0.createAccount(dao0.getSmith(), id, new Integer(5), DualNodeTestUtil.LOCAL);
+-      
+-      // Basic sanity check
+-      Account acct1 = dao1.getAccount(id);
+-      assertNotNull(acct1);
+-      assertEquals(DualNodeTestUtil.LOCAL, acct1.getBranch());
+-      
+-      // This dao's session factory isn't caching, so cache won't see this change
+-      dao1.updateAccountBranch(id, DualNodeTestUtil.REMOTE);
+-      
+-      // dao1's session doesn't touch the cache, 
+-      // so reading from dao0 should show a stale value from the cache
+-      // (we check to confirm the cache is used)
+-      Account acct0 = dao0.getAccount(id);
+-      assertNotNull(acct0);
+-      assertEquals(DualNodeTestUtil.LOCAL, acct0.getBranch());
+-      
+-      // Now call session.refresh and confirm we get the correct value
+-      acct0 = dao0.getAccountWithRefresh(id);
+-      assertNotNull(acct0);
+-      assertEquals(DualNodeTestUtil.REMOTE, acct0.getBranch());
+-      
+-      // Double check with a brand new session, in case the other session
+-      // for some reason bypassed the 2nd level cache
+-      ClassLoaderTestDAO dao0A = new ClassLoaderTestDAO(localFactory, localTM);
+-      Account acct0A = dao0A.getAccount(id);
+-      assertNotNull(acct0A);
+-      assertEquals(DualNodeTestUtil.REMOTE, acct0A.getBranch());
+-   }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/VersionedItem.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/VersionedItem.java
+deleted file mode 100755
+index d8ced21faa..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/VersionedItem.java
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class VersionedItem extends Item {
+-    private Long version;
+-
+-    public Long getVersion() {
+-        return version;
+-    }
+-
+-    public void setVersion(Long version) {
+-        this.version = version;
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/bulk/MVCCBulkOperationsTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/bulk/MVCCBulkOperationsTest.java
+deleted file mode 100644
+index 06b13e06c3..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/bulk/MVCCBulkOperationsTest.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * JBoss, Home of Professional Open Source.
+- * Copyright 2006, Red Hat Middleware LLC, and individual contributors
+- * as indicated by the @author tags. See the copyright.txt file in the
+- * distribution for a full listing of individual contributors.
+- *
+- * This is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as
+- * published by the Free Software Foundation; either version 2.1 of
+- * the License, or (at your option) any later version.
+- *
+- * This software is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public
+- * License along with this software; if not, write to the Free
+- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+- */
+-
+-package org.hibernate.test.cache.jbc.functional.bulk;
+-
+-import junit.framework.Test;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-
+-/**
+- * Optimistic version of BulkOperationsUnitTestCase.
+- * 
+- * @author Brian Stansberry
+- *
+- */
+-public class MVCCBulkOperationsTest 
+-   extends PessimisticBulkOperationsTest
+-{
+-   
+-   public static Test suite() throws Exception {
+-       return CacheTestUtil.createFailureExpectedSuite(MVCCBulkOperationsTest.class); 
+-   }
+-
+-   /**
+-    * @param name
+-    */
+-   public MVCCBulkOperationsTest(String name)
+-   {
+-      super(name);
+-   }
+-
+-   @Override
+-   protected String getEntityCacheConfigName()
+-   {
+-      return "mvcc-entity";
+-   } 
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/bulk/OptimisticBulkOperationsTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/bulk/OptimisticBulkOperationsTest.java
+deleted file mode 100755
+index 4d9d672d2e..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/bulk/OptimisticBulkOperationsTest.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * JBoss, Home of Professional Open Source.
+- * Copyright 2006, Red Hat Middleware LLC, and individual contributors
+- * as indicated by the @author tags. See the copyright.txt file in the
+- * distribution for a full listing of individual contributors.
+- *
+- * This is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as
+- * published by the Free Software Foundation; either version 2.1 of
+- * the License, or (at your option) any later version.
+- *
+- * This software is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public
+- * License along with this software; if not, write to the Free
+- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+- */
+-
+-package org.hibernate.test.cache.jbc.functional.bulk;
+-
+-import junit.framework.Test;
+-
+-import org.hibernate.test.util.CacheTestUtil;
+-
+-
+-/**
+- * Optimistic version of BulkOperationsUnitTestCase.
+- * 
+- * @author Brian Stansberry
+- *
+- */
+-public class OptimisticBulkOperationsTest 
+-   extends PessimisticBulkOperationsTest
+-{
+-   
+-   public static Test suite() throws Exception {
+-       return CacheTestUtil.createFailureExpectedSuite(OptimisticBulkOperationsTest.class); 
+-   }
+-
+-   /**
+-    * @param name
+-    */
+-   public OptimisticBulkOperationsTest(String name)
+-   {
+-      super(name);
+-   }
+-
+-   @Override
+-   protected String getEntityCacheConfigName()
+-   {
+-      return "optimistic-entity";
+-   } 
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/bulk/PessimisticBulkOperationsTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/bulk/PessimisticBulkOperationsTest.java
+deleted file mode 100755
+index 39878db999..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/bulk/PessimisticBulkOperationsTest.java
++++ /dev/null
+@@ -1,356 +0,0 @@
+-/*
+- * JBoss, Home of Professional Open Source.
+- * Copyright 2006, Red Hat Middleware LLC, and individual contributors
+- * as indicated by the @author tags. See the copyright.txt file in the
+- * distribution for a full listing of individual contributors.
+- *
+- * This is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as
+- * published by the Free Software Foundation; either version 2.1 of
+- * the License, or (at your option) any later version.
+- *
+- * This software is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public
+- * License along with this software; if not, write to the Free
+- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+- */
+-package org.hibernate.test.cache.jbc.functional.bulk;
+-
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Set;
+-
+-import org.hibernate.FlushMode;
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.classic.Session;
+-import org.hibernate.stat.SecondLevelCacheStatistics;
+-import org.hibernate.test.cache.jbc.functional.CacheTestCaseBase;
+-import org.hibernate.test.cache.jbc.functional.Contact;
+-import org.hibernate.test.cache.jbc.functional.Customer;
+-import org.hibernate.testing.tm.SimpleJtaTransactionManagerImpl;
+-import org.hibernate.transaction.CMTTransactionFactory;
+-
+-/**
+- * Sample client for the jboss container.
+- *
+- * @author Brian Stansberry
+- * @version $Id: EntityUnitTestCase.java 60697 2007-02-20 05:08:31Z bstansberry@jboss.com $
+- */
+-public class PessimisticBulkOperationsTest
+-extends CacheTestCaseBase
+-{
+-   public PessimisticBulkOperationsTest(String name)
+-   {
+-      super(name);
+-   } 
+-
+-   @Override
+-   protected Class getCacheRegionFactory()
+-   {
+-      return MultiplexedJBossCacheRegionFactory.class;
+-   }
+-
+-   @Override
+-   protected void configureCacheFactory(Configuration cfg)
+-   {
+-      cfg.setProperty(MultiplexingCacheInstanceManager.ENTITY_CACHE_RESOURCE_PROP, 
+-                      getEntityCacheConfigName());
+-   }
+-
+-   protected String getEntityCacheConfigName() {
+-       return "pessimistic-entity";
+-   }
+-
+-   @Override
+-   protected boolean getUseQueryCache()
+-   {
+-      return false;
+-   }
+-
+-   @Override
+-   protected Class getTransactionFactoryClass() {
+-       return CMTTransactionFactory.class;
+-   }
+-   
+-   public void testBulkOperations() throws Exception
+-   {
+-      System.out.println("*** testBulkOperations()");
+-      try
+-      {
+-         createContacts();
+-         
+-         List<Integer> rhContacts = getContactsByCustomer("Red Hat");
+-         assertNotNull("Red Hat contacts exist", rhContacts);
+-         assertEquals("Created expected number of Red Hat contacts", 10, rhContacts.size());
+-         
+-         SecondLevelCacheStatistics contactSlcs = getEnvironment().getSessionFactory().getStatistics().getSecondLevelCacheStatistics(
+-               getPrefixedRegionName(Contact.class.getName()));
+-         assertEquals(contactSlcs.getElementCountInMemory(), 20);
+-         
+-         assertEquals("Deleted all Red Hat contacts", 10, deleteContacts());
+-         assertEquals(0, contactSlcs.getElementCountInMemory());
+-         
+-         List<Integer> jbContacts = getContactsByCustomer("JBoss");
+-         assertNotNull("JBoss contacts exist", jbContacts);
+-         assertEquals("JBoss contacts remain", 10, jbContacts.size());
+-         
+-         for (Integer id : rhContacts)
+-         {
+-            assertNull("Red Hat contact " + id + " cannot be retrieved",
+-                       getContact(id));
+-         }
+-         rhContacts = getContactsByCustomer("Red Hat");
+-         if (rhContacts != null)
+-         {
+-            assertEquals("No Red Hat contacts remain", 0, rhContacts.size());
+-         }
+-         
+-         updateContacts("Kabir", "Updated");
+-         assertEquals(contactSlcs.getElementCountInMemory(), 0);
+-         for (Integer id : jbContacts)
+-         {
+-            Contact contact = getContact(id);
+-            assertNotNull("JBoss contact " + id + " exists", contact);
+-            String expected = ("Kabir".equals(contact.getName())) ? "Updated" : "2222";
+-            assertEquals("JBoss contact " + id + " has correct TLF",
+-                         expected, contact.getTlf());
+-         }
+-         
+-         List<Integer> updated = getContactsByTLF("Updated");
+-         assertNotNull("Got updated contacts", updated);
+-         assertEquals("Updated contacts", 5, updated.size());
+-         
+-         updateContactsWithOneManual("Kabir", "UpdatedAgain");
+-         assertEquals(contactSlcs.getElementCountInMemory(), 0);
+-         for (Integer id : jbContacts)
+-         {
+-            Contact contact = getContact(id);
+-            assertNotNull("JBoss contact " + id + " exists", contact);
+-            String expected = ("Kabir".equals(contact.getName())) ? "UpdatedAgain" : "2222";
+-            assertEquals("JBoss contact " + id + " has correct TLF",
+-                         expected, contact.getTlf());
+-         }
+-         
+-         updated = getContactsByTLF("UpdatedAgain");
+-         assertNotNull("Got updated contacts", updated);
+-         assertEquals("Updated contacts", 5, updated.size());
+-      }
+-      finally
+-      {
+-         // cleanup the db so we can run this test multiple times w/o restarting the cluster
+-         cleanup();
+-      }
+-   }
+-   
+-   public void createContacts() throws Exception
+-   {
+-      SimpleJtaTransactionManagerImpl.getInstance().begin();
+-      try {
+-          for (int i = 0; i < 10; i++)
+-              createCustomer(i);
+-          SimpleJtaTransactionManagerImpl.getInstance().commit();
+-      }
+-      catch (Exception e) {
+-         SimpleJtaTransactionManagerImpl.getInstance().rollback();
+-         throw e;
+-      }
+-   }
+-
+-   public int deleteContacts() throws Exception
+-   {
+-      String deleteHQL = "delete Contact where customer in ";
+-      deleteHQL += " (select customer FROM Customer as customer ";
+-      deleteHQL += " where customer.name = :cName)";
+-
+-      SimpleJtaTransactionManagerImpl.getInstance().begin();
+-      try {
+-          
+-          Session session = getSessions().getCurrentSession();
+-          int rowsAffected = session.createQuery(deleteHQL)
+-                                .setFlushMode(FlushMode.AUTO)
+-                                .setParameter("cName", "Red Hat")
+-                                .executeUpdate();
+-          SimpleJtaTransactionManagerImpl.getInstance().commit();
+-          return rowsAffected;
+-      }
+-      catch (Exception e) {
+-          SimpleJtaTransactionManagerImpl.getInstance().rollback();
+-          throw e;         
+-      }
+-   }
+-   
+-   public List<Integer> getContactsByCustomer(String customerName)
+-       throws Exception
+-   {
+-      String selectHQL = "select contact.id from Contact contact";
+-      selectHQL += " where contact.customer.name = :cName";
+-
+-      SimpleJtaTransactionManagerImpl.getInstance().begin();
+-      try {
+-          
+-          Session session = getSessions().getCurrentSession();
+-          List results = session.createQuery(selectHQL)
+-                            .setFlushMode(FlushMode.AUTO)
+-                            .setParameter("cName", customerName)
+-                            .list();
+-          SimpleJtaTransactionManagerImpl.getInstance().commit();
+-          return results;  
+-      }
+-      catch (Exception e) {
+-          SimpleJtaTransactionManagerImpl.getInstance().rollback();
+-          throw e;         
+-      }    
+-   }
+-   
+-   public List<Integer> getContactsByTLF(String tlf) throws Exception
+-   {
+-      String selectHQL = "select contact.id from Contact contact";
+-      selectHQL += " where contact.tlf = :cTLF";
+-
+-      SimpleJtaTransactionManagerImpl.getInstance().begin();
+-      try {
+-          
+-          Session session = getSessions().getCurrentSession();
+-          List results = session.createQuery(selectHQL)
+-                            .setFlushMode(FlushMode.AUTO)
+-                            .setParameter("cTLF", tlf)
+-                            .list();
+-          SimpleJtaTransactionManagerImpl.getInstance().commit();
+-          return results;       
+-      }
+-      catch (Exception e) {
+-          SimpleJtaTransactionManagerImpl.getInstance().rollback();
+-          throw e;         
+-      }     
+-   }
+-
+-   public int updateContacts(String name, String newTLF) throws Exception
+-   {
+-      String updateHQL = "update Contact set tlf = :cNewTLF where name = :cName";
+-
+-      SimpleJtaTransactionManagerImpl.getInstance().begin();
+-      try {
+-          
+-          Session session = getSessions().getCurrentSession();
+-          int rowsAffected = session.createQuery(updateHQL)
+-                                .setFlushMode(FlushMode.AUTO)
+-                                .setParameter("cNewTLF", newTLF)
+-                                .setParameter("cName", name)
+-                                .executeUpdate();
+-          SimpleJtaTransactionManagerImpl.getInstance().commit();
+-          return rowsAffected;       
+-      }
+-      catch (Exception e) {
+-          SimpleJtaTransactionManagerImpl.getInstance().rollback();
+-          throw e;         
+-      }     
+-   }
+-
+-   public int updateContactsWithOneManual(String name, String newTLF) throws Exception
+-   {
+-      String queryHQL = "from Contact c where c.name = :cName";
+-      String updateHQL = "update Contact set tlf = :cNewTLF where name = :cName";
+-
+-      SimpleJtaTransactionManagerImpl.getInstance().begin();
+-      try {
+-          
+-          Session session = getSessions().getCurrentSession();
+-          
+-          @SuppressWarnings("unchecked")
+-          List<Contact> list = session.createQuery(queryHQL).setParameter("cName", name).list();
+-          list.get(0).setTlf(newTLF);
+-          
+-          int rowsAffected = session.createQuery(updateHQL)
+-                                .setFlushMode(FlushMode.AUTO)
+-                                .setParameter("cNewTLF", newTLF)
+-                                .setParameter("cName", name)
+-                                .executeUpdate();
+-          SimpleJtaTransactionManagerImpl.getInstance().commit();
+-          return rowsAffected;       
+-      }
+-      catch (Exception e) {
+-          SimpleJtaTransactionManagerImpl.getInstance().rollback();
+-          throw e;         
+-      }     
+-   }
+-   
+-   public Contact getContact(Integer id) throws Exception
+-   {
+-
+-      SimpleJtaTransactionManagerImpl.getInstance().begin();
+-      try {
+-          
+-          Session session = getSessions().getCurrentSession();
+-          Contact contact = (Contact) session.get(Contact.class, id);
+-          SimpleJtaTransactionManagerImpl.getInstance().commit();
+-          return contact;       
+-      }
+-      catch (Exception e) {
+-          SimpleJtaTransactionManagerImpl.getInstance().rollback();
+-          throw e;         
+-      }     
+-   }
+-   
+-   public void cleanup() throws Exception
+-   {
+-      String deleteContactHQL = "delete from Contact";
+-      String deleteCustomerHQL = "delete from Customer";
+-
+-      SimpleJtaTransactionManagerImpl.getInstance().begin();
+-      try {
+-          
+-          Session session = getSessions().getCurrentSession();
+-          session.createQuery(deleteContactHQL)
+-                 .setFlushMode(FlushMode.AUTO)
+-                 .executeUpdate();
+-          session.createQuery(deleteCustomerHQL)
+-                 .setFlushMode(FlushMode.AUTO)
+-                 .executeUpdate();
+-          SimpleJtaTransactionManagerImpl.getInstance().commit();
+-      }
+-      catch (Exception e) {
+-          SimpleJtaTransactionManagerImpl.getInstance().rollback();
+-          throw e;         
+-      }
+-      
+-   }
+-   
+-   private Customer createCustomer(int id) throws Exception
+-   {
+-      System.out.println("CREATE CUSTOMER " + id);
+-      try
+-      {
+-         Customer customer = new Customer();
+-         customer.setName((id % 2 == 0) ? "JBoss" : "Red Hat");
+-         Set<Contact> contacts = new HashSet<Contact>();
+-         
+-         Contact kabir = new Contact();
+-         kabir.setCustomer(customer);
+-         kabir.setName("Kabir");
+-         kabir.setTlf("1111");
+-         contacts.add(kabir);
+-         
+-         Contact bill = new Contact();
+-         bill.setCustomer(customer);
+-         bill.setName("Bill");
+-         bill.setTlf("2222");
+-         contacts.add(bill);
+-
+-         customer.setContacts(contacts);
+-
+-         getSessions().getCurrentSession().persist(customer);
+-         return customer;
+-      }
+-      finally
+-      {
+-         System.out.println("CREATE CUSTOMER " +  id + " -  END");         
+-      }
+-   }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/Account.hbm.xml b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/Account.hbm.xml
+deleted file mode 100755
+index 1dd8885403..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/Account.hbm.xml
++++ /dev/null
+@@ -1,46 +0,0 @@
+-<?xml version="1.0"?>
+-<!DOCTYPE hibernate-mapping PUBLIC 
+-	"-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+-	"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-<hibernate-mapping
+-	package="org.hibernate.test.cache.jbc.functional.classloader">
+-
+-	<class name="Account" table="Accounts">
+-	   
+-	   <cache usage="transactional"/>
+-	   
+-		<id name="id">
+-			<generator class="assigned"/>
+-		</id>
+-		
+-		<property name="branch" not-null="true"/>
+-		<property name="balance" not-null="true"/>		
+-      <property name="accountHolder" type="serializable" not-null="true"/>
+-      
+-	</class>
+-
+-</hibernate-mapping>
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/Account.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/Account.java
+deleted file mode 100644
+index fec4fc6937..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/Account.java
++++ /dev/null
+@@ -1,124 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.classloader;
+-
+-import java.io.Serializable;
+-
+-/**
+- * Comment
+- * 
+- * @author Brian Stansberry
+- * @version $Revision: 60233 $
+- */
+-public class Account implements Serializable
+-{
+-   
+-   private static final long serialVersionUID = 1L;
+-   
+-   private Integer id;
+-   private AccountHolder accountHolder;
+-   private Integer balance;
+-   private String branch;
+-   
+-   public Integer getId()
+-   {
+-      return id;
+-   }
+-   public void setId(Integer id)
+-   {
+-      this.id = id;
+-   }
+-   
+-   public AccountHolder getAccountHolder()
+-   {
+-      return accountHolder;
+-   }
+-   public void setAccountHolder(AccountHolder accountHolder)
+-   {
+-      this.accountHolder = accountHolder;
+-   }
+-   
+-   public Integer getBalance()
+-   {
+-      return balance;
+-   }
+-   public void setBalance(Integer balance)
+-   {
+-      this.balance = balance;
+-   }
+-   public String getBranch()
+-   {
+-      return branch;
+-   }
+-   public void setBranch(String branch)
+-   {
+-      this.branch = branch;
+-   }
+-   
+-   public boolean equals(Object obj)
+-   {
+-      if (obj == this) return true;
+-      if (!(obj instanceof Account)) return false;
+-      Account acct = (Account)obj;
+-      if (!safeEquals(id, acct.id)) return false;
+-      if (!safeEquals(branch, acct.branch)) return false;
+-      if (!safeEquals(balance, acct.balance)) return false;
+-      if (!safeEquals(accountHolder, acct.accountHolder)) return false;
+-      return true;
+-   }
+-   
+-   public int hashCode( )
+-   {
+-      int result = 17;
+-      result = result * 31 + safeHashCode(id);
+-      result = result * 31 + safeHashCode(branch);
+-      result = result * 31 + safeHashCode(balance);
+-      result = result * 31 + safeHashCode(accountHolder);
+-      return result;
+-   }
+-   
+-   public String toString()
+-   {
+-      StringBuffer sb = new StringBuffer(getClass().getName());
+-      sb.append("[id=");
+-      sb.append(id);
+-      sb.append(",branch=");
+-      sb.append(branch);
+-      sb.append(",balance=");
+-      sb.append(balance);
+-      sb.append(",accountHolder=");
+-      sb.append(accountHolder);
+-      sb.append("]");
+-      return sb.toString();
+-   }
+-   
+-   private static int safeHashCode(Object obj) {
+-      return obj == null ? 0 : obj.hashCode();
+-   }
+-   
+-   private static boolean safeEquals(Object a, Object b) {
+-      return (a == b || (a != null && a.equals(b)));
+-   }
+-   
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/AccountHolder.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/AccountHolder.java
+deleted file mode 100644
+index 9c82773436..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/AccountHolder.java
++++ /dev/null
+@@ -1,97 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.classloader;
+-
+-import java.io.IOException;
+-import java.io.ObjectInputStream;
+-import java.io.Serializable;
+-
+-/**
+- * Comment
+- * 
+- * @author Brian Stansberry
+- * @version $Revision: 60233 $
+- */
+-public class AccountHolder implements Serializable
+-{   
+-   private static final long serialVersionUID = 1L;
+-   
+-   private String lastName;
+-   private String ssn;
+-   private transient boolean deserialized;
+-   
+-   public AccountHolder( ) {
+-      this("Stansberry", "123-456-7890");
+-   }
+-   
+-   public AccountHolder(String lastName, String ssn)
+-   {
+-      this.lastName = lastName;
+-      this.ssn = ssn;
+-   }
+-   
+-   public String getLastName( ) { return this.lastName; }
+-   public void setLastName(String lastName) { this.lastName = lastName; }
+-   
+-   public String getSsn( ) { return ssn; }
+-   public void setSsn(String ssn) { this.ssn = ssn; }
+-   
+-   public boolean equals(Object obj)
+-   {
+-      if (obj == this) return true;
+-      if (!(obj instanceof AccountHolder)) return false;
+-      AccountHolder pk = (AccountHolder)obj;
+-      if (!lastName.equals(pk.lastName)) return false;
+-      if (!ssn.equals(pk.ssn)) return false;
+-      return true;
+-   }
+-   
+-   public int hashCode( )
+-   {
+-      int result = 17;
+-      result = result * 31 + lastName.hashCode();
+-      result = result * 31 + ssn.hashCode();
+-      return result;
+-   }
+-   
+-   public String toString()
+-   {
+-      StringBuffer sb = new StringBuffer(getClass().getName());
+-      sb.append("[lastName=");
+-      sb.append(lastName);
+-      sb.append(",ssn=");
+-      sb.append(ssn);
+-      sb.append(",deserialized=");
+-      sb.append(deserialized);
+-      sb.append("]");
+-      return sb.toString();
+-   }
+-   
+-   private void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException
+-   {
+-      ois.defaultReadObject();
+-      deserialized = true;
+-   }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/CacheAccessListener.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/CacheAccessListener.java
+deleted file mode 100644
+index fe8cdd4b4f..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/CacheAccessListener.java
++++ /dev/null
+@@ -1,111 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.classloader;
+-
+-import java.util.HashSet;
+-import java.util.Iterator;
+-import java.util.Set;
+-
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.notifications.annotation.CacheListener;
+-import org.jboss.cache.notifications.annotation.NodeCreated;
+-import org.jboss.cache.notifications.annotation.NodeModified;
+-import org.jboss.cache.notifications.annotation.NodeVisited;
+-import org.jboss.cache.notifications.event.NodeCreatedEvent;
+-import org.jboss.cache.notifications.event.NodeModifiedEvent;
+-import org.jboss.cache.notifications.event.NodeVisitedEvent;
+-
+-@CacheListener
+-public class CacheAccessListener
+-{
+-   HashSet<Fqn<String>> modified = new HashSet<Fqn<String>>(); 
+-   HashSet<Fqn<String>> accessed = new HashSet<Fqn<String>>();
+-   
+-   public void clear()
+-   {
+-      modified.clear();
+-      accessed.clear();
+-   }
+-   
+-   @NodeModified
+-   public void nodeModified(NodeModifiedEvent event)
+-   {
+-      if (!event.isPre())
+-      {
+-         Fqn<String> fqn = event.getFqn();
+-         System.out.println("MyListener - Modified node " + fqn.toString());
+-         modified.add(fqn);
+-      }
+-   }
+-
+-   @NodeCreated
+-   public void nodeCreated(NodeCreatedEvent event)
+-   {   
+-      if (!event.isPre())
+-      {
+-         Fqn<String> fqn = event.getFqn();
+-         System.out.println("MyListener - Created node " + fqn.toString());
+-         modified.add(fqn);
+-      }
+-   }   
+-
+-   @NodeVisited
+-   public void nodeVisited(NodeVisitedEvent event)
+-   {   
+-      if (!event.isPre())
+-      {
+-         Fqn<String> fqn = event.getFqn();
+-         System.out.println("MyListener - Visited node " + fqn.toString());
+-         accessed.add(fqn); 
+-      }
+-   }    
+-   
+-   public boolean getSawRegionModification(String regionName)
+-   {
+-      return getSawRegion(regionName, modified);
+-   }
+-   
+-   public boolean getSawRegionAccess(String regionName)
+-   {
+-      return getSawRegion(regionName, accessed);
+-   }
+-   
+-   private boolean getSawRegion(String regionName, Set<Fqn<String>> sawEvent)
+-   {
+-      boolean saw = false;
+-      Fqn<String> fqn = Fqn.fromString(regionName);
+-      for (Iterator<Fqn<String>> it = sawEvent.iterator(); it.hasNext();)
+-      {
+-         Fqn<String> modified = (Fqn<String>) it.next();
+-         if (modified.isChildOf(fqn))
+-         {
+-            it.remove();
+-            saw = true;
+-         }
+-      }
+-   return saw;
+-      
+-   }
+-   
+-}
+\ No newline at end of file
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/ClassLoaderTestDAO.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/ClassLoaderTestDAO.java
+deleted file mode 100644
+index 8098da2a59..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/ClassLoaderTestDAO.java
++++ /dev/null
+@@ -1,325 +0,0 @@
+-/*
+- * JBoss, Home of Professional Open Source.
+- * Copyright 2006, Red Hat Middleware LLC, and individual contributors
+- * as indicated by the @author tags. See the copyright.txt file in the
+- * distribution for a full listing of individual contributors.
+- *
+- * This is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as
+- * published by the Free Software Foundation; either version 2.1 of
+- * the License, or (at your option) any later version.
+- *
+- * This software is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public
+- * License along with this software; if not, write to the Free
+- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+- */
+-package org.hibernate.test.cache.jbc.functional.classloader;
+-
+-import java.lang.reflect.Method;
+-import java.util.Iterator;
+-import java.util.List;
+-
+-import javax.transaction.TransactionManager;
+-
+-import org.hibernate.Query;
+-import org.hibernate.Session;
+-import org.hibernate.SessionFactory;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Comment
+- * 
+- * @author Brian Stansberry
+- */
+-public class ClassLoaderTestDAO
+-{
+-   private static final Logger log = LoggerFactory.getLogger(ClassLoaderTestDAO.class);
+-   
+-   private SessionFactory sessionFactory;
+-   private TransactionManager tm;
+-   
+-   private Class acctClass;
+-   private Class holderClass;
+-   private Method setId;
+-   private Method setBalance;
+-   private Method setBranch;
+-   private Method setHolder;
+-   private Object smith;
+-   private Object jones;
+-   private Object barney;
+-   private Method setName;
+-   private Method setSsn;
+-   
+-
+-   public ClassLoaderTestDAO(SessionFactory factory, TransactionManager tm) throws Exception
+-   {      
+-      this.sessionFactory = factory;
+-      this.tm = tm;
+-      
+-      acctClass = Thread.currentThread().getContextClassLoader().loadClass(getClass().getPackage().getName() + ".Account");
+-      holderClass = Thread.currentThread().getContextClassLoader().loadClass(getClass().getPackage().getName() + ".AccountHolder");
+-      setId = acctClass.getMethod("setId", Integer.class);
+-      setBalance = acctClass.getMethod("setBalance", Integer.class);
+-      setBranch = acctClass.getMethod("setBranch", String.class);
+-      setHolder = acctClass.getMethod("setAccountHolder", holderClass);
+-      
+-      
+-      setName = holderClass.getMethod("setLastName", String.class);
+-      setSsn = holderClass.getMethod("setSsn", String.class);
+-      
+-      smith = holderClass.newInstance();
+-      setName.invoke(smith, "Smith");
+-      setSsn.invoke(smith, "1000");
+-      
+-      jones = holderClass.newInstance();
+-      setName.invoke(jones, "Jones");
+-      setSsn.invoke(jones, "2000");
+-      
+-      barney = holderClass.newInstance();
+-      setName.invoke(barney, "Barney");
+-      setSsn.invoke(barney, "3000");
+-   }
+-   
+-   public Object getSmith() {
+-      return smith;
+-   }
+-   
+-   public Object getJones() {
+-      return jones;
+-   }
+-   
+-   public Object getBarney() {
+-      return barney;
+-   }
+-   
+-   public void updateAccountBranch(Integer id, String branch) throws Exception
+-   {
+-      log.debug("Updating account " + id + " to branch " + branch);
+-      tm.begin();
+-      try {
+-          Session session = sessionFactory.getCurrentSession();
+-          Object account = session.get(acctClass, id);
+-          setBranch.invoke(account, branch);
+-          session.update(account);
+-          tm.commit();
+-      }
+-      catch (Exception e) {
+-         log.error("rolling back", e);
+-         tm.rollback();
+-         throw e;
+-      }
+-      log.debug("Updated account " + id + " to branch " + branch);
+-   }
+-   
+-   public int getCountForBranch(String branch, boolean useRegion) throws Exception
+-   {      
+-      tm.begin();
+-      try {
+-          Query query = sessionFactory.getCurrentSession().createQuery("select account from Account as account where account.branch = :branch");
+-          query.setString("branch", branch);
+-          if (useRegion)
+-          {
+-              query.setCacheRegion("AccountRegion");
+-          }
+-          query.setCacheable(true);
+-          int result = query.list().size();
+-          tm.commit();
+-          return result;
+-      }
+-      catch (Exception e) {
+-         log.error("rolling back", e);
+-         tm.rollback();
+-         throw e;
+-      }
+-      
+-   }
+-   
+-   public void createAccount(Object holder, Integer id, Integer openingBalance, String branch) throws Exception
+-   {
+-       log.debug("Creating account " + id);
+-       tm.begin();
+-       try {
+-           Object account = acctClass.newInstance();
+-           setId.invoke(account, id);
+-           setHolder.invoke(account, holder);
+-           setBalance.invoke(account, openingBalance);
+-           setBranch.invoke(account, branch);
+-           sessionFactory.getCurrentSession().persist(account);
+-           tm.commit();
+-       }
+-       catch (Exception e) {
+-           log.error("rolling back", e);
+-           tm.rollback();
+-           throw e;
+-       }
+-       
+-       log.debug("Created account " + id);
+-   }
+-   
+-   public Account getAccount(Integer id) throws Exception
+-   {
+-      log.debug("Getting account " + id);
+-      tm.begin();
+-      try {
+-          Session session = sessionFactory.getCurrentSession();
+-          Account acct = (Account) session.get(acctClass, id);
+-          tm.commit();
+-          return acct;
+-      }
+-      catch (Exception e) {
+-          log.error("rolling back", e);
+-          tm.rollback();
+-          throw e;
+-      }
+-   }
+-   
+-   public Account getAccountWithRefresh(Integer id) throws Exception
+-   {
+-      log.debug("Getting account " + id + " with refresh");
+-      tm.begin();
+-      try {
+-          Session session = sessionFactory.getCurrentSession();
+-          Account acct  = (Account) session.get(acctClass, id);
+-          session.refresh(acct);
+-          acct = (Account) session.get(acctClass, id);
+-          tm.commit();
+-          return acct;
+-      }
+-      catch (Exception e) {
+-          log.error("rolling back", e);
+-          tm.rollback();
+-          throw e;
+-      }
+-   }
+-   
+-   public void updateAccountBalance(Integer id, Integer newBalance) throws Exception
+-   {
+-      log.debug("Updating account " + id + " to balance " + newBalance);
+-      tm.begin();
+-      try {
+-          Session session = sessionFactory.getCurrentSession();
+-          Object account = session.get(acctClass, id);
+-          setBalance.invoke(account, newBalance);
+-          session.update(account);
+-          tm.commit();
+-      }
+-      catch (Exception e) {
+-          log.error("rolling back", e);
+-          tm.rollback();
+-          throw e;
+-      }
+-      log.debug("Updated account " + id + " to balance " + newBalance);
+-   }
+-   
+-   public String getBranch(Object holder, boolean useRegion) throws Exception
+-   {      
+-      tm.begin();
+-      try {
+-          Query query = sessionFactory.getCurrentSession().createQuery("select account.branch from Account as account where account.accountHolder = ?");
+-          query.setParameter(0, holder);
+-          if (useRegion)
+-          {
+-             query.setCacheRegion("AccountRegion");
+-          }
+-          query.setCacheable(true);
+-          String result = (String) query.list().get(0);
+-          tm.commit();
+-          return result;
+-      }
+-      catch (Exception e) {
+-          log.error("rolling back", e);
+-          tm.rollback();
+-          throw e;
+-      }
+-   }
+-      
+-   public int getTotalBalance(Object holder, boolean useRegion)
+-      throws Exception
+-   {      
+-      List results = null;
+-      tm.begin();
+-      try {
+-          Query query = sessionFactory.getCurrentSession().createQuery("select account.balance from Account as account where account.accountHolder = ?");
+-          query.setParameter(0, holder);
+-          if (useRegion)
+-          {
+-             query.setCacheRegion("AccountRegion");
+-          }
+-          query.setCacheable(true);
+-          results = query.list();
+-          tm.commit();
+-      }
+-      catch (Exception e) {
+-          log.error("rolling back", e);
+-          tm.rollback();
+-          throw e;
+-      }
+-      
+-      int total = 0;
+-      if (results != null)
+-      {
+-         for (Iterator it = results.iterator(); it.hasNext();)
+-         {            
+-            total += ((Integer) it.next()).intValue();
+-            System.out.println("Total = " + total);
+-         }
+-      }
+-      return total;      
+-   }
+-   
+-   public void cleanup() throws Exception
+-   {
+-      internalCleanup();
+-   }
+-   
+-   private void internalCleanup() throws Exception
+-   {  
+-      if (sessionFactory != null)
+-      {         
+-         tm.begin();
+-         try {
+-            
+-             Session session = sessionFactory.getCurrentSession();
+-             Query query = session.createQuery("select account from Account as account");
+-             List accts = query.list();
+-             if (accts != null)
+-             {
+-                for (Iterator it = accts.iterator(); it.hasNext();)
+-                {
+-                   try
+-                   {
+-                      Object acct = it.next();
+-                      log.info("Removing " + acct);
+-                      session.delete(acct);
+-                   }
+-                   catch (Exception ignored) {}
+-                }
+-             }
+-             tm.commit();
+-         }
+-         catch (Exception e) {
+-             tm.rollback();
+-             throw e;
+-         }
+-      }      
+-   }
+-   
+-   public void remove()
+-   {
+-      try
+-      {
+-         internalCleanup();
+-      }
+-      catch (Exception e)
+-      {
+-         log.error("Caught exception in remove", e);
+-      }
+-   }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/MVCCIsolatedClassLoaderTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/MVCCIsolatedClassLoaderTest.java
+deleted file mode 100644
+index df75c29765..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/MVCCIsolatedClassLoaderTest.java
++++ /dev/null
+@@ -1,54 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional.classloader;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.test.cache.jbc.functional.util.IsolatedCacheTestSetup;
+-
+-/**
+- * Optimistic locking version of IsolatedClassLoaderTest.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class MVCCIsolatedClassLoaderTest extends PessimisticIsolatedClassLoaderTest
+-{
+-   private static final String CACHE_CONFIG = "mvcc-shared";
+-   
+-   /**
+-    * Create a new OptimisticIsolatedClassLoaderTest.
+-    * 
+-    * @param name
+-    */
+-   public MVCCIsolatedClassLoaderTest(String name)
+-   {
+-      super(name);      
+-   }
+-   
+-   public static Test suite() throws Exception {
+-       TestSuite suite = new TestSuite(MVCCIsolatedClassLoaderTest.class);
+-       String[] acctClasses = { OUR_PACKAGE + ".Account", OUR_PACKAGE + ".AccountHolder" };
+-       return new IsolatedCacheTestSetup(suite, acctClasses, CACHE_CONFIG);
+-   }
+-
+-   protected String getEntityCacheConfigName() {
+-       return CACHE_CONFIG;
+-   } 
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/OptimisticIsolatedClassLoaderTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/OptimisticIsolatedClassLoaderTest.java
+deleted file mode 100644
+index 06ea21ef43..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/OptimisticIsolatedClassLoaderTest.java
++++ /dev/null
+@@ -1,54 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional.classloader;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.test.cache.jbc.functional.util.IsolatedCacheTestSetup;
+-
+-/**
+- * Optimistic locking version of IsolatedClassLoaderTest.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class OptimisticIsolatedClassLoaderTest extends PessimisticIsolatedClassLoaderTest
+-{
+-   private static final String CACHE_CONFIG = "optimistic-shared";
+-   
+-   /**
+-    * Create a new OptimisticIsolatedClassLoaderTest.
+-    * 
+-    * @param name
+-    */
+-   public OptimisticIsolatedClassLoaderTest(String name)
+-   {
+-      super(name);      
+-   }
+-   
+-   public static Test suite() throws Exception {
+-       TestSuite suite = new TestSuite(OptimisticIsolatedClassLoaderTest.class);
+-       String[] acctClasses = { OUR_PACKAGE + ".Account", OUR_PACKAGE + ".AccountHolder" };
+-       return new IsolatedCacheTestSetup(suite, acctClasses, CACHE_CONFIG);
+-   }
+-
+-   protected String getEntityCacheConfigName() {
+-       return CACHE_CONFIG;
+-   } 
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/PessimisticIsolatedClassLoaderTest.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/PessimisticIsolatedClassLoaderTest.java
+deleted file mode 100755
+index 975364e58c..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/classloader/PessimisticIsolatedClassLoaderTest.java
++++ /dev/null
+@@ -1,394 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.classloader;
+-
+-
+-import javax.transaction.TransactionManager;
+-
+-import junit.framework.Test;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.SessionFactory;
+-import org.hibernate.cache.StandardQueryCache;
+-import org.hibernate.cache.jbc.BasicRegionAdapter;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cache.jbc.query.QueryResultsRegionImpl;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.cache.jbc.functional.DualNodeTestCaseBase;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeJtaTransactionManagerImpl;
+-import org.hibernate.test.cache.jbc.functional.util.DualNodeTestUtil;
+-import org.hibernate.test.cache.jbc.functional.util.IsolatedCacheTestSetup;
+-import org.hibernate.test.cache.jbc.functional.util.TestCacheInstanceManager;
+-import org.hibernate.test.cache.jbc.functional.util.TestJBossCacheRegionFactory;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.CacheManager;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.Region;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Tests entity and query caching when class of objects being cached are not
+- * visible to JBoss Cache's classloader.  Also serves as a general integration
+- * test.
+- * <p/>
+- * This test stores an object (AccountHolder) that isn't visible to the JBC 
+- * classloader in the cache in two places:
+- * 
+- * 1) As part of the value tuple in an Account entity
+- * 2) As part of the FQN in a query cache entry (see query in 
+- *    ClassLoaderTestDAO.getBranch())
+- */
+-public class PessimisticIsolatedClassLoaderTest
+-extends DualNodeTestCaseBase
+-{
+-   public static final String OUR_PACKAGE = PessimisticIsolatedClassLoaderTest.class.getPackage().getName();
+-   
+-   private static final String CACHE_CONFIG = "pessimistic-shared";
+-
+-   protected static final long SLEEP_TIME = 300L;
+-   
+-   protected final Logger log = LoggerFactory.getLogger(getClass());
+-
+-   static int test = 0;
+-   
+-   private Cache localCache;
+-   private CacheAccessListener localListener;
+-   
+-   private Cache remoteCache;
+-   private CacheAccessListener remoteListener;
+-   
+-   public PessimisticIsolatedClassLoaderTest(String name)
+-   {
+-      super(name);
+-   }
+-   
+-   public static Test suite() throws Exception {
+-       TestSuite suite = new TestSuite(PessimisticIsolatedClassLoaderTest.class);
+-       String[] acctClasses = { OUR_PACKAGE + ".Account", OUR_PACKAGE + ".AccountHolder" };
+-       return new IsolatedCacheTestSetup(suite, acctClasses, CACHE_CONFIG);
+-   }
+-
+-   @Override
+-   protected Class getCacheRegionFactory()
+-   {
+-      return TestJBossCacheRegionFactory.class;
+-   }
+-
+-   @Override
+-   protected boolean getUseQueryCache()
+-   {
+-      return true;
+-   }
+-
+-   @Override
+-   public String[] getMappings()
+-   {
+-      return new String[] { "cache/jbc/functional/classloader/Account.hbm.xml" };
+-   }
+-
+-   @Override
+-   protected void configureCacheFactory(Configuration cfg)
+-   {
+-      cfg.setProperty(MultiplexingCacheInstanceManager.ENTITY_CACHE_RESOURCE_PROP, 
+-                      getEntityCacheConfigName()); 
+-      cfg.setProperty(MultiplexingCacheInstanceManager.TIMESTAMP_CACHE_RESOURCE_PROP, 
+-                      getEntityCacheConfigName());     
+-   }
+-
+-   protected String getEntityCacheConfigName() {
+-       return CACHE_CONFIG;
+-   } 
+-   
+-   @Override
+-   protected void cleanupTransactionManagement() {
+-      // Don't clean up the managers, just the transactions
+-      // Managers are still needed by the long-lived caches
+-      DualNodeJtaTransactionManagerImpl.cleanupTransactions();
+-   }  
+-
+-   @Override
+-   protected void cleanupTest() throws Exception
+-   {
+-      try
+-      {
+-      if (localCache != null && localListener != null)
+-         localCache.removeCacheListener(localListener);
+-      if (remoteCache != null && remoteListener != null)
+-         remoteCache.removeCacheListener(remoteListener);
+-      }
+-      finally
+-      {
+-         super.cleanupTest();
+-      }
+-   }
+-
+-   /**
+-    * Simply confirms that the test fixture's classloader isolation setup
+-    * is functioning as expected.
+-    * 
+-    * @throws Exception
+-    */
+-   public void testIsolatedSetup() throws Exception
+-   {
+-      // Bind a listener to the "local" cache
+-      // Our region factory makes its CacheManager available to us
+-      org.jboss.cache.CacheManager localManager = TestCacheInstanceManager.getTestCacheManager(DualNodeTestUtil.LOCAL);
+-      org.jboss.cache.Cache localCache = localManager.getCache(getEntityCacheConfigName(), true);
+-      
+-      // Bind a listener to the "remote" cache
+-      org.jboss.cache.CacheManager remoteManager = TestCacheInstanceManager.getTestCacheManager(DualNodeTestUtil.REMOTE);
+-      org.jboss.cache.Cache remoteCache = remoteManager.getCache(getEntityCacheConfigName(), true);
+-      
+-      ClassLoader cl = Thread.currentThread().getContextClassLoader();
+-      log.info("TCCL is " + cl);
+-      Thread.currentThread().setContextClassLoader(cl.getParent());
+-      
+-      org.jboss.cache.Fqn fqn = org.jboss.cache.Fqn.fromString("/isolated1");
+-      org.jboss.cache.Region r = localCache.getRegion(fqn, true);
+-      r.registerContextClassLoader(cl.getParent());
+-      r.activate();
+-      
+-      r = remoteCache.getRegion(fqn, true);
+-      r.registerContextClassLoader(cl.getParent());
+-      r.activate();
+-      Thread.currentThread().setContextClassLoader(cl);
+-      Account acct = new Account();
+-      acct.setAccountHolder(new AccountHolder());
+-      
+-      try
+-      {
+-         localCache.put(fqn, "key", acct);
+-         fail("Should not have succeeded in putting acct -- classloader not isolated");
+-      }
+-      catch (Exception e) {
+-          log.info("Caught exception as desired", e);
+-      }
+-      
+-      localCache.getRegion(fqn, false).registerContextClassLoader(Thread.currentThread().getContextClassLoader());
+-      remoteCache.getRegion(fqn, false).registerContextClassLoader(Thread.currentThread().getContextClassLoader());
+-      
+-      localCache.put(fqn, "key", acct);
+-      assertEquals(acct.getClass().getName(), remoteCache.get(fqn, "key").getClass().getName());
+-   }
+-   
+-   public void testClassLoaderHandlingNamedQueryRegion() throws Exception {
+-      queryTest(true);
+-   }
+-   
+-   public void testClassLoaderHandlingStandardQueryCache() throws Exception {
+-      queryTest(false);
+-   }
+-   
+-   protected void queryTest(boolean useNamedRegion) throws Exception
+-   {
+-      // Bind a listener to the "local" cache
+-      // Our region factory makes its CacheManager available to us
+-      CacheManager localManager = TestCacheInstanceManager.getTestCacheManager(DualNodeTestUtil.LOCAL);
+-      this.localCache = localManager.getCache(getEntityCacheConfigName(), true);
+-      this.localListener = new CacheAccessListener();
+-      localCache.addCacheListener(localListener);
+-      
+-      TransactionManager localTM = localCache.getConfiguration().getRuntimeConfig().getTransactionManager();
+-      
+-      // Bind a listener to the "remote" cache
+-      CacheManager remoteManager = TestCacheInstanceManager.getTestCacheManager(DualNodeTestUtil.REMOTE);
+-      this.remoteCache = remoteManager.getCache(getEntityCacheConfigName(), true);
+-      this.remoteListener = new CacheAccessListener();
+-      remoteCache.addCacheListener(remoteListener);      
+-      
+-      TransactionManager remoteTM = remoteCache.getConfiguration().getRuntimeConfig().getTransactionManager();
+-      
+-      SessionFactory localFactory = getEnvironment().getSessionFactory();
+-      SessionFactory remoteFactory = getSecondNodeEnvironment().getSessionFactory();
+-      
+-      ClassLoaderTestDAO dao0 = new ClassLoaderTestDAO(localFactory, localTM);      
+-      ClassLoaderTestDAO dao1 = new ClassLoaderTestDAO(remoteFactory, remoteTM);
+-      
+-      // Determine whether our query region is already there (in which case it
+-      // will receive remote messages immediately) or is yet to be created on
+-      // first use (in which case it will initially discard remote messages)
+-      String regionName = createRegionName(useNamedRegion ? "AccountRegion" : StandardQueryCache.class.getName());
+-      Region queryRegion = remoteCache.getRegion(Fqn.fromString(regionName), false);
+-      boolean queryRegionExists = queryRegion != null && queryRegion.isActive();
+-      
+-      // Initial ops on node 0
+-      setupEntities(dao0);
+-      
+-      // Query on post code count
+-      assertEquals("63088 has correct # of accounts", 6, dao0.getCountForBranch("63088", useNamedRegion));
+-      
+-      assertTrue("Query cache used " + regionName, 
+-            localListener.getSawRegionModification(regionName));
+-      // Clear the access state
+-      localListener.getSawRegionAccess(regionName);
+-      
+-      log.info("First query on node0 done");
+-      
+-      // Sleep a bit to allow async repl to happen
+-      sleep(SLEEP_TIME);
+-      
+-      // If region isn't activated yet, should not have been modified      
+-      if (!queryRegionExists)
+-      {
+-         assertFalse("Query cache remotely modified " + regionName, 
+-               remoteListener.getSawRegionModification(regionName));
+-         // Clear the access state
+-         remoteListener.getSawRegionAccess(regionName);
+-      }
+-      else
+-      {
+-         assertTrue("Query cache remotely modified " + regionName, 
+-               remoteListener.getSawRegionModification(regionName));
+-         // Clear the access state
+-         remoteListener.getSawRegionAccess(regionName);         
+-      }
+-      
+-      // Do query again from node 1      
+-      assertEquals("63088 has correct # of accounts", 6, dao1.getCountForBranch("63088", useNamedRegion));
+-      
+-      if (!queryRegionExists)
+-      {
+-         // Query should have activated the region and then been inserted
+-         assertTrue("Query cache modified " + regionName, 
+-               remoteListener.getSawRegionModification(regionName));
+-         // Clear the access state
+-         remoteListener.getSawRegionAccess(regionName);
+-      }
+-      
+-      log.info("First query on node 1 done");
+-      
+-      // We now have the query cache region activated on both nodes.
+-      
+-      // Sleep a bit to allow async repl to happen
+-      sleep(SLEEP_TIME);
+-      
+-      // Do some more queries on node 0
+-      
+-      assertEquals("Correct branch for Smith", "94536", dao0.getBranch(dao0.getSmith(), useNamedRegion));
+-      
+-      assertEquals("Correct high balances for Jones", 40, dao0.getTotalBalance(dao0.getJones(), useNamedRegion));
+-      
+-      assertTrue("Query cache used " + regionName, 
+-            localListener.getSawRegionModification(regionName));
+-      // Clear the access state
+-      localListener.getSawRegionAccess(regionName);
+-      
+-      log.info("Second set of queries on node0 done");
+-      
+-      // Sleep a bit to allow async repl to happen
+-      sleep(SLEEP_TIME);
+-             
+-      // Check if the previous queries replicated      
+-      assertTrue("Query cache remotely modified " + regionName, 
+-            remoteListener.getSawRegionModification(regionName));
+-      // Clear the access state
+-      remoteListener.getSawRegionAccess(regionName);
+-      
+-      // Do queries again from node 1      
+-      assertEquals("Correct branch for Smith", "94536", dao1.getBranch(dao1.getSmith(), useNamedRegion));
+-      
+-      assertEquals("Correct high balances for Jones", 40, dao1.getTotalBalance(dao1.getJones(), useNamedRegion));
+-      
+-      // Should be no change; query was already there
+-      assertFalse("Query cache modified " + regionName, 
+-            remoteListener.getSawRegionModification(regionName));
+-      assertTrue("Query cache accessed " + regionName, 
+-            remoteListener.getSawRegionAccess(regionName));
+-      
+-      log.info("Second set of queries on node1 done");
+-      
+-      // allow async to propagate
+-      sleep(SLEEP_TIME);
+-      
+-      // Modify underlying data on node 1
+-      modifyEntities(dao1);
+-      
+-      // allow async timestamp change to propagate
+-      sleep(SLEEP_TIME);
+-      
+-      // Confirm query results are correct on node 0
+-      
+-      assertEquals("63088 has correct # of accounts", 7, dao0.getCountForBranch("63088", useNamedRegion));
+-      
+-      assertEquals("Correct branch for Smith", "63088", dao0.getBranch(dao0.getSmith(), useNamedRegion));
+-      
+-      assertEquals("Correct high balances for Jones", 50, dao0.getTotalBalance(dao0.getJones(), useNamedRegion));
+-      
+-      log.info("Third set of queries on node0 done");
+-   }
+-   
+-   protected String createRegionName(String noPrefix)
+-   {
+-      String combined = getRegionPrefix() == null ? noPrefix : getRegionPrefix() + '.' + noPrefix;
+-      return BasicRegionAdapter.getTypeLastRegionFqn(combined, getRegionPrefix(), QueryResultsRegionImpl.TYPE).toString();
+-   }
+-   
+-   protected void setupEntities(ClassLoaderTestDAO dao) throws Exception
+-   {
+-      dao.cleanup();
+-      
+-      dao.createAccount(dao.getSmith(), new Integer(1001), new Integer(5), "94536");
+-      dao.createAccount(dao.getSmith(), new Integer(1002), new Integer(15), "94536");
+-      dao.createAccount(dao.getSmith(), new Integer(1003), new Integer(20), "94536");
+-      
+-      dao.createAccount(dao.getJones(), new Integer(2001), new Integer(5), "63088");
+-      dao.createAccount(dao.getJones(), new Integer(2002), new Integer(15), "63088");
+-      dao.createAccount(dao.getJones(), new Integer(2003), new Integer(20), "63088");
+-      
+-      dao.createAccount(dao.getBarney(), new Integer(3001), new Integer(5), "63088");
+-      dao.createAccount(dao.getBarney(), new Integer(3002), new Integer(15), "63088");
+-      dao.createAccount(dao.getBarney(), new Integer(3003), new Integer(20), "63088");
+-      
+-      log.info("Standard entities created");
+-   }
+-   
+-   protected void resetRegionUsageState(CacheAccessListener localListener, CacheAccessListener remoteListener)
+-   {  
+-      String stdName = createRegionName(StandardQueryCache.class.getName());
+-      String acctName = createRegionName("AccountRegion");
+-      
+-      localListener.getSawRegionModification(stdName);
+-      localListener.getSawRegionModification(acctName);
+-      
+-      localListener.getSawRegionAccess(stdName);
+-      localListener.getSawRegionAccess(acctName);
+-      
+-      remoteListener.getSawRegionModification(stdName);
+-      remoteListener.getSawRegionModification(acctName);
+-      
+-      remoteListener.getSawRegionAccess(stdName);
+-      remoteListener.getSawRegionAccess(acctName);
+-      
+-      log.info("Region usage state cleared");      
+-   }
+-   
+-   protected void modifyEntities(ClassLoaderTestDAO dao) throws Exception
+-   {
+-      dao.updateAccountBranch(1001, "63088");
+-      dao.updateAccountBalance(2001, 15);
+-      
+-      log.info("Entities modified");
+-   }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/mvcc-treecache.xml b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/mvcc-treecache.xml
+deleted file mode 100644
+index b1249fc159..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/mvcc-treecache.xml
++++ /dev/null
+@@ -1,147 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-
+-<!-- ===================================================================== -->
+-<!--                                                                       -->
+-<!--  Sample TreeCache Service Configuration                               -->
+-<!--                                                                       -->
+-<!-- ===================================================================== -->
+-
+-<server>
+-
+-    <classpath codebase="./lib" archives="jboss-cache.jar, jgroups.jar"/>
+-
+-
+-    <!-- ==================================================================== -->
+-    <!-- Defines TreeCache configuration                                      -->
+-    <!-- ==================================================================== -->
+-
+-    <mbean code="org.jboss.cache.jmx.CacheJmxWrapper"
+-        name="jboss.cache:service=TreeCache">
+-
+-        <depends>jboss:service=Naming</depends>
+-        <depends>jboss:service=TransactionManager</depends>
+-
+-        <!--
+-            Node locking scheme:
+-                OPTIMISTIC
+-                PESSIMISTIC
+-                MVCC (default)
+-        -->
+-        <attribute name="NodeLockingScheme">MVCC</attribute>
+-
+-        <!--
+-            TransactionManager configuration not required for Hibernate!
+-            Hibernate will plug in its own transaction manager integration.
+-        -->
+-
+-        <attribute name="IsolationLevel">READ_COMMITTED</attribute>
+-
+-        <!--
+-             Valid modes are LOCAL
+-                             REPL_ASYNC
+-                             REPL_SYNC
+-        -->
+-        <attribute name="CacheMode">LOCAL</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all clusters, in order
+-             to find each other
+-        -->
+-        <attribute name="ClusterName">TreeCache-Cluster</attribute>
+-
+-        <attribute name="ClusterConfig">
+-            <config>
+-                <!-- UDP: if you have a multihomed machine,
+-                set the bind_addr attribute to the appropriate NIC IP address -->
+-                <!-- UDP: On Windows machines, because of the media sense feature
+-                 being broken with multicast (even after disabling media sense)
+-                 set the loopback attribute to true -->
+-                <UDP mcast_addr="228.1.2.3" mcast_port="45566"
+-                    ip_ttl="64" ip_mcast="true"
+-                    mcast_send_buf_size="150000" mcast_recv_buf_size="80000"
+-                    ucast_send_buf_size="150000" ucast_recv_buf_size="80000"
+-                    loopback="false"/>
+-                <PING timeout="2000" num_initial_members="3"/>
+-                <MERGE2 min_interval="10000" max_interval="20000"/>
+-                <FD shun="true"/>
+-                <VERIFY_SUSPECT timeout="1500"/>
+-                <pbcast.NAKACK gc_lag="50" retransmit_timeout="600,1200,2400,4800"/>
+-                <pbcast.STABLE desired_avg_gossip="20000"/>
+-                <UNICAST timeout="600,1200,2400" min_threshold="10"/>
+-                <FRAG frag_size="8192"/>
+-                <pbcast.GMS join_timeout="5000" shun="true" print_local_addr="true"/>
+-                <pbcast.STATE_TRANSFER/>
+-            </config>
+-        </attribute>
+-      
+-      <!-- Must be true if any entity deployment uses a scoped classloader -->
+-      <attribute name="UseRegionBasedMarshalling">true</attribute>
+-      <!-- Must match the value of "useRegionBasedMarshalling" -->
+-      <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!--
+-            The max amount of time (in milliseconds) we wait until the
+-            initial state (ie. the contents of the cache) are retrieved from
+-            existing members in a clustered environment
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">10000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">5000</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-        
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-      <!--  Specific eviction policy configurations. This is LRU -->
+-      <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <attribute name="maxNodes">5000</attribute>
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS">
+-            <attribute name="maxNodes">0</attribute>
+-            <attribute name="timeToLiveSeconds">0</attribute>
+-          </region>
+-        </config>
+-     </attribute>
+-  </mbean>
+-
+-
+-</server>
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/optimistic-treecache.xml b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/optimistic-treecache.xml
+deleted file mode 100755
+index 97ff5f6bbc..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/optimistic-treecache.xml
++++ /dev/null
+@@ -1,166 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-
+-<!-- ===================================================================== -->
+-<!--                                                                       -->
+-<!--  Sample JBoss Cache Service Configuration                               -->
+-<!--  Recommended for use as Hibernate's 2nd Level Cache                   -->
+-<!--  For use with JBossCache >= 2.0.0 ONLY!!!                             -->
+-<!--                                                                       -->
+-<!-- ===================================================================== -->
+-
+-<server>
+-
+-    <classpath codebase="./lib" archives="jboss-cache.jar, jgroups.jar"/>
+-
+-
+-    <!-- ==================================================================== -->
+-    <!-- Defines TreeCache configuration                                      -->
+-    <!-- ==================================================================== -->
+-
+-    <mbean code="org.jboss.cache.jmx.CacheJmxWrapper"
+-        name="jboss.cache:service=TreeCache">
+-
+-        <depends>jboss:service=Naming</depends>
+-        <depends>jboss:service=TransactionManager</depends>
+-
+-        <!--
+-            TransactionManager configuration not required for Hibernate!
+-            Hibernate will plug in its own transaction manager integration.
+-        -->
+-
+-
+-        <!--
+-            Node locking scheme:
+-                OPTIMISTIC
+-                PESSIMISTIC
+-                MVCC (default)
+-        -->
+-        <attribute name="NodeLockingScheme">OPTIMISTIC</attribute>
+-
+-        <!--
+-            Note that this attribute is IGNORED if your NodeLockingScheme above is OPTIMISTIC.
+-
+-            Isolation level : SERIALIZABLE
+-                              REPEATABLE_READ (default)
+-                              READ_COMMITTED
+-                              READ_UNCOMMITTED
+-                              NONE
+-        -->
+-        <attribute name="IsolationLevel">REPEATABLE_READ</attribute>
+-
+-        <!--
+-             Valid modes are LOCAL
+-                             REPL_ASYNC
+-                             REPL_SYNC
+-                             INVALIDATION_ASYNC
+-                             INVALIDATION_SYNC
+-
+-             INVALIDATION_ASYNC is highly recommended as the mode for use
+-             with clustered second-level caches.
+-        -->
+-        <attribute name="CacheMode">REPL_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all clusters, in order
+-             to find each other
+-        -->
+-        <attribute name="ClusterName">TreeCache-Cluster</attribute>
+-
+-        <attribute name="ClusterConfig">
+-            <config>
+-                <!-- UDP: if you have a multihomed machine,
+-                set the bind_addr attribute to the appropriate NIC IP address -->
+-                <!-- UDP: On Windows machines, because of the media sense feature
+-                 being broken with multicast (even after disabling media sense)
+-                 set the loopback attribute to true -->
+-                <UDP mcast_addr="228.1.2.3" mcast_port="48866"
+-                    ip_ttl="64" ip_mcast="true"
+-                    mcast_send_buf_size="150000" mcast_recv_buf_size="80000"
+-                    ucast_send_buf_size="150000" ucast_recv_buf_size="80000"
+-                    loopback="false"/>
+-                <PING timeout="2000" num_initial_members="3"/>
+-                <MERGE2 min_interval="10000" max_interval="20000"/>
+-                <FD shun="true"/>
+-                <FD_SOCK/>
+-                <VERIFY_SUSPECT timeout="1500"/>
+-                <pbcast.NAKACK gc_lag="50" retransmit_timeout="600,1200,2400,4800"/>
+-                <UNICAST timeout="600,1200,2400" min_threshold="10"/>
+-                <pbcast.STABLE desired_avg_gossip="20000"/>
+-                <FRAG frag_size="8192"/>
+-                <pbcast.GMS join_timeout="5000" shun="true" print_local_addr="true"/>
+-                <pbcast.STATE_TRANSFER/>
+-            </config>
+-        </attribute>
+-
+-        <!--
+-         Whether or not to fetch state on joining a cluster
+-         NOTE this used to be called FetchStateOnStartup and has been renamed to be more descriptive.
+-        -->
+-        <attribute name="FetchInMemoryState">false</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">10000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">5000</attribute>
+-        
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-       <!--
+-          Indicate whether to use marshalling or not. Set this to true if you are running under a scoped
+-          class loader, e.g., inside an application server. Default is "false".
+-       -->
+-       <attribute name="UseRegionBasedMarshalling">true</attribute>
+-       <!-- Must match the value of "useRegionBasedMarshalling" -->
+-       <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-      <!--  Specific eviction policy configurations. This is LRU -->
+-      <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <attribute name="maxNodes">5000</attribute>
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS">
+-            <attribute name="maxNodes">0</attribute>
+-            <attribute name="timeToLiveSeconds">0</attribute>
+-          </region>
+-        </config>
+-     </attribute>
+-
+-    </mbean>
+-</server>
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/pessimistic-treecache.xml b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/pessimistic-treecache.xml
+deleted file mode 100755
+index b79b4384c6..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/pessimistic-treecache.xml
++++ /dev/null
+@@ -1,148 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-
+-<!-- ===================================================================== -->
+-<!--                                                                       -->
+-<!--  Sample TreeCache Service Configuration                               -->
+-<!--                                                                       -->
+-<!-- ===================================================================== -->
+-
+-<server>
+-
+-    <classpath codebase="./lib" archives="jboss-cache.jar, jgroups.jar"/>
+-
+-
+-    <!-- ==================================================================== -->
+-    <!-- Defines TreeCache configuration                                      -->
+-    <!-- ==================================================================== -->
+-
+-    <mbean code="org.jboss.cache.jmx.CacheJmxWrapper"
+-        name="jboss.cache:service=TreeCache">
+-
+-        <depends>jboss:service=Naming</depends>
+-        <depends>jboss:service=TransactionManager</depends>
+-
+-
+-        <!--
+-            Node locking scheme:
+-                OPTIMISTIC
+-                PESSIMISTIC
+-                MVCC (default)
+-        -->
+-        <attribute name="NodeLockingScheme">PESSIMISTIC</attribute>
+-
+-        <!--
+-            TransactionManager configuration not required for Hibernate!
+-            Hibernate will plug in its own transaction manager integration.
+-        -->
+-
+-        <attribute name="IsolationLevel">READ_COMMITTED</attribute>
+-
+-        <!--
+-             Valid modes are LOCAL
+-                             REPL_ASYNC
+-                             REPL_SYNC
+-        -->
+-        <attribute name="CacheMode">LOCAL</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all clusters, in order
+-             to find each other
+-        -->
+-        <attribute name="ClusterName">TreeCache-Cluster</attribute>
+-
+-        <attribute name="ClusterConfig">
+-            <config>
+-                <!-- UDP: if you have a multihomed machine,
+-                set the bind_addr attribute to the appropriate NIC IP address -->
+-                <!-- UDP: On Windows machines, because of the media sense feature
+-                 being broken with multicast (even after disabling media sense)
+-                 set the loopback attribute to true -->
+-                <UDP mcast_addr="228.1.2.3" mcast_port="45566"
+-                    ip_ttl="64" ip_mcast="true"
+-                    mcast_send_buf_size="150000" mcast_recv_buf_size="80000"
+-                    ucast_send_buf_size="150000" ucast_recv_buf_size="80000"
+-                    loopback="false"/>
+-                <PING timeout="2000" num_initial_members="3"/>
+-                <MERGE2 min_interval="10000" max_interval="20000"/>
+-                <FD shun="true"/>
+-                <VERIFY_SUSPECT timeout="1500"/>
+-                <pbcast.NAKACK gc_lag="50" retransmit_timeout="600,1200,2400,4800"/>
+-                <pbcast.STABLE desired_avg_gossip="20000"/>
+-                <UNICAST timeout="600,1200,2400" min_threshold="10"/>
+-                <FRAG frag_size="8192"/>
+-                <pbcast.GMS join_timeout="5000" shun="true" print_local_addr="true"/>
+-                <pbcast.STATE_TRANSFER/>
+-            </config>
+-        </attribute>
+-      
+-      <!-- Must be true if any entity deployment uses a scoped classloader -->
+-      <attribute name="UseRegionBasedMarshalling">true</attribute>
+-      <!-- Must match the value of "useRegionBasedMarshalling" -->
+-      <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!--
+-            The max amount of time (in milliseconds) we wait until the
+-            initial state (ie. the contents of the cache) are retrieved from
+-            existing members in a clustered environment
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">10000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">5000</attribute>
+-        
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-      <!--  Specific eviction policy configurations. This is LRU -->
+-      <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <attribute name="maxNodes">5000</attribute>
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS">
+-            <attribute name="maxNodes">0</attribute>
+-            <attribute name="timeToLiveSeconds">0</attribute>
+-          </region>
+-        </config>
+-     </attribute>
+-  </mbean>
+-
+-
+-</server>
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/CustomClassLoaderCacheManager.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/CustomClassLoaderCacheManager.java
+deleted file mode 100644
+index 3a35f82586..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/CustomClassLoaderCacheManager.java
++++ /dev/null
+@@ -1,60 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional.util;
+-
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.CacheManagerImpl;
+-import org.jboss.cache.DefaultCacheFactory;
+-import org.jboss.cache.config.Configuration;
+-import org.jgroups.ChannelFactory;
+-
+-/**
+- * CacheManager implementation that lets us set a default ClassLoader
+- * on the created cache. 
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class CustomClassLoaderCacheManager extends CacheManagerImpl
+-{
+-   private final ClassLoader defaultClassLoader;
+-   
+-   /**
+-    * Create a new CustomClassLoaderCacheManager.
+-    * 
+-    * @param configFileName
+-    * @param factory
+-    */
+-   public CustomClassLoaderCacheManager(String configFileName, 
+-                                        ChannelFactory factory,
+-                                        ClassLoader defaultClassLoader)
+-   {
+-      super(configFileName, factory);
+-      this.defaultClassLoader = defaultClassLoader;
+-   }
+-
+-   @Override
+-   protected Cache<Object, Object> createCache(Configuration config)
+-   {
+-      DefaultCacheFactory<Object, Object> factory = new DefaultCacheFactory<Object, Object>();
+-      factory.setDefaultClassLoader(defaultClassLoader);
+-      return factory.createCache(config, false);
+-   }
+-   
+-   
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeConnectionProviderImpl.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeConnectionProviderImpl.java
+deleted file mode 100644
+index 40211f3d41..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeConnectionProviderImpl.java
++++ /dev/null
+@@ -1,86 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.util;
+-
+-import java.sql.Connection;
+-import java.sql.SQLException;
+-import java.util.Properties;
+-
+-import org.hibernate.HibernateException;
+-import org.hibernate.connection.ConnectionProvider;
+-import org.hibernate.connection.ConnectionProviderFactory;
+-
+-/**
+- * A {@link ConnectionProvider} implementation adding JTA-style transactionality
+- * around the returned connections using the {@link DualNodeJtaTransactionManagerImpl}.
+- *
+- * @author Brian Stansberry
+- */
+-public class DualNodeConnectionProviderImpl implements ConnectionProvider {
+-	private static ConnectionProvider actualConnectionProvider = ConnectionProviderFactory.newConnectionProvider();
+-
+-	private String nodeId;
+-	private boolean isTransactional;
+-
+-	public static ConnectionProvider getActualConnectionProvider() {
+-		return actualConnectionProvider;
+-	}
+-
+-	public void configure(Properties props) throws HibernateException {
+-        nodeId = props.getProperty(DualNodeTestUtil.NODE_ID_PROP);
+-        if (nodeId == null)
+-            throw new HibernateException(DualNodeTestUtil.NODE_ID_PROP + " not configured");
+-	}
+-
+-	public Connection getConnection() throws SQLException {
+-		DualNodeJtaTransactionImpl currentTransaction = DualNodeJtaTransactionManagerImpl.getInstance(nodeId).getCurrentTransaction();
+-		if ( currentTransaction == null ) {
+-			isTransactional = false;
+-			return actualConnectionProvider.getConnection();
+-		}
+-		else {
+-			isTransactional = true;
+-			Connection connection = currentTransaction.getEnlistedConnection();
+-			if ( connection == null ) {
+-				connection = actualConnectionProvider.getConnection();
+-				currentTransaction.enlistConnection( connection );
+-			}
+-			return connection;
+-		}
+-	}
+-
+-	public void closeConnection(Connection conn) throws SQLException {
+-		if ( !isTransactional ) {
+-			conn.close();
+-		}
+-	}
+-
+-	public void close() throws HibernateException {
+-		actualConnectionProvider.close();
+-	}
+-
+-	public boolean supportsAggressiveRelease() {
+-		return true;
+-	}
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeJtaTransactionImpl.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeJtaTransactionImpl.java
+deleted file mode 100644
+index dd679926e2..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeJtaTransactionImpl.java
++++ /dev/null
+@@ -1,162 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.util;
+-
+-import java.sql.Connection;
+-import java.sql.SQLException;
+-import java.util.LinkedList;
+-
+-import javax.transaction.HeuristicMixedException;
+-import javax.transaction.HeuristicRollbackException;
+-import javax.transaction.RollbackException;
+-import javax.transaction.Status;
+-import javax.transaction.Synchronization;
+-import javax.transaction.SystemException;
+-import javax.transaction.Transaction;
+-import javax.transaction.xa.XAResource;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * SimpleJtaTransactionImpl variant that works with DualNodeTransactionManagerImpl.
+- *
+- * @author Brian Stansberry
+- */
+-public class DualNodeJtaTransactionImpl implements Transaction {
+-	private static final Logger log = LoggerFactory.getLogger( DualNodeJtaTransactionImpl.class );
+-
+-	private int status;
+-	private LinkedList synchronizations;
+-	private Connection connection; // the only resource we care about is jdbc connection
+-	private final DualNodeJtaTransactionManagerImpl jtaTransactionManager;
+-
+-	public DualNodeJtaTransactionImpl(DualNodeJtaTransactionManagerImpl jtaTransactionManager) {
+-		this.jtaTransactionManager = jtaTransactionManager;
+-		this.status = Status.STATUS_ACTIVE;
+-	}
+-
+-	public int getStatus() {
+-		return status;
+-	}
+-
+-	public void commit()
+-			throws RollbackException, HeuristicMixedException, HeuristicRollbackException, IllegalStateException, SystemException {
+-
+-		if ( status == Status.STATUS_MARKED_ROLLBACK ) {
+-			log.trace( "on commit, status was marked for rollback-only" );
+-			rollback();
+-		}
+-		else {
+-			status = Status.STATUS_PREPARING;
+-
+-			for ( int i = 0; i < synchronizations.size(); i++ ) {
+-				Synchronization s = ( Synchronization ) synchronizations.get( i );
+-				s.beforeCompletion();
+-			}
+-
+-			status = Status.STATUS_COMMITTING;
+-
+-			if ( connection != null ) {
+-				try {
+-					connection.commit();
+-					connection.close();
+-				}
+-				catch ( SQLException sqle ) {
+-					status = Status.STATUS_UNKNOWN;
+-					throw new SystemException();
+-				}
+-			}
+-
+-			status = Status.STATUS_COMMITTED;
+-
+-			for ( int i = 0; i < synchronizations.size(); i++ ) {
+-				Synchronization s = ( Synchronization ) synchronizations.get( i );
+-				s.afterCompletion( status );
+-			}
+-
+-			//status = Status.STATUS_NO_TRANSACTION;
+-			jtaTransactionManager.endCurrent( this );
+-		}
+-	}
+-
+-	public void rollback() throws IllegalStateException, SystemException {
+-		status = Status.STATUS_ROLLEDBACK;
+-
+-		if ( connection != null ) {
+-			try {
+-				connection.rollback();
+-				connection.close();
+-			}
+-			catch ( SQLException sqle ) {
+-				status = Status.STATUS_UNKNOWN;
+-				throw new SystemException();
+-			}
+-		}
+-
+-		if (synchronizations != null) {
+-   		    for ( int i = 0; i < synchronizations.size(); i++ ) {
+-   			    Synchronization s = ( Synchronization ) synchronizations.get( i );
+-   			    s.afterCompletion( status );
+-   		    }
+-		}
+-
+-		//status = Status.STATUS_NO_TRANSACTION;
+-		jtaTransactionManager.endCurrent( this );
+-	}
+-
+-	public void setRollbackOnly() throws IllegalStateException, SystemException {
+-		status = Status.STATUS_MARKED_ROLLBACK;
+-	}
+-
+-	public void registerSynchronization(Synchronization synchronization)
+-			throws RollbackException, IllegalStateException, SystemException {
+-		// todo : find the spec-allowable statuses during which synch can be registered...
+-		if ( synchronizations == null ) {
+-			synchronizations = new LinkedList();
+-		}
+-		synchronizations.add( synchronization );
+-	}
+-
+-	public void enlistConnection(Connection connection) {
+-		if ( this.connection != null ) {
+-			throw new IllegalStateException( "Connection already registered" );
+-		}
+-		this.connection = connection;
+-	}
+-
+-	public Connection getEnlistedConnection() {
+-		return connection;
+-	}
+-
+-
+-	public boolean enlistResource(XAResource xaResource)
+-			throws RollbackException, IllegalStateException, SystemException {
+-		return false;
+-	}
+-
+-	public boolean delistResource(XAResource xaResource, int i) throws IllegalStateException, SystemException {
+-		return false;
+-	}
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeJtaTransactionManagerImpl.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeJtaTransactionManagerImpl.java
+deleted file mode 100644
+index e5811cb815..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeJtaTransactionManagerImpl.java
++++ /dev/null
+@@ -1,158 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.util;
+-
+-import java.util.Hashtable;
+-
+-import javax.transaction.HeuristicMixedException;
+-import javax.transaction.HeuristicRollbackException;
+-import javax.transaction.InvalidTransactionException;
+-import javax.transaction.NotSupportedException;
+-import javax.transaction.RollbackException;
+-import javax.transaction.Status;
+-import javax.transaction.SystemException;
+-import javax.transaction.Transaction;
+-import javax.transaction.TransactionManager;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * Variant of SimpleJtaTransactionManagerImpl that doesn't use a VM-singleton,
+- * but rather a set of impls keyed by a node id.
+- *
+- * @author Brian Stansberry
+- */
+-public class DualNodeJtaTransactionManagerImpl implements TransactionManager {
+-    
+-    private static final Logger log = LoggerFactory.getLogger(DualNodeJtaTransactionManagerImpl.class);
+-   
+-    private static final Hashtable INSTANCES = new Hashtable();
+-
+-    private ThreadLocal currentTransaction = new ThreadLocal();
+-    private String nodeId;
+-	
+-	public synchronized static DualNodeJtaTransactionManagerImpl getInstance(String nodeId) {
+-	    DualNodeJtaTransactionManagerImpl tm = (DualNodeJtaTransactionManagerImpl) INSTANCES.get(nodeId);
+-	    if (tm == null) {
+-	        tm = new DualNodeJtaTransactionManagerImpl(nodeId);
+-	        INSTANCES.put(nodeId, tm);
+-	    }
+-		return tm;
+-	}
+-	
+-	public synchronized static void cleanupTransactions() {
+-	   for (java.util.Iterator it = INSTANCES.values().iterator(); it.hasNext();) {
+-	       TransactionManager tm = (TransactionManager) it.next();
+-	       try
+-           {
+-              tm.suspend();
+-           }
+-           catch (Exception e)
+-           {
+-              log.error("Exception cleaning up TransactionManager " + tm);
+-           }
+-	   }
+-	}
+-    
+-    public synchronized static void cleanupTransactionManagers() {       
+-        INSTANCES.clear();
+-    }
+-	
+-	private DualNodeJtaTransactionManagerImpl(String nodeId) {
+-	    this.nodeId = nodeId;
+-	}
+-
+-	public int getStatus() throws SystemException {
+-	    Transaction tx = getCurrentTransaction();
+-		return tx == null ? Status.STATUS_NO_TRANSACTION : tx.getStatus();
+-	}
+-
+-	public Transaction getTransaction() throws SystemException {
+-		return (Transaction) currentTransaction.get();
+-	}
+-
+-	public DualNodeJtaTransactionImpl getCurrentTransaction() {
+-		return (DualNodeJtaTransactionImpl) currentTransaction.get();
+-	}
+-
+-	public void begin() throws NotSupportedException, SystemException {
+-		currentTransaction.set(new DualNodeJtaTransactionImpl( this ));
+-	}
+-
+-	public Transaction suspend() throws SystemException {
+-       DualNodeJtaTransactionImpl suspended = getCurrentTransaction();
+-	    log.trace(nodeId + ": Suspending " + suspended + " for thread " + Thread.currentThread().getName());
+-		currentTransaction.set(null);
+-		return suspended;
+-	}
+-
+-	public void resume(Transaction transaction)
+-			throws InvalidTransactionException, IllegalStateException, SystemException {
+-		currentTransaction.set(( DualNodeJtaTransactionImpl ) transaction);
+-		log.trace(nodeId + ": Resumed " + transaction + " for thread " + Thread.currentThread().getName());
+-	}
+-
+-	public void commit()
+-			throws RollbackException, HeuristicMixedException, HeuristicRollbackException, SecurityException, IllegalStateException, SystemException {
+-		Transaction tx = getCurrentTransaction();
+-	    if ( tx == null ) {
+-			throw new IllegalStateException( "no current transaction to commit" );
+-		}
+-	    tx.commit();
+-	}
+-
+-	public void rollback() throws IllegalStateException, SecurityException, SystemException {
+-	    Transaction tx = getCurrentTransaction();
+-        if ( tx == null ) {
+-			throw new IllegalStateException( "no current transaction" );
+-		}
+-        tx.rollback();
+-	}
+-
+-	public void setRollbackOnly() throws IllegalStateException, SystemException {
+-	    Transaction tx = getCurrentTransaction();
+-        if ( tx == null ) {
+-			throw new IllegalStateException( "no current transaction" );
+-		}
+-        tx.setRollbackOnly();
+-	}
+-
+-	public void setTransactionTimeout(int i) throws SystemException {
+-	}
+-
+-	void endCurrent(DualNodeJtaTransactionImpl transaction) {
+-		if ( transaction == currentTransaction.get() ) {
+-			currentTransaction.set(null);
+-		}
+-	}
+-	
+-	public String toString() {
+-	    StringBuffer sb = new StringBuffer(getClass().getName());
+-	    sb.append("[nodeId=");
+-	    sb.append(nodeId);
+-	    sb.append("]");
+-	    return sb.toString();
+-	}
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeTestUtil.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeTestUtil.java
+deleted file mode 100644
+index de362ed595..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeTestUtil.java
++++ /dev/null
+@@ -1,31 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional.util;
+-
+-/**
+- * A DualNodeTestUtil.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class DualNodeTestUtil
+-{
+-   public static final String NODE_ID_PROP = "hibernate.test.cluster.node.id";
+-   
+-   public static final String LOCAL = "local";
+-   public static final String REMOTE = "remote";
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeTransactionManagerLookup.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeTransactionManagerLookup.java
+deleted file mode 100644
+index 6f1c31fcb9..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/DualNodeTransactionManagerLookup.java
++++ /dev/null
+@@ -1,56 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.util;
+-
+-import java.util.Properties;
+-import javax.transaction.TransactionManager;
+-import javax.transaction.Transaction;
+-
+-import org.hibernate.transaction.TransactionManagerLookup;
+-import org.hibernate.HibernateException;
+-
+-/**
+- * SimpleJtaTransactionManagerLookupImpl subclass that finds a different
+- * DualNodeTransactionManager based on the value of property
+- * {@link DualNodeTestUtil#NODE_ID_PROP}.
+- *
+- * @author Brian Stansberry
+- */
+-public class DualNodeTransactionManagerLookup implements TransactionManagerLookup {
+-   
+-	public TransactionManager getTransactionManager(Properties props) throws HibernateException {
+-	    String nodeId = props.getProperty(DualNodeTestUtil.NODE_ID_PROP);
+-	    if (nodeId == null)
+-	        throw new HibernateException(DualNodeTestUtil.NODE_ID_PROP + " not configured");
+-		return DualNodeJtaTransactionManagerImpl.getInstance(nodeId);
+-	}
+-
+-	public String getUserTransactionName() {
+-		throw new UnsupportedOperationException( "jndi currently not implemented for these tests" );
+-	}
+-
+-	public Object getTransactionIdentifier(Transaction transaction) {
+-		return transaction;
+-	}
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/IsolatedCacheTestSetup.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/IsolatedCacheTestSetup.java
+deleted file mode 100644
+index 20eb6a86d7..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/IsolatedCacheTestSetup.java
++++ /dev/null
+@@ -1,102 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.functional.util;
+-
+-import junit.framework.Test;
+-
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.test.util.SelectedClassnameClassLoader;
+-import org.hibernate.test.util.SelectedClassnameClassLoaderTestSetup;
+-
+-/**
+- * A TestSetup that uses SelectedClassnameClassLoader to ensure that
+- * certain classes are not visible to JBoss Cache or JGroups' classloader.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class IsolatedCacheTestSetup extends SelectedClassnameClassLoaderTestSetup
+-{
+-
+-   public static final String DEF_CACHE_FACTORY_RESOURCE = MultiplexingCacheInstanceManager.DEF_CACHE_FACTORY_RESOURCE;
+-   public static final String DEF_JGROUPS_RESOURCE = MultiplexingCacheInstanceManager.DEF_JGROUPS_RESOURCE;
+-   
+-   private String[] isolatedClasses;
+-   private String cacheConfig;
+-   
+-   /**
+-    * Create a new IsolatedCacheTestSetup.
+-    */
+-   public IsolatedCacheTestSetup(Test test,
+-                                 String[] isolatedClasses,
+-                                 String cacheConfig)
+-   {      
+-      super(test, null, null, isolatedClasses);
+-      this.isolatedClasses = isolatedClasses;
+-      this.cacheConfig = cacheConfig;
+-   }
+-
+-   @Override
+-   protected void setUp() throws Exception
+-   {
+-      super.setUp();
+-
+-      // At this point the TCCL cannot see the isolatedClasses
+-      // We want the caches to use this CL as their default classloader
+-      
+-      ClassLoader tccl = Thread.currentThread().getContextClassLoader();
+-      
+-      org.jgroups.ChannelFactory cf = new org.jgroups.JChannelFactory();
+-      cf.setMultiplexerConfig(DEF_JGROUPS_RESOURCE);
+-      
+-      // Use a CacheManager that will inject the desired defaultClassLoader into our caches
+-      CustomClassLoaderCacheManager cm = new CustomClassLoaderCacheManager(DEF_CACHE_FACTORY_RESOURCE, cf, tccl);
+-      cm.start();
+-      TestCacheInstanceManager.addTestCacheManager(DualNodeTestUtil.LOCAL, cm);
+-      
+-      cm.getCache(cacheConfig, true);
+-      
+-      // Repeat for the "remote" cache
+-      
+-      cf = new org.jgroups.JChannelFactory();
+-      cf.setMultiplexerConfig(DEF_JGROUPS_RESOURCE);
+-      
+-      cm = new CustomClassLoaderCacheManager(DEF_CACHE_FACTORY_RESOURCE, cf, tccl);
+-      cm.start();
+-      TestCacheInstanceManager.addTestCacheManager(DualNodeTestUtil.REMOTE, cm);
+-      
+-      cm.getCache(cacheConfig, true);
+-      
+-      // Now make the isolatedClasses visible to the test driver itself
+-      SelectedClassnameClassLoader visible = new SelectedClassnameClassLoader(isolatedClasses, null, null, tccl);
+-      Thread.currentThread().setContextClassLoader(visible);
+-   }
+-
+-   @Override
+-   protected void tearDown() throws Exception
+-   {
+-      try {
+-         super.tearDown();
+-      }
+-      finally {
+-         TestCacheInstanceManager.clearCacheManagers();
+-         DualNodeJtaTransactionManagerImpl.cleanupTransactions();
+-         DualNodeJtaTransactionManagerImpl.cleanupTransactionManagers();
+-      }
+-   }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/TestCacheInstanceManager.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/TestCacheInstanceManager.java
+deleted file mode 100644
+index 6033c37b7c..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/TestCacheInstanceManager.java
++++ /dev/null
+@@ -1,111 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.util;
+-
+-import java.util.Hashtable;
+-import java.util.Properties;
+-
+-import org.hibernate.cache.CacheException;
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.hibernate.cfg.Settings;
+-import org.jboss.cache.CacheManager;
+-import org.jboss.cache.CacheManagerImpl;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-
+-/**
+- * A {@link MultiplexingCacheInstanceManager} that exposes its 
+- * CacheManager via a static getter so the test fixture can get ahold
+- * of it.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- */
+-public class TestCacheInstanceManager extends MultiplexingCacheInstanceManager {
+-   
+-    private static final Logger log = LoggerFactory.getLogger(TestCacheInstanceManager.class);
+-    
+-    private static final Hashtable cacheManagers = new Hashtable();
+-    
+-    public static CacheManager getTestCacheManager(String name) {
+-       return (CacheManager) cacheManagers.get(name);
+-    }
+-    
+-    public static void addTestCacheManager(String name,CacheManager manager) {
+-       cacheManagers.put(name, manager);
+-    }
+-    
+-    public static void clearCacheManagers() {
+-       for (java.util.Iterator it = cacheManagers.values().iterator(); it.hasNext();) {
+-          CacheManager cm = (CacheManager) it.next();
+-          try
+-          {
+-             if (cm instanceof CacheManagerImpl)
+-                 ((CacheManagerImpl) cm).stop();
+-          }
+-          catch (Exception e)
+-          {
+-             log.error("Exception cleaning up CacheManager " + cm);
+-          }
+-       }
+-       cacheManagers.clear();
+-    }
+-    
+-    private String cacheManagerName;
+-    private boolean locallyAdded;
+-    
+-    /**
+-     * Create a new TestCacheInstanceManager.
+-     */
+-    public TestCacheInstanceManager() {
+-        super();
+-    }
+-
+-    @Override
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-       
+-        cacheManagerName = properties.getProperty(DualNodeTestUtil.NODE_ID_PROP);
+-        
+-        CacheManager existing = getTestCacheManager(cacheManagerName);
+-        locallyAdded = (existing == null);
+-        if (!locallyAdded) {
+-           setCacheFactory(existing);
+-        }
+-        
+-        super.start(settings, properties);
+-        
+-        if (locallyAdded)
+-            cacheManagers.put(cacheManagerName, getCacheFactory());
+-    }
+-
+-   @Override
+-   public void stop()
+-   {
+-      if (locallyAdded)
+-          cacheManagers.remove(cacheManagerName);
+-      
+-      super.stop();
+-   }
+-    
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/TestJBossCacheRegionFactory.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/TestJBossCacheRegionFactory.java
+deleted file mode 100644
+index 6d3d3ae2f3..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/functional/util/TestJBossCacheRegionFactory.java
++++ /dev/null
+@@ -1,64 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.functional.util;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.jboss.cache.CacheManager;
+-
+-/**
+- * {@link JBossCacheRegionFactory} that uses
+- * {@link TestCacheInstanceManager} as its
+- * {@link #getCacheInstanceManager() CacheInstanceManager}.
+- * <p>
+- * This version lets a test fixture to access {@link CacheManager},
+- * making it easy for the test fixture to get access to the caches being 
+- * used.  Intended for FunctionalUnitTestCase subclasses where the creation
+- * of the region factory is hidden inside the initialization of a SessionFactory.
+- * </p>
+- * 
+- * @author Brian Stansberry
+- */
+-public class TestJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-
+-    /**
+-     * FIXME Per the RegionFactory class Javadoc, this constructor version
+-     * should not be necessary.
+-     * 
+-     * @param props The configuration properties
+-     */
+-    public TestJBossCacheRegionFactory(Properties props) {
+-        this();
+-    }
+-
+-    /**
+-     * Create a new TestJBossCacheRegionFactory.
+-     * 
+-     */
+-    public TestJBossCacheRegionFactory() {
+-        super(new TestCacheInstanceManager());
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/query/QueryRegionImplTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/query/QueryRegionImplTestCase.java
+deleted file mode 100644
+index de1142e6c6..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/query/QueryRegionImplTestCase.java
++++ /dev/null
+@@ -1,333 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.query;
+-
+-import java.util.Properties;
+-import java.util.concurrent.CountDownLatch;
+-import java.util.concurrent.TimeUnit;
+-
+-import junit.framework.AssertionFailedError;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.QueryResultsRegion;
+-import org.hibernate.cache.Region;
+-import org.hibernate.cache.StandardQueryCache;
+-import org.hibernate.cache.jbc.BasicRegionAdapter;
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.query.QueryResultsRegionImpl;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.cache.jbc.AbstractGeneralDataRegionTestCase;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-import org.jboss.cache.notifications.annotation.CacheListener;
+-import org.jboss.cache.notifications.annotation.NodeVisited;
+-import org.jboss.cache.notifications.event.NodeVisitedEvent;
+-import org.jboss.cache.transaction.BatchModeTransactionManager;
+-
+-/**
+- * Tests of QueryResultRegionImpl.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class QueryRegionImplTestCase extends AbstractGeneralDataRegionTestCase {
+-
+-//    protected static final String REGION_NAME = "test/" + StandardQueryCache.class.getName();
+-    
+-    /**
+-     * Create a new EntityRegionImplTestCase.
+-     * 
+-     * @param name
+-     */
+-    public QueryRegionImplTestCase(String name) {
+-        super(name);
+-    } 
+-
+-    @Override
+-    protected Region createRegion(JBossCacheRegionFactory regionFactory, String regionName, Properties properties, CacheDataDescription cdd) {
+-        return regionFactory.buildQueryResultsRegion(regionName, properties);
+-    }
+-
+-    @Override
+-    protected String getStandardRegionName(String regionPrefix) {
+-        return regionPrefix + "/" + StandardQueryCache.class.getName();
+-    }
+-
+-    @Override
+-    protected Cache getJBossCache(JBossCacheRegionFactory regionFactory) {
+-        CacheInstanceManager mgr = regionFactory.getCacheInstanceManager();
+-        return mgr.getQueryCacheInstance();
+-    }
+-
+-    @Override
+-    protected Fqn getRegionFqn(String regionName, String regionPrefix) {
+-        return BasicRegionAdapter.getTypeLastRegionFqn(regionName, regionPrefix, QueryResultsRegionImpl.TYPE);
+-    }
+-
+-    public void testPutDoesNotBlockGetOptimistic() throws Exception {
+-        putDoesNotBlockGetTest("optimistic-shared");
+-    }
+-        
+-    public void testPutDoesNotBlockGetPessimistic() throws Exception {
+-        putDoesNotBlockGetTest("pessimistic-shared");
+-    }
+-        
+-    public void testPutDoesNotBlockGetMVCC() throws Exception {
+-        putDoesNotBlockGetTest("mvcc-shared");
+-    }
+-    
+-    private void putDoesNotBlockGetTest(String configName) throws Exception {
+-        
+-        Configuration cfg = createConfiguration(configName);
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-
+-        final QueryResultsRegion region = regionFactory.buildQueryResultsRegion(getStandardRegionName(REGION_PREFIX), cfg.getProperties());
+-        
+-        region.put(KEY, VALUE1);
+-        assertEquals(VALUE1, region.get(KEY));
+-
+-        final CountDownLatch readerLatch = new CountDownLatch(1);
+-        final CountDownLatch writerLatch = new CountDownLatch(1);
+-        final CountDownLatch completionLatch = new CountDownLatch(1);
+-        final ExceptionHolder holder = new ExceptionHolder();
+-        
+-        Thread reader = new Thread() {
+-          
+-            public void run() {
+-                try {
+-                    BatchModeTransactionManager.getInstance().begin();
+-                    assertTrue(VALUE2.equals(region.get(KEY)) == false);
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (AssertionFailedError e) {
+-                    holder.a1 = e;
+-                    rollback();
+-                }
+-                catch (Exception e) {
+-                    holder.e1 = e;
+-                    rollback();
+-                }
+-                finally {
+-                    readerLatch.countDown();
+-                }
+-            }
+-        };
+-        
+-        Thread writer = new Thread() {
+-          
+-            public void run() {
+-                try {                    
+-                    BatchModeTransactionManager.getInstance().begin();
+-                    region.put(KEY, VALUE2);
+-                    writerLatch.await();
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    holder.e2 = e;
+-                    rollback();
+-                }
+-                finally {
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-        
+-        reader.setDaemon(true);
+-        writer.setDaemon(true);
+-        
+-        writer.start();        
+-        assertFalse("Writer is blocking", completionLatch.await(100, TimeUnit.MILLISECONDS));
+-        
+-        // Start the reader
+-        reader.start();
+-        assertTrue("Reader finished promptly", readerLatch.await(100, TimeUnit.MILLISECONDS));
+-
+-        writerLatch.countDown();
+-        assertTrue("Reader finished promptly", completionLatch.await(100, TimeUnit.MILLISECONDS));
+-                
+-        assertEquals(VALUE2, region.get(KEY));            
+-        
+-        if (holder.a1 != null)
+-            throw holder.a1;
+-        else if (holder.a2 != null)
+-            throw holder.a2;
+-        
+-        assertEquals("writer saw no exceptions", null, holder.e1);
+-        assertEquals("reader saw no exceptions", null, holder.e2);
+-    }
+-    
+-    public void testGetDoesNotBlockPutOptimistic() throws Exception {
+-        getDoesNotBlockPutTest("optimistic-shared");
+-    }
+-    
+-    public void testGetDoesNotBlockPutPessimistic() throws Exception {
+-        getDoesNotBlockPutTest("pessimistic-shared");
+-    }
+-    
+-    public void testGetDoesNotBlockPutPessimisticRepeatableRead() throws Exception {
+-        getDoesNotBlockPutTest("pessimistic-shared-repeatable");
+-    }
+-    
+-    public void testGetDoesNotBlockPutMVCC() throws Exception {
+-        getDoesNotBlockPutTest("mvcc-shared");
+-    }
+-    
+-    private void getDoesNotBlockPutTest(String configName) throws Exception {
+-        
+-        Configuration cfg = createConfiguration(configName);
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg, getCacheTestSupport());
+-        
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-        
+-        final QueryResultsRegion region = regionFactory.buildQueryResultsRegion(getStandardRegionName(REGION_PREFIX), cfg.getProperties());
+-        
+-        region.put(KEY, VALUE1);
+-        assertEquals(VALUE1, region.get(KEY));
+-        
+-        final Fqn rootFqn = getRegionFqn(getStandardRegionName(REGION_PREFIX), REGION_PREFIX);
+-        final Cache jbc = getJBossCache(regionFactory);
+-
+-        final CountDownLatch blockerLatch = new CountDownLatch(1);
+-        final CountDownLatch writerLatch = new CountDownLatch(1);
+-        final CountDownLatch completionLatch = new CountDownLatch(1);
+-        final ExceptionHolder holder = new ExceptionHolder();
+-        
+-        Thread blocker = new Thread() {
+-          
+-            public void run() {
+-                Fqn toBlock = new Fqn(rootFqn, KEY);
+-                GetBlocker blocker = new GetBlocker(blockerLatch,toBlock);
+-                try {
+-                    jbc.addCacheListener(blocker);
+-                    
+-                    BatchModeTransactionManager.getInstance().begin();
+-                    region.get(KEY);
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    holder.e1 = e;
+-                    rollback();
+-                }
+-                finally {
+-                    jbc.removeCacheListener(blocker);
+-                }
+-            }
+-        };
+-        
+-        Thread writer = new Thread() {
+-          
+-            public void run() {
+-                try {
+-                    writerLatch.await();
+-                    
+-                    BatchModeTransactionManager.getInstance().begin();
+-                    region.put(KEY, VALUE2);
+-                    BatchModeTransactionManager.getInstance().commit();
+-                }
+-                catch (Exception e) {
+-                    holder.e2 = e;
+-                    rollback();
+-                }
+-                finally {
+-                    completionLatch.countDown();
+-                }
+-            }
+-        };
+-        
+-        blocker.setDaemon(true);
+-        writer.setDaemon(true);
+-        
+-        boolean unblocked = false;
+-        try {
+-            blocker.start();
+-            writer.start();
+-            
+-            assertFalse("Blocker is blocking", completionLatch.await(100, TimeUnit.MILLISECONDS));
+-            // Start the writer
+-            writerLatch.countDown();
+-            assertTrue("Writer finished promptly", completionLatch.await(100, TimeUnit.MILLISECONDS));
+-            
+-            blockerLatch.countDown();
+-            unblocked = true;
+-            
+-            if ("PESSIMISTIC".equals(jbc.getConfiguration().getNodeLockingSchemeString())
+-                  && "REPEATABLE_READ".equals(jbc.getConfiguration().getIsolationLevelString())) {
+-                assertEquals(VALUE1, region.get(KEY));
+-            }
+-            else {
+-                assertEquals(VALUE2, region.get(KEY));
+-            }            
+-            
+-            if (holder.a1 != null)
+-                throw holder.a1;
+-            else if (holder.a2 != null)
+-                throw holder.a2;
+-            
+-            assertEquals("blocker saw no exceptions", null, holder.e1);
+-            assertEquals("writer saw no exceptions", null, holder.e2);
+-        }
+-        finally {
+-            if (!unblocked)
+-                blockerLatch.countDown();
+-        }
+-    }
+-
+-    @CacheListener
+-    public class GetBlocker {
+-        
+-        private CountDownLatch latch;
+-        private Fqn fqn;
+-        
+-        GetBlocker(CountDownLatch latch, Fqn fqn) {
+-            this.latch = latch;
+-            this.fqn = fqn;
+-        }
+-        
+-        @NodeVisited
+-        public void nodeVisisted(NodeVisitedEvent event) {
+-            
+-            if (event.isPre() && event.getFqn().equals(fqn)) {
+-                try {
+-                    latch.await();
+-                }
+-                catch (InterruptedException e) {
+-                    log.error("Interrupted waiting for latch", e);
+-                }
+-            }
+-        }
+-    }
+-    
+-    private class ExceptionHolder {
+-        Exception e1;
+-        Exception e2;
+-        AssertionFailedError a1;
+-        AssertionFailedError a2;
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/timestamp/ClusteredConcurrentTimestampRegionTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/timestamp/ClusteredConcurrentTimestampRegionTestCase.java
+deleted file mode 100644
+index d6744dd84b..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/timestamp/ClusteredConcurrentTimestampRegionTestCase.java
++++ /dev/null
+@@ -1,281 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.cache.jbc.timestamp;
+-
+-import java.util.Properties;
+-import java.util.Random;
+-
+-import junit.framework.AssertionFailedError;
+-
+-import org.hibernate.cache.UpdateTimestampsCache;
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.timestamp.ClusteredConcurrentTimestampsRegionImpl;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.test.cache.jbc.AbstractJBossCacheTestCase;
+-import org.hibernate.test.util.CacheTestUtil;
+-import org.jboss.cache.Cache;
+-
+-/**
+- * A ClusteredConcurrentTimestampCacheTestCase.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class ClusteredConcurrentTimestampRegionTestCase extends AbstractJBossCacheTestCase {
+-
+-    private static final String KEY1 = "com.foo.test.Entity1";
+-    private static final String KEY2 = "com.foo.test.Entity2";
+-    
+-    private static final Long ONE = new Long(1);
+-    private static final Long TWO = new Long(2);
+-    private static final Long THREE = new Long(3);
+-    private static final Long TEN = new Long(10);
+-    private static final Long ELEVEN = new Long(11);
+-    
+-    private static Cache cache;
+-    private static Properties properties;
+-    private ClusteredConcurrentTimestampsRegionImpl region;
+-    
+-    /**
+-     * Create a new ClusteredConcurrentTimestampCacheTestCase.
+-     * 
+-     * @param name
+-     */
+-    public ClusteredConcurrentTimestampRegionTestCase(String name) {
+-        super(name);
+-    }
+-    
+-    
+-
+-    @Override
+-    protected void setUp() throws Exception {
+-        super.setUp();
+-        
+-        if (cache == null) {
+-            Configuration cfg = CacheTestUtil.buildConfiguration("test", MultiplexedJBossCacheRegionFactory.class, false, true);
+-            properties = cfg.getProperties();
+-            cache = createCache();
+-            
+-            // Sleep a bit to avoid concurrent FLUSH problem
+-            avoidConcurrentFlush();
+-        }
+-    }
+-
+-    @Override
+-    protected void tearDown() throws Exception {
+-        super.tearDown();
+-        
+-        if (region != null) {
+-            region.destroy();
+-        }
+-    }
+-    
+-    private Cache createCache() throws Exception {
+-        Configuration cfg = CacheTestUtil.buildConfiguration("test", MultiplexedJBossCacheRegionFactory.class, false, true);
+-        JBossCacheRegionFactory regionFactory = CacheTestUtil.startRegionFactory(cfg);
+-        CacheInstanceManager mgr = regionFactory.getCacheInstanceManager();
+-        return mgr.getTimestampsCacheInstance();
+-    }
+-
+-    protected ClusteredConcurrentTimestampsRegionImpl getTimestampRegion(Cache cache)  throws Exception {        
+-        
+-        return new ClusteredConcurrentTimestampsRegionImpl(cache, "test/" + UpdateTimestampsCache.class.getName(), "test", properties);
+-    }
+-    
+-    public void testSimplePreinvalidate() throws Exception {
+-        
+-        region = getTimestampRegion(cache);
+-        
+-        assertEquals(null, region.get(KEY1));
+-        region.preInvalidate(KEY1, TWO);
+-        assertEquals(TWO, region.get(KEY1));
+-        region.preInvalidate(KEY1, ONE);
+-        assertEquals(TWO, region.get(KEY1));
+-        region.preInvalidate(KEY1, TWO);
+-        assertEquals(TWO, region.get(KEY1));
+-        region.preInvalidate(KEY1, THREE);
+-        assertEquals(THREE, region.get(KEY1));
+-    }
+-    
+-    public void testInitialState() throws Exception {
+-        
+-        region = getTimestampRegion(cache);
+-        region.preInvalidate(KEY1, TEN);
+-        region.preInvalidate(KEY2, ELEVEN);
+-        region.invalidate(KEY1, ONE, TEN);
+-        
+-        Cache cache2 = createCache();
+-        registerCache(cache2);
+-        
+-        // Sleep a bit to avoid concurrent FLUSH problem
+-        avoidConcurrentFlush();
+-        
+-        ClusteredConcurrentTimestampsRegionImpl region2 = getTimestampRegion(cache2);
+-        assertEquals(ONE, region2.get(KEY1));
+-        assertEquals(ELEVEN, region2.get(KEY2));
+-    }
+-    
+-    public void testSimpleInvalidate() throws Exception {
+-        
+-        region = getTimestampRegion(cache);
+-        
+-        assertEquals(null, region.get(KEY1));
+-        region.preInvalidate(KEY1, TWO);
+-        assertEquals(TWO, region.get(KEY1));
+-        region.invalidate(KEY1, ONE, TWO);
+-        assertEquals(ONE, region.get(KEY1));
+-        region.preInvalidate(KEY1, TEN);
+-        region.preInvalidate(KEY1, ELEVEN);
+-        assertEquals(ELEVEN, region.get(KEY1));
+-        region.invalidate(KEY1, TWO, TEN);
+-        assertEquals(ELEVEN, region.get(KEY1));
+-        region.invalidate(KEY1, TWO, ELEVEN);
+-        assertEquals(TWO, region.get(KEY1));
+-        region.preInvalidate(KEY1, TEN);
+-        assertEquals(TEN, region.get(KEY1));
+-        region.invalidate(KEY1, THREE, TEN);
+-        assertEquals(THREE, region.get(KEY1));        
+-    }
+-    
+-    public void testConcurrentActivityClustered() throws Exception {
+-        concurrentActivityTest(true);
+-    }
+-    
+-    public void testConcurrentActivityNonClustered() throws Exception {
+-        concurrentActivityTest(false);
+-    }
+-    
+-    private void concurrentActivityTest(boolean clustered) throws Exception {
+-        
+-        region = getTimestampRegion(cache);
+-        ClusteredConcurrentTimestampsRegionImpl region2 = region;
+-        
+-        if (clustered) {
+-            Cache cache2 = createCache();
+-            registerCache(cache2);
+-            
+-            // Sleep a bit to avoid concurrent FLUSH problem
+-            avoidConcurrentFlush();
+-            
+-            region2 = getTimestampRegion(cache2);
+-        }
+-        
+-        Tester[] testers = new Tester[20];
+-        for (int i = 0; i < testers.length; i++) {
+-            testers[i] = new Tester((i % 2 == 0) ? region : region2);
+-            testers[i].start();
+-        }
+-        
+-        for (int j = 0; j < 10; j++) {
+-            sleep(2000);
+-            
+-            log.info("Running for " + ((j + 1) * 2) + " seconds");
+-            
+-            for (int i = 0; i < testers.length; i++) {
+-                if (testers[i].assertionFailure != null)
+-                    throw testers[i].assertionFailure;
+-            }
+-            
+-            for (int i = 0; i < testers.length; i++) {
+-                if (testers[i].exception != null)
+-                    throw testers[i].exception;
+-            }
+-        }
+-        
+-        for (int i = 0; i < testers.length; i++) {
+-            testers[i].stop();
+-        }
+-        
+-        for (int i = 0; i < testers.length; i++) {
+-            if (testers[i].assertionFailure != null)
+-                throw testers[i].assertionFailure;
+-        }
+-        
+-        for (int i = 0; i < testers.length; i++) {
+-            if (testers[i].exception != null)
+-                throw testers[i].exception;
+-        }
+-    }
+-    
+-    
+-    
+-    private class Tester implements Runnable {
+-        
+-        ClusteredConcurrentTimestampsRegionImpl region;
+-        Exception exception;
+-        AssertionFailedError assertionFailure;
+-        boolean stopped = true;
+-        Thread thread;
+-        Random random = new Random();
+-
+-        Tester(ClusteredConcurrentTimestampsRegionImpl region) {
+-            this.region = region;
+-        }
+-        
+-        public void run() {
+-            stopped = false;
+-        
+-            while (!stopped) {
+-                try {
+-                    Long pre = new Long(region.nextTimestamp() + region.getTimeout());
+-                    region.preInvalidate(KEY1, pre);
+-                    sleep(random.nextInt(1));
+-                    Long post = new Long(region.nextTimestamp());
+-                    region.invalidate(KEY1, post, pre);
+-                    Long ts = (Long) region.get(KEY1);
+-                    assertTrue(ts + " >= " + post, ts.longValue() >= post.longValue());
+-                    sleep(random.nextInt(1));
+-                }
+-                catch (AssertionFailedError e) {
+-                    assertionFailure = e;
+-                }
+-                catch (Exception e) {
+-                    if (!stopped)
+-                        exception = e;
+-                }
+-                finally {
+-                    stopped = true;
+-                }
+-            }
+-        }
+-        
+-        void start() {
+-            if (stopped) {
+-                if (thread == null) {
+-                    thread = new Thread(this);
+-                    thread.setDaemon(true);
+-                }
+-                thread.start();
+-            }            
+-        }
+-        
+-        void stop() {
+-            if (!stopped) {
+-                stopped = true;
+-                try {
+-                    thread.join(100);
+-                }
+-                catch (InterruptedException ignored) {}
+-                
+-                if (thread.isAlive())
+-                    thread.interrupt();
+-            }
+-        }
+-    }
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/timestamp/TimestampsRegionImplTestCase.java b/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/timestamp/TimestampsRegionImplTestCase.java
+deleted file mode 100644
+index 5c80c2581f..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/cache/jbc/timestamp/TimestampsRegionImplTestCase.java
++++ /dev/null
+@@ -1,79 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.cache.jbc.timestamp;
+-
+-import java.util.Properties;
+-
+-import org.hibernate.cache.CacheDataDescription;
+-import org.hibernate.cache.Region;
+-import org.hibernate.cache.UpdateTimestampsCache;
+-import org.hibernate.cache.jbc.BasicRegionAdapter;
+-import org.hibernate.cache.jbc.CacheInstanceManager;
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.timestamp.TimestampsRegionImpl;
+-import org.hibernate.test.cache.jbc.AbstractGeneralDataRegionTestCase;
+-import org.jboss.cache.Cache;
+-import org.jboss.cache.Fqn;
+-
+-/**
+- * Tests of TimestampsRegionImpl.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class TimestampsRegionImplTestCase extends AbstractGeneralDataRegionTestCase {
+-    
+-    /**
+-     * Create a new EntityRegionImplTestCase.
+-     * 
+-     * @param name
+-     */
+-    public TimestampsRegionImplTestCase(String name) {
+-        super(name);
+-    }
+-
+-    @Override
+-    protected Region createRegion(JBossCacheRegionFactory regionFactory, String regionName, Properties properties, CacheDataDescription cdd) {
+-        return regionFactory.buildTimestampsRegion(regionName, properties);
+-    }
+-
+-    @Override
+-    protected Cache getJBossCache(JBossCacheRegionFactory regionFactory) {
+-        CacheInstanceManager mgr = regionFactory.getCacheInstanceManager();
+-        return mgr.getTimestampsCacheInstance();
+-    }
+-
+-    @Override
+-    protected Fqn getRegionFqn(String regionName, String regionPrefix) {
+-        return BasicRegionAdapter.getTypeFirstRegionFqn(regionName, regionPrefix, TimestampsRegionImpl.TYPE);
+-    }
+-
+-    @Override
+-    protected String getStandardRegionName(String regionPrefix) {
+-        return regionPrefix + "/" + UpdateTimestampsCache.class.getName();
+-    }
+-    
+-    
+-    
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/tm/jbc/BatchModeTransactionManagerLookup.java b/cache-jbosscache/src/test/java/org/hibernate/test/tm/jbc/BatchModeTransactionManagerLookup.java
+deleted file mode 100755
+index 7510ab5b46..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/tm/jbc/BatchModeTransactionManagerLookup.java
++++ /dev/null
+@@ -1,61 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.tm.jbc;
+-
+-import java.util.Properties;
+-
+-import javax.transaction.TransactionManager;
+-import javax.transaction.Transaction;
+-
+-import org.hibernate.HibernateException;
+-import org.hibernate.transaction.TransactionManagerLookup;
+-import org.jboss.cache.transaction.BatchModeTransactionManager;
+-
+-/**
+- * Uses the JBoss Cache BatchModeTransactionManager. Should not be used in
+- * any tests that simulate usage of database connections.
+- * 
+- * @author Brian Stansberry
+- */
+-public class BatchModeTransactionManagerLookup
+-    implements TransactionManagerLookup {
+-
+-    public TransactionManager getTransactionManager(Properties props) throws HibernateException {
+-        try {
+-            return BatchModeTransactionManager.getInstance();
+-        }
+-        catch (Exception e) {
+-            throw new HibernateException("Failed getting BatchModeTransactionManager", e);
+-        }
+-    }
+-
+-    public String getUserTransactionName() {
+-        throw new UnsupportedOperationException();
+-    }
+-
+-	public Object getTransactionIdentifier(Transaction transaction) {
+-		return transaction;
+-	}
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/util/CacheManagerTestSetup.java b/cache-jbosscache/src/test/java/org/hibernate/test/util/CacheManagerTestSetup.java
+deleted file mode 100644
+index 8894652c82..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/util/CacheManagerTestSetup.java
++++ /dev/null
+@@ -1,98 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.util;
+-
+-import java.util.concurrent.atomic.AtomicReference;
+-
+-import junit.extensions.TestSetup;
+-import junit.framework.Test;
+-
+-import org.hibernate.cache.jbc.builder.MultiplexingCacheInstanceManager;
+-import org.jboss.cache.CacheManager;
+-import org.jboss.cache.CacheManagerImpl;
+-import org.jgroups.ChannelFactory;
+-import org.jgroups.JChannelFactory;
+-
+-/**
+- * A TestSetup that starts a CacheManager in setUp() and stops it in tearDown().
+- * AtomicReference passed to the constructor can be used by the test to
+- * access the CacheManager.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class CacheManagerTestSetup extends TestSetup
+-{
+-   public static final String DEF_CACHE_FACTORY_RESOURCE = MultiplexingCacheInstanceManager.DEF_CACHE_FACTORY_RESOURCE;
+-   public static final String DEF_JGROUPS_RESOURCE = MultiplexingCacheInstanceManager.DEF_JGROUPS_RESOURCE;
+-   
+-   private final String jbcConfig;
+-   private final String jgConfig;
+-   private final AtomicReference<CacheManager> cacheManagerRef;
+-   private ChannelFactory channelFactory;
+-   
+-   public CacheManagerTestSetup(Test test, AtomicReference<CacheManager> cacheManagerRef)
+-   {
+-      this(test, DEF_CACHE_FACTORY_RESOURCE, DEF_JGROUPS_RESOURCE, cacheManagerRef);
+-   }
+-   
+-   public CacheManagerTestSetup(Test test, String jbcConfig, String jgConfig, AtomicReference<CacheManager> cacheManagerRef)
+-   {
+-      super(test);
+-      this.jbcConfig = jbcConfig;
+-      this.jgConfig  = jgConfig;
+-      this.cacheManagerRef = cacheManagerRef;
+-   }
+-   
+-   public CacheManagerTestSetup(Test test, String jbcConfig, ChannelFactory channelFactory, AtomicReference<CacheManager> cacheManagerRef)
+-   {
+-      super(test);
+-      this.jbcConfig = jbcConfig;
+-      this.jgConfig  = null;
+-      this.cacheManagerRef = cacheManagerRef;
+-      this.channelFactory = channelFactory;
+-   }
+-
+-   @Override
+-   protected void setUp() throws Exception
+-   {      
+-      super.setUp();
+-      
+-      if (this.channelFactory == null)
+-      {
+-         this.channelFactory = new JChannelFactory();
+-         this.channelFactory.setMultiplexerConfig(this.jgConfig);
+-      }
+-      
+-      CacheManagerImpl jbcFactory = new CacheManagerImpl(this.jbcConfig, this.channelFactory);
+-      this.cacheManagerRef.set(jbcFactory);
+-      jbcFactory.start();
+-   }
+-
+-   @Override
+-   protected void tearDown() throws Exception
+-   {
+-      super.tearDown();
+-      
+-      this.channelFactory = null;
+-      
+-      CacheManager jbcFactory = this.cacheManagerRef.get();
+-      this.cacheManagerRef.set(null);
+-      ((CacheManagerImpl) jbcFactory).stop();
+-   }
+-   
+-}
+\ No newline at end of file
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/util/CacheTestSupport.java b/cache-jbosscache/src/test/java/org/hibernate/test/util/CacheTestSupport.java
+deleted file mode 100644
+index 3a1a3e5cd1..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/util/CacheTestSupport.java
++++ /dev/null
+@@ -1,153 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.util;
+-
+-import java.util.HashSet;
+-import java.util.Iterator;
+-import java.util.Set;
+-
+-import org.jboss.cache.Cache;
+-import org.slf4j.Logger;
+-
+-import org.hibernate.cache.RegionFactory;
+-
+-/**
+- * Support class for tracking and cleaning up objects used in tests.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class CacheTestSupport {
+-    
+-    private static final String PREFER_IPV4STACK = "java.net.preferIPv4Stack";
+-    
+-    private Logger log;
+-    
+-    private Set<Cache> caches = new HashSet();
+-    private Set<RegionFactory> factories = new HashSet();
+-    private Exception exception;
+-    private String preferIPv4Stack;
+- 
+-    public CacheTestSupport(Logger log) {
+-       this.log = log;
+-    }
+-    
+-    public void registerCache(Cache cache) {
+-        caches.add(cache);
+-    }
+-    
+-    public void registerFactory(RegionFactory factory) {
+-        factories.add(factory);
+-    }
+- 
+-    public void unregisterCache(Cache cache) {
+-        caches.remove(cache);
+-    }
+-    
+-    public void unregisterFactory(RegionFactory factory) {
+-        factories.remove(factory);
+-    }
+-    
+-    public void setUp() throws Exception {   
+-        
+-        // Try to ensure we use IPv4; otherwise cluster formation is very slow 
+-        preferIPv4Stack = System.getProperty(PREFER_IPV4STACK);
+-        System.setProperty(PREFER_IPV4STACK, "true");
+-
+-        cleanUp();
+-        throwStoredException();
+-    }
+-
+-    public void tearDown() throws Exception {       
+-        
+-        if (preferIPv4Stack == null)
+-            System.clearProperty(PREFER_IPV4STACK);
+-        else 
+-            System.setProperty(PREFER_IPV4STACK, preferIPv4Stack);
+-        
+-        cleanUp();
+-        throwStoredException();
+-    }
+-    
+-    public void avoidConcurrentFlush() {
+-       // JG 2.6.1 has a problem where calling flush more than once too quickly
+-       // can result in several second delays
+-       sleep(100);
+-    }
+-    
+-    private void sleep(long ms) {
+-        try {
+-            Thread.sleep(ms);
+-        }
+-        catch (InterruptedException e) {
+-            log.warn("Interrupted during sleep", e);
+-        }
+-    }
+-
+-    private void cleanUp() {
+-        for (Iterator it = factories.iterator(); it.hasNext(); ) {
+-            try {
+-                ((RegionFactory) it.next()).stop();
+-            }
+-            catch (Exception e) {
+-                storeException(e);
+-            }
+-            finally {
+-                it.remove();
+-            }
+-        }        
+-        factories.clear();
+-        
+-        for (Iterator it = caches.iterator(); it.hasNext(); ) {
+-            try {
+-                Cache cache = (Cache) it.next();
+-                cache.stop();
+-                cache.destroy();
+-            }
+-            catch (Exception e) {
+-                storeException(e);
+-            }
+-            finally {
+-                it.remove();
+-            }
+-            avoidConcurrentFlush();
+-        }        
+-        caches.clear();
+-    }
+-    
+-    private void storeException(Exception e) {
+-        if (this.exception == null) {
+-            this.exception = e;
+-        }
+-    }
+-    
+-    private void throwStoredException() throws Exception {
+-        if (exception != null) {
+-            Exception toThrow = exception;
+-            exception = null;
+-            throw toThrow;
+-        }
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/util/CacheTestUtil.java b/cache-jbosscache/src/test/java/org/hibernate/test/util/CacheTestUtil.java
+deleted file mode 100644
+index c248c58245..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/util/CacheTestUtil.java
++++ /dev/null
+@@ -1,162 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.util;
+-
+-import java.util.Enumeration;
+-import java.util.HashSet;
+-import java.util.Properties;
+-import java.util.Set;
+-
+-import junit.framework.Test;
+-import junit.framework.TestCase;
+-import junit.framework.TestSuite;
+-
+-import org.hibernate.cache.jbc.JBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.SharedJBossCacheRegionFactory;
+-import org.hibernate.cache.jbc.builder.SharedCacheInstanceManager;
+-import org.hibernate.cfg.Configuration;
+-import org.hibernate.cfg.Environment;
+-import org.hibernate.cfg.Settings;
+-import org.hibernate.test.tm.jbc.BatchModeTransactionManagerLookup;
+-
+-/**
+- * Utilities for cache testing.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class CacheTestUtil {
+-
+-    public static String LOCAL_OPTIMISIC_CACHE;
+-    public static String LOCAL_PESSIMISTIC_CACHE;
+-    
+-    static {
+-        String pkg = CacheTestUtil.class.getPackage().getName().replace('.', '/');
+-        LOCAL_OPTIMISIC_CACHE = pkg + "/optimistic-local-cache.xml";
+-        LOCAL_PESSIMISTIC_CACHE = pkg + "/pessimistic-local-cache.xml";
+-    }
+-    
+-    public static Configuration buildConfiguration(String regionPrefix, Class regionFactory, boolean use2ndLevel, boolean useQueries) {
+-        
+-        Configuration cfg = new Configuration();
+-        cfg.setProperty(Environment.GENERATE_STATISTICS, "true");
+-        cfg.setProperty(Environment.USE_STRUCTURED_CACHE, "true");
+-//        cfg.setProperty(Environment.CONNECTION_PROVIDER, DummyConnectionProvider.class.getName());
+-        cfg.setProperty(Environment.TRANSACTION_MANAGER_STRATEGY, BatchModeTransactionManagerLookup.class.getName());
+-
+-        cfg.setProperty(Environment.CACHE_REGION_FACTORY, regionFactory.getName());
+-        cfg.setProperty(Environment.CACHE_REGION_PREFIX, regionPrefix);
+-        cfg.setProperty(Environment.USE_SECOND_LEVEL_CACHE, String.valueOf(use2ndLevel));
+-        cfg.setProperty(Environment.USE_QUERY_CACHE, String.valueOf(useQueries));
+-        
+-        return cfg;
+-    }
+-    
+-    public static Configuration buildLocalOnlyConfiguration(String regionPrefix, boolean optimistic, boolean use2ndLevel, boolean useQueries) {
+-        Configuration cfg = buildConfiguration(regionPrefix, SharedJBossCacheRegionFactory.class, use2ndLevel, useQueries);
+-        
+-        String resource = CacheTestUtil.class.getPackage().getName().replace('.', '/') + "/";
+-        resource += optimistic ? "optimistic" : "pessimistic";
+-        resource += "-local-cache.xml";
+-        
+-        cfg.setProperty(SharedCacheInstanceManager.CACHE_RESOURCE_PROP, resource);
+-        
+-        return cfg;
+-    }
+-    
+-    public static JBossCacheRegionFactory startRegionFactory(Configuration cfg) 
+-            throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+-        
+-        Settings settings = cfg.buildSettings();
+-        Properties properties = cfg.getProperties();
+-        
+-        String factoryType = cfg.getProperty(Environment.CACHE_REGION_FACTORY);
+-        Class factoryClass = Thread.currentThread().getContextClassLoader().loadClass(factoryType);
+-        JBossCacheRegionFactory regionFactory = (JBossCacheRegionFactory) factoryClass.newInstance();
+-        
+-        regionFactory.start(settings, properties);
+-        
+-        return regionFactory;        
+-    }
+-    
+-    public static JBossCacheRegionFactory startRegionFactory(Configuration cfg, CacheTestSupport testSupport) 
+-            throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+-    
+-        JBossCacheRegionFactory factory = startRegionFactory(cfg);
+-        testSupport.registerFactory(factory);
+-        return factory;
+-    }
+-    
+-    public static void stopRegionFactory(JBossCacheRegionFactory factory, CacheTestSupport testSupport) {
+-    
+-        factory.stop();
+-        testSupport.unregisterFactory(factory);
+-    }
+-
+-   /**
+-     * Supports easy creation of a TestSuite where a subclass' "FailureExpected"
+-     * version of a base test is included in the suite, while the base test
+-     * is excluded.  E.g. test class FooTestCase includes method testBar(), while test
+-     * class SubFooTestCase extends FooTestCase includes method testBarFailureExcluded().
+-     * Passing SubFooTestCase.class to this method will return a suite that
+-     * does not include testBar().
+-     * 
+-     * FIXME Move this to UnitTestCase
+-     */
+-    public static TestSuite createFailureExpectedSuite(Class testClass) {
+-       
+-       TestSuite allTests = new TestSuite(testClass);
+-       Set failureExpected = new HashSet();
+-       Enumeration tests = allTests.tests();
+-       while (tests.hasMoreElements()) {
+-          Test t = (Test) tests.nextElement();
+-          if (t instanceof TestCase) {
+-             String name = ((TestCase) t).getName();
+-             if (name.endsWith("FailureExpected"))
+-                failureExpected.add(name);
+-          }       
+-       }
+-       
+-       TestSuite result = new TestSuite();
+-       tests = allTests.tests();
+-       while (tests.hasMoreElements()) {
+-          Test t = (Test) tests.nextElement();
+-          if (t instanceof TestCase) {
+-             String name = ((TestCase) t).getName();
+-             if (!failureExpected.contains(name + "FailureExpected")) {
+-                result.addTest(t);
+-             }
+-          }       
+-       }
+-       
+-       return result;
+-    }
+-    
+-    /**
+-     * Prevent instantiation. 
+-     */
+-    private CacheTestUtil() {        
+-    }
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/util/SelectedClassnameClassLoader.java b/cache-jbosscache/src/test/java/org/hibernate/test/util/SelectedClassnameClassLoader.java
+deleted file mode 100644
+index 8db5921078..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/util/SelectedClassnameClassLoader.java
++++ /dev/null
+@@ -1,288 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Middleware LLC.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.test.util;
+-
+-import java.io.ByteArrayOutputStream;
+-import java.io.FileNotFoundException;
+-import java.io.IOException;
+-import java.io.InputStream;
+-import java.util.Map;
+-
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+-
+-/**
+- * A ClassLoader that loads classes whose classname begins with one of a
+- * given set of strings, without attempting first to delegate to its
+- * parent loader.
+- * <p>
+- * This class is intended to allow emulation of 2 different types of common J2EE
+- * classloading situations.
+- * <ul>
+- * <li>Servlet-style child-first classloading, where this class is the
+- * child loader.</li>
+- * <li>Parent-first classloading where the parent does not have access to
+- * certain classes</li>
+- * </ul>
+- * </p>
+- * <p>
+- * This class can also be configured to raise a ClassNotFoundException if
+- * asked to load certain classes, thus allowing classes on the classpath
+- * to be hidden from a test environment.
+- * </p>
+- *
+- * @author Brian Stansberry
+- */
+-public class SelectedClassnameClassLoader extends ClassLoader
+-{
+-   private Logger log = LoggerFactory.getLogger(SelectedClassnameClassLoader.class);
+-   
+-   private String[] includedClasses = null;
+-   private String[] excludedClasses = null;
+-   private String[] notFoundClasses = null;
+-
+-   private Map<String, Class> classes = new java.util.HashMap<String, Class>();
+-
+-   /**
+-    * Creates a new classloader that loads the given classes.
+-    *
+-    * @param includedClasses array of class or package names that should be
+-    *                        directly loaded by this loader.  Classes
+-    *                        whose name starts with any of the strings
+-    *                        in this array will be loaded by this class,
+-    *                        unless their name appears in
+-    *                        <code>excludedClasses</code>.
+-    *                        Can be <code>null</code>
+-    * @param excludedClasses array of class or package names that should NOT
+-    *                        be directly loaded by this loader.  Loading of
+-    *                        classes whose name starts with any of the
+-    *                        strings in this array will be delegated to
+-    *                        <code>parent</code>, even if the classes
+-    *                        package or classname appears in
+-    *                        <code>includedClasses</code>.  Typically this
+-    *                        parameter is used to exclude loading one or
+-    *                        more classes in a package whose other classes
+-    *                        are loaded by this object.
+-    * @param parent          ClassLoader to which loading of classes should
+-    *                        be delegated if necessary
+-    */
+-   public SelectedClassnameClassLoader(String[] includedClasses,
+-                                       String[] excludedClasses,
+-                                       ClassLoader parent)
+-   {
+-      this(includedClasses, excludedClasses, null, parent);
+-   }
+-
+-   /**
+-    * Creates a new classloader that loads the given classes.
+-    *
+-    * @param includedClasses array of class or package names that should be
+-    *                        directly loaded by this loader.  Classes
+-    *                        whose name starts with any of the strings
+-    *                        in this array will be loaded by this class,
+-    *                        unless their name appears in
+-    *                        <code>excludedClasses</code>.
+-    *                        Can be <code>null</code>
+-    * @param excludedClasses array of class or package names that should NOT
+-    *                        be directly loaded by this loader.  Loading of
+-    *                        classes whose name starts with any of the
+-    *                        strings in this array will be delegated to
+-    *                        <code>parent</code>, even if the classes
+-    *                        package or classname appears in
+-    *                        <code>includedClasses</code>.  Typically this
+-    *                        parameter is used to exclude loading one or
+-    *                        more classes in a package whose other classes
+-    *                        are loaded by this object.
+-    * @param notFoundClasses array of class or package names for which this
+-    *                        should raise a ClassNotFoundException
+-    * @param parent          ClassLoader to which loading of classes should
+-    *                        be delegated if necessary
+-    */
+-   public SelectedClassnameClassLoader(String[] includedClasses,
+-                                       String[] excludedClasses,
+-                                       String[] notFoundClasses,
+-                                       ClassLoader parent)
+-   {
+-      super(parent);
+-      this.includedClasses = includedClasses;
+-      this.excludedClasses = excludedClasses;
+-      this.notFoundClasses = notFoundClasses;
+-      
+-      log.debug("created " + this);
+-   }
+-
+-   protected synchronized Class<?> loadClass(String name, boolean resolve)
+-         throws ClassNotFoundException
+-   {
+-      log.trace("loadClass(" + name + "," + resolve + ")");
+-      if (isIncluded(name) && (isExcluded(name) == false))
+-      {
+-         Class c = findClass(name);
+-
+-         if (resolve)
+-         {
+-            resolveClass(c);
+-         }
+-         return c;
+-      }
+-      else if (isNotFound(name))
+-      {
+-         throw new ClassNotFoundException(name + " is discarded");
+-      }
+-      else
+-      {
+-         return super.loadClass(name, resolve);
+-      }
+-   }
+-
+-   protected Class<?> findClass(String name) throws ClassNotFoundException
+-   {
+-      log.trace("findClass(" + name + ")");
+-      Class result = classes.get(name);
+-      if (result != null)
+-      {
+-         return result;
+-      }
+-
+-      if (isIncluded(name) && (isExcluded(name) == false))
+-      {
+-         result = createClass(name);
+-      }
+-      else if (isNotFound(name))
+-      {
+-         throw new ClassNotFoundException(name + " is discarded");
+-      }
+-      else
+-      {
+-         result = super.findClass(name);
+-      }
+-
+-      classes.put(name, result);
+-
+-      return result;
+-   }
+-
+-   protected Class createClass(String name) throws ClassFormatError, ClassNotFoundException
+-   {
+-      log.info("createClass(" + name + ")");
+-      try
+-      {
+-         InputStream is = getResourceAsStream(name.replace('.', '/').concat(".class"));
+-         byte[] bytes = new byte[1024];
+-         ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
+-         int read;
+-         while ((read = is.read(bytes)) > -1)
+-         {
+-            baos.write(bytes, 0, read);
+-         }
+-         bytes = baos.toByteArray();
+-         return this.defineClass(name, bytes, 0, bytes.length);
+-      }
+-      catch (FileNotFoundException e)
+-      {
+-         throw new ClassNotFoundException("cannot find " + name, e);
+-      }
+-      catch (IOException e)
+-      {
+-         throw new ClassNotFoundException("cannot read " + name, e);
+-      }
+-   }
+-
+-   protected boolean isIncluded(String className)
+-   {
+-
+-      if (includedClasses != null)
+-      {
+-         for (int i = 0; i < includedClasses.length; i++)
+-         {
+-            if (className.startsWith(includedClasses[i]))
+-            {
+-               return true;
+-            }
+-         }
+-      }
+-
+-      return false;
+-   }
+-
+-   protected boolean isExcluded(String className)
+-   {
+-
+-      if (excludedClasses != null)
+-      {
+-         for (int i = 0; i < excludedClasses.length; i++)
+-         {
+-            if (className.startsWith(excludedClasses[i]))
+-            {
+-               return true;
+-            }
+-         }
+-      }
+-
+-      return false;
+-   }
+-
+-   protected boolean isNotFound(String className)
+-   {
+-
+-      if (notFoundClasses != null)
+-      {
+-         for (int i = 0; i < notFoundClasses.length; i++)
+-         {
+-            if (className.startsWith(notFoundClasses[i]))
+-            {
+-               return true;
+-            }
+-         }
+-      }
+-
+-      return false;
+-   }
+-   
+-   public String toString()  {
+-      String s = getClass().getName();
+-      s += "[includedClasses=";
+-      s += listClasses(includedClasses);
+-      s += ";excludedClasses=";
+-      s += listClasses(excludedClasses);
+-      s += ";notFoundClasses=";
+-      s += listClasses(notFoundClasses);
+-      s += ";parent=";
+-      s += getParent();
+-      s += "]";
+-      return s;
+-   }
+-   
+-   private static String listClasses(String[] classes) {
+-      if (classes == null) return null;
+-      String s = "";
+-      for (int i = 0; i < classes.length; i++) {
+-         if (i > 0)
+-            s += ",";
+-         s += classes[i];
+-      }
+-      return s;
+-   }
+-   
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/util/SelectedClassnameClassLoaderTestSetup.java b/cache-jbosscache/src/test/java/org/hibernate/test/util/SelectedClassnameClassLoaderTestSetup.java
+deleted file mode 100644
+index 216bea16fc..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/util/SelectedClassnameClassLoaderTestSetup.java
++++ /dev/null
+@@ -1,73 +0,0 @@
+-/*
+- * Copyright (c) 2007, Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Brian Stansberry
+- */
+-
+-package org.hibernate.test.util;
+-
+-import junit.extensions.TestSetup;
+-import junit.framework.Test;
+-
+-/**
+- * A TestSetup that makes SelectedClassnameClassLoader the thread
+- * context classloader for the duration of the test.
+- * 
+- * @author <a href="brian.stansberry@jboss.com">Brian Stansberry</a>
+- * @version $Revision: 1 $
+- */
+-public class SelectedClassnameClassLoaderTestSetup extends TestSetup
+-{
+-   private ClassLoader originalTCCL;
+-   private String[] includedClasses;
+-   private String[] excludedClasses;
+-   private String[] notFoundClasses;
+-   
+-   
+-   /**
+-    * Create a new SelectedClassnameClassLoaderTestSetup.
+-    * 
+-    * @param test
+-    */
+-   public SelectedClassnameClassLoaderTestSetup(Test test,
+-                                                String[] includedClasses,
+-                                                String[] excludedClasses,
+-                                                String[] notFoundClasses)
+-   {
+-      super(test);
+-      this.includedClasses = includedClasses;
+-      this.excludedClasses = excludedClasses;
+-      this.notFoundClasses = notFoundClasses;
+-   }
+-
+-   @Override
+-   protected void setUp() throws Exception
+-   {      
+-      super.setUp();
+-      
+-      originalTCCL = Thread.currentThread().getContextClassLoader();
+-      ClassLoader parent = originalTCCL == null ? getClass().getClassLoader() : originalTCCL;
+-      ClassLoader selectedTCCL = new SelectedClassnameClassLoader(includedClasses, excludedClasses, notFoundClasses, parent);
+-      Thread.currentThread().setContextClassLoader(selectedTCCL);
+-   }
+-
+-   @Override
+-   protected void tearDown() throws Exception
+-   {
+-      Thread.currentThread().setContextClassLoader(originalTCCL);
+-      super.tearDown();
+-   }
+-   
+-   
+-
+-}
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/util/optimistic-local-cache.xml b/cache-jbosscache/src/test/java/org/hibernate/test/util/optimistic-local-cache.xml
+deleted file mode 100755
+index 745f67db20..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/util/optimistic-local-cache.xml
++++ /dev/null
+@@ -1,160 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-
+-<!-- ===================================================================== -->
+-<!--                                                                       -->
+-<!--  Sample JBoss Cache Service Configuration                               -->
+-<!--  Recommended for use as Hibernate's 2nd Level Cache                   -->
+-<!--  For use with JBossCache >= 2.0.0 ONLY!!!                             -->
+-<!--                                                                       -->
+-<!-- ===================================================================== -->
+-
+-<server>
+-
+-    <classpath codebase="./lib" archives="jboss-cache.jar, jgroups.jar"/>
+-
+-
+-    <!-- ==================================================================== -->
+-    <!-- Defines TreeCache configuration                                      -->
+-    <!-- ==================================================================== -->
+-
+-    <mbean code="org.jboss.cache.jmx.CacheJmxWrapper"
+-        name="jboss.cache:service=TreeCache">
+-
+-        <depends>jboss:service=Naming</depends>
+-        <depends>jboss:service=TransactionManager</depends>
+-
+-        <!--
+-            TransactionManager configuration not required for Hibernate!
+-            Hibernate will plug in its own transaction manager integration.
+-        -->
+-
+-
+-        <!--
+-            Node locking scheme:
+-                OPTIMISTIC
+-                PESSIMISTIC (default)
+-        -->
+-        <attribute name="NodeLockingScheme">OPTIMISTIC</attribute>
+-
+-        <!--
+-            Note that this attribute is IGNORED if your NodeLockingScheme above is OPTIMISTIC.
+-
+-            Isolation level : SERIALIZABLE
+-                              REPEATABLE_READ (default)
+-                              READ_COMMITTED
+-                              READ_UNCOMMITTED
+-                              NONE
+-        -->
+-        <attribute name="IsolationLevel">REPEATABLE_READ</attribute>
+-
+-        <!--
+-             Valid modes are LOCAL
+-                             REPL_ASYNC
+-                             REPL_SYNC
+-                             INVALIDATION_ASYNC
+-                             INVALIDATION_SYNC
+-
+-             INVALIDATION_ASYNC is highly recommended as the mode for use
+-             with clustered second-level caches.
+-        -->
+-        <attribute name="CacheMode">REPL_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all clusters, in order
+-             to find each other
+-        -->
+-        <attribute name="ClusterName">TreeCache-Cluster</attribute>
+-
+-        <attribute name="ClusterConfig">
+-            <config>
+-                <!-- UDP: if you have a multihomed machine,
+-                set the bind_addr attribute to the appropriate NIC IP address -->
+-                <!-- UDP: On Windows machines, because of the media sense feature
+-                 being broken with multicast (even after disabling media sense)
+-                 set the loopback attribute to true -->
+-                <UDP mcast_addr="228.1.2.3" mcast_port="48866"
+-                    ip_ttl="64" ip_mcast="true"
+-                    mcast_send_buf_size="150000" mcast_recv_buf_size="80000"
+-                    ucast_send_buf_size="150000" ucast_recv_buf_size="80000"
+-                    loopback="false"/>
+-                <PING timeout="2000" num_initial_members="3"/>
+-                <MERGE2 min_interval="10000" max_interval="20000"/>
+-                <FD shun="true"/>
+-                <FD_SOCK/>
+-                <VERIFY_SUSPECT timeout="1500"/>
+-                <pbcast.NAKACK gc_lag="50" retransmit_timeout="600,1200,2400,4800"/>
+-                <UNICAST timeout="600,1200,2400" min_threshold="10"/>
+-                <pbcast.STABLE desired_avg_gossip="20000"/>
+-                <FRAG frag_size="8192"/>
+-                <pbcast.GMS join_timeout="5000" shun="true" print_local_addr="true"/>
+-                <pbcast.STATE_TRANSFER/>
+-            </config>
+-        </attribute>
+-
+-        <!--
+-         Whether or not to fetch state on joining a cluster
+-         NOTE this used to be called FetchStateOnStartup and has been renamed to be more descriptive.
+-        -->
+-        <attribute name="FetchInMemoryState">false</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-
+-       <!--
+-          Indicate whether to use marshalling or not. Set this to true if you are running under a scoped
+-          class loader, e.g., inside an application server. Default is "false".
+-       -->
+-       <attribute name="UseRegionBasedMarshalling">true</attribute>
+-       <!-- Must match the value of "useRegionBasedMarshalling" -->
+-       <attribute name="InactiveOnStartup">true</attribute>
+-
+-      <!--  Specific eviction policy configurations. This is LRU -->
+-      <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <attribute name="maxNodes">5000</attribute>
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS">
+-            <attribute name="maxNodes">0</attribute>
+-            <attribute name="timeToLiveSeconds">0</attribute>
+-          </region>
+-        </config>
+-     </attribute>
+-
+-    </mbean>
+-</server>
+diff --git a/cache-jbosscache/src/test/java/org/hibernate/test/util/pessimistic-local-cache.xml b/cache-jbosscache/src/test/java/org/hibernate/test/util/pessimistic-local-cache.xml
+deleted file mode 100755
+index 08a3ac1af5..0000000000
+--- a/cache-jbosscache/src/test/java/org/hibernate/test/util/pessimistic-local-cache.xml
++++ /dev/null
+@@ -1,141 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-
+-<!-- ===================================================================== -->
+-<!--                                                                       -->
+-<!--  Sample TreeCache Service Configuration                               -->
+-<!--                                                                       -->
+-<!-- ===================================================================== -->
+-
+-<server>
+-
+-    <classpath codebase="./lib" archives="jboss-cache.jar, jgroups.jar"/>
+-
+-
+-    <!-- ==================================================================== -->
+-    <!-- Defines TreeCache configuration                                      -->
+-    <!-- ==================================================================== -->
+-
+-    <mbean code="org.jboss.cache.jmx.CacheJmxWrapper"
+-        name="jboss.cache:service=TreeCache">
+-
+-        <depends>jboss:service=Naming</depends>
+-        <depends>jboss:service=TransactionManager</depends>
+-
+-        <!--
+-            TransactionManager configuration not required for Hibernate!
+-            Hibernate will plug in its own transaction manager integration.
+-        -->
+-
+-        <!--
+-            Node isolation level : SERIALIZABLE
+-                                 REPEATABLE_READ (default)
+-                                 READ_COMMITTED
+-                                 READ_UNCOMMITTED
+-                                 NONE
+-        -->
+-        <attribute name="IsolationLevel">REPEATABLE_READ</attribute>
+-
+-        <!--
+-             Valid modes are LOCAL
+-                             REPL_ASYNC
+-                             REPL_SYNC
+-        -->
+-        <attribute name="CacheMode">LOCAL</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all clusters, in order
+-             to find each other
+-        -->
+-        <attribute name="ClusterName">TreeCache-Cluster</attribute>
+-
+-        <attribute name="ClusterConfig">
+-            <config>
+-                <!-- UDP: if you have a multihomed machine,
+-                set the bind_addr attribute to the appropriate NIC IP address -->
+-                <!-- UDP: On Windows machines, because of the media sense feature
+-                 being broken with multicast (even after disabling media sense)
+-                 set the loopback attribute to true -->
+-                <UDP mcast_addr="228.1.2.3" mcast_port="45566"
+-                    ip_ttl="64" ip_mcast="true"
+-                    mcast_send_buf_size="150000" mcast_recv_buf_size="80000"
+-                    ucast_send_buf_size="150000" ucast_recv_buf_size="80000"
+-                    loopback="false"/>
+-                <PING timeout="2000" num_initial_members="3"/>
+-                <MERGE2 min_interval="10000" max_interval="20000"/>
+-                <FD shun="true"/>
+-                <VERIFY_SUSPECT timeout="1500"/>
+-                <pbcast.NAKACK gc_lag="50" retransmit_timeout="600,1200,2400,4800"/>
+-                <pbcast.STABLE desired_avg_gossip="20000"/>
+-                <UNICAST timeout="600,1200,2400" min_threshold="10"/>
+-                <FRAG frag_size="8192"/>
+-                <pbcast.GMS join_timeout="5000" shun="true" print_local_addr="true"/>
+-                <pbcast.STATE_TRANSFER/>
+-            </config>
+-        </attribute>
+-      
+-      <!-- Must be true if any entity deployment uses a scoped classloader -->
+-      <attribute name="UseRegionBasedMarshalling">true</attribute>
+-      <!-- Must match the value of "useRegionBasedMarshalling" -->
+-      <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!--
+-            The max amount of time (in milliseconds) we wait until the
+-            initial state (ie. the contents of the cache) are retrieved from
+-            existing members in a clustered environment
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-
+-      <!--  Specific eviction policy configurations. This is LRU -->
+-      <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <attribute name="maxNodes">5000</attribute>
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS">
+-            <attribute name="maxNodes">0</attribute>
+-            <attribute name="timeToLiveSeconds">0</attribute>
+-          </region>
+-        </config>
+-     </attribute>
+-  </mbean>
+-
+-
+-</server>
+diff --git a/cache-jbosscache/src/test/resources/hibernate.properties b/cache-jbosscache/src/test/resources/hibernate.properties
+deleted file mode 100755
+index d872b613db..0000000000
+--- a/cache-jbosscache/src/test/resources/hibernate.properties
++++ /dev/null
+@@ -1,34 +0,0 @@
+-################################################################################
+-# Hibernate, Relational Persistence for Idiomatic Java                         #
+-#                                                                              #
+-# Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as    #
+-# indicated by the @author tags or express copyright attribution               #
+-# statements applied by the authors.  All third-party contributions are        #
+-# distributed under license by Red Hat Middleware LLC.                         #
+-#                                                                              #
+-# This copyrighted material is made available to anyone wishing to use, modify,#
+-# copy, or redistribute it subject to the terms and conditions of the GNU      #
+-# Lesser General Public License, as published by the Free Software Foundation. #
+-#                                                                              #
+-# This program is distributed in the hope that it will be useful,              #
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-# for more details.                                                            #
+-#                                                                              #
+-# You should have received a copy of the GNU Lesser General Public License     #
+-# along with this distribution; if not, write to:                              #
+-# Free Software Foundation, Inc.                                               #
+-# 51 Franklin Street, Fifth Floor                                              #
+-# Boston, MA  02110-1301  USA                                                  #
+-################################################################################
+-hibernate.dialect org.hibernate.dialect.HSQLDialect
+-hibernate.connection.driver_class org.hsqldb.jdbcDriver
+-hibernate.connection.url jdbc:hsqldb:mem:/test
+-hibernate.connection.username sa
+-hibernate.connection.password
+-
+-hibernate.connection.pool_size 5
+-
+-hibernate.format_sql true
+-
+-hibernate.max_fetch_depth 5
+diff --git a/cache-jbosscache/src/test/resources/log4j.properties b/cache-jbosscache/src/test/resources/log4j.properties
+deleted file mode 100755
+index ab02c9439d..0000000000
+--- a/cache-jbosscache/src/test/resources/log4j.properties
++++ /dev/null
+@@ -1,38 +0,0 @@
+-################################################################################
+-# Hibernate, Relational Persistence for Idiomatic Java                         #
+-#                                                                              #
+-# Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as    #
+-# indicated by the @author tags or express copyright attribution               #
+-# statements applied by the authors.  All third-party contributions are        #
+-# distributed under license by Red Hat Middleware LLC.                         #
+-#                                                                              #
+-# This copyrighted material is made available to anyone wishing to use, modify,#
+-# copy, or redistribute it subject to the terms and conditions of the GNU      #
+-# Lesser General Public License, as published by the Free Software Foundation. #
+-#                                                                              #
+-# This program is distributed in the hope that it will be useful,              #
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-# for more details.                                                            #
+-#                                                                              #
+-# You should have received a copy of the GNU Lesser General Public License     #
+-# along with this distribution; if not, write to:                              #
+-# Free Software Foundation, Inc.                                               #
+-# 51 Franklin Street, Fifth Floor                                              #
+-# Boston, MA  02110-1301  USA                                                  #
+-################################################################################
+-log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+-log4j.appender.stdout.Target=System.out
+-log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+-log4j.appender.stdout.layout.ConversionPattern=%d{ABSOLUTE} %5p [%t] %c{1}:%L - %m%n
+-
+-
+-log4j.rootLogger=warn, stdout
+-
+-log4j.logger.org.hibernate.test=info
+-#log4j.logger.org.jgroups=info
+-#log4j.logger.org.jboss.cache=trace
+-#log4j.logger.org.jboss.cache.RegionManager=info
+-#log4j.logger.org.jboss.cache.lock=info
+-#log4j.logger.org.jboss.cache.interceptors.PessimisticLockInterceptor=info
+-#log4j.logger.org.jboss.cache.interceptors.UnlockInterceptor=info
+diff --git a/cache-jbosscache/src/test/resources/treecache.xml b/cache-jbosscache/src/test/resources/treecache.xml
+deleted file mode 100755
+index a4e80956f1..0000000000
+--- a/cache-jbosscache/src/test/resources/treecache.xml
++++ /dev/null
+@@ -1,139 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-
+-<!-- ===================================================================== -->
+-<!--                                                                       -->
+-<!--  Sample TreeCache Service Configuration                               -->
+-<!--                                                                       -->
+-<!-- ===================================================================== -->
+-
+-<server>
+-
+-    <classpath codebase="./lib" archives="jboss-cache.jar, jgroups.jar"/>
+-
+-
+-    <!-- ==================================================================== -->
+-    <!-- Defines TreeCache configuration                                      -->
+-    <!-- ==================================================================== -->
+-
+-    <mbean code="org.jboss.cache.jmx.CacheJmxWrapper"
+-        name="jboss.cache:service=TreeCache">
+-
+-        <depends>jboss:service=Naming</depends>
+-        <depends>jboss:service=TransactionManager</depends>
+-
+-        <!-- TransactionManager configuration not required for Hibernate!
+-             Hibernate will plug in its own transaction manager integration. 
+-        -->
+-
+-        <!-- Node locking scheme:
+-                OPTIMISTIC
+-                MVCC (default)
+-        -->
+-        <attribute name="NodeLockingScheme">MVCC</attribute>
+-
+-        <!--
+-            READ_COMMITTED is as strong as necessary for most 2nd Level Cache usage.
+-        -->
+-        <attribute name="IsolationLevel">READ_COMMITTED</attribute>
+-
+-        <!-- Valid modes are LOCAL
+-                             REPL_ASYNC
+-                             REPL_SYNC
+-                             INVALIDATION_ASYNC
+-                             INVALIDATION_SYNC
+-
+-             INVALIDATION_SYNC is highly recommended as the mode for use
+-             with entity and collection caches.
+-        -->
+-        <attribute name="CacheMode">REPL_SYNC</attribute>
+-
+-        <!-- Name of cluster. Needs to be the same for all members, in order
+-             to find each other -->
+-        <attribute name="ClusterName">TestSharedCache</attribute>
+-        
+-        <!-- Use a UDP (multicast) based stack. Need JGroups flow control (FC)
+-             because timestamp communication will not require a synchronous response.
+-        -->
+-        <attribute name="MultiplexerStack">udp</attribute>
+-
+-        <!-- Used for timestamps, so must fetch state. -->
+-        <attribute name="FetchInMemoryState">true</attribute>
+-
+-        <!--
+-          The max amount of time (in milliseconds) we wait until the
+-          state (ie. the contents of the cache) are retrieved from
+-          existing members at startup.
+-        -->
+-        <attribute name="StateRetrievalTimeout">20000</attribute>
+-
+-        <!--
+-            Number of milliseconds to wait until all responses for a
+-            synchronous call have been received.
+-        -->
+-        <attribute name="SyncReplTimeout">20000</attribute>
+-
+-        <!-- Max number of milliseconds to wait for a lock acquisition -->
+-        <attribute name="LockAcquisitionTimeout">15000</attribute>
+-        
+-        <!--  Lock Striping can lead to deadlocks -->
+-        <attribute name="UseLockStriping">false</attribute>
+-
+-       <!--
+-          Indicate whether to use marshalling or not. Set this to true if you 
+-          are running under a scoped class loader, e.g., inside an application 
+-          server. Default is "false".
+-       -->
+-       <attribute name="UseRegionBasedMarshalling">true</attribute>
+-       <!-- Must match the value of "useRegionBasedMarshalling" -->
+-       <attribute name="InactiveOnStartup">true</attribute>
+-
+-        <!-- For now. disable asynchronous RPC marshalling/sending -->
+-        <attribute name="SerializationExecutorPoolSize">0</attribute>
+-
+-      <!--  Specific eviction policy configurations. This is LRU -->
+-      <attribute name="EvictionPolicyConfig">
+-        <config>
+-          <attribute name="wakeUpIntervalSeconds">5</attribute>
+-          <!-- Name of the DEFAULT eviction policy class. -->
+-          <attribute name="policyClass">org.jboss.cache.eviction.LRUPolicy</attribute>
+-          <!--  Cache wide default -->
+-          <region name="/_default_">
+-            <attribute name="maxNodes">5000</attribute>
+-            <attribute name="timeToLiveSeconds">1000</attribute>
+-          </region>
+-          <!--  Don't ever evict modification timestamps -->
+-          <region name="/TS">
+-            <attribute name="maxNodes">0</attribute>
+-            <attribute name="timeToLiveSeconds">0</attribute>
+-          </region>
+-        </config>
+-     </attribute>
+-     
+-  </mbean>
+-
+-
+-</server>
+diff --git a/distribution/pom.xml b/distribution/pom.xml
+deleted file mode 100644
+index 3256ab0aa1..0000000000
+--- a/distribution/pom.xml
++++ /dev/null
+@@ -1,344 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  ~
+-  -->
+-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+-
+-    <modelVersion>4.0.0</modelVersion>
+-
+-    <parent>
+-        <groupId>org.hibernate</groupId>
+-        <artifactId>hibernate-parent</artifactId>
+-        <version>3.6.0-SNAPSHOT</version>
+-        <relativePath>../parent/pom.xml</relativePath>
+-    </parent>
+-
+-    <groupId>org.hibernate</groupId>
+-    <artifactId>hibernate-distribution</artifactId>
+-    <packaging>pom</packaging>
+-
+-    <name>Hibernate Distribution</name>
+-    <description>Builds the complete Hibernate distribution bundles</description>
+-
+-    <properties>
+-        <!-- Skip artifact deployment -->
+-        <maven.deploy.skip>true</maven.deploy.skip>
+-    </properties>
+-
+-    <build>
+-        <plugins>
+-            <plugin>
+-                <groupId>org.codehaus.groovy.maven</groupId>
+-                <artifactId>gmaven-plugin</artifactId>
+-                <version>1.0</version>
+-                <executions>
+-                    <execution>
+-                        <phase>generate-sources</phase>
+-                        <goals>
+-                            <goal>execute</goal>
+-                        </goals>
+-                        <configuration>
+-                            <source><![CDATA[
+-                                def sourcePathName = 'javadocSourcePath'
+-                                sourcePath = ant.path( id:sourcePathName ) {
+-                                    ant.pathElement( path: "${pom.basedir}/../cache-ehcache/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../cache-infinispan/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../cache-jbosscache/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../cache-oscache/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../cache-swarmcache/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../connection-c3p0/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../connection-proxool/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../entitymanager/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../envers/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../testing/src/main/java" )
+-                                    ant.pathElement( path: "${pom.basedir}/../core/src/main/java" )
+-                                    ant.pathElement( path: "../core/target/generated-sources/antlr" )
+-                                }
+-
+-                                def classPathName = 'javadocClassPath'
+-                                classPath = ant.path( id:classPathName );
+-                                project.compileClasspathElements.each{ element ->
+-                                    classPath.createPathElement().path = element
+-                                }
+-
+-                                targetDir = "${pom.basedir}/target/javadocs";
+-
+-                                ant.javadoc(
+-                                    executable: '${jdk16_home}/bin/javadoc',
+-                                    maxmemory: '512m',
+-                                    destdir: targetDir ,
+-                                    sourcepathref: sourcePathName,
+-                                    classpathref: classPathName,
+-                                    overview: '${pom.basedir}/src/javadoc/package.html',
+-                                    stylesheetfile: '${pom.basedir}/src/javadoc/stylesheet.css',
+-                                    windowtitle: 'Hibernate JavaDocs',
+-                                    doctitle: 'Hibernate JavaDoc (${pom.version})',
+-                                    bottom: 'Copyright &copy; 2001-2010 <a href="http://redhat.com">Red Hat, Inc.</a>  All Rights Reserved.',
+-                                    use: true
+-                                ) {
+-                                    ant.link( href: 'http://java.sun.com/j2se/1.5.0/docs/api' )
+-                                    ant.link( href: 'http://java.sun.com/javaee/5/docs/api/' )
+-                                    ant.tag( name: 'todo', description: 'To do:' )
+-                                    ant.tag( name: 'noinspection', enabled: false )
+-                                    ant.group( title: 'Core API' ) {
+-                                        ant.package( name: 'org.hibernate' )
+-                                        ant.package( name: 'org.hibernate.classic' )
+-                                        ant.package( name: 'org.hibernate.criterion' )
+-                                        ant.package( name: 'org.hibernate.mapping' )
+-                                        ant.package( name: 'org.hibernate.metadata' )
+-                                        ant.package( name: 'org.hibernate.cfg' )
+-                                        ant.package( name: 'org.hibernate.stat' )
+-                                    }
+-                                    ant.group( title: 'Extension SPI' ) {
+-                                        ant.package( name: 'org.hibernate.id*' )
+-                                        ant.package( name: 'org.hibernate.connection' )
+-                                        ant.package( name: 'org.hibernate.transaction' )
+-                                        ant.package( name: 'org.hibernate.type' )
+-                                        ant.package( name: 'org.hibernate.dialect*' )
+-                                        ant.package( name: 'org.hibernate.cache*' )
+-                                        ant.package( name: 'org.hibernate.event*' )
+-                                        ant.package( name: 'org.hibernate.property' )
+-                                        ant.package( name: 'org.hibernate.loader*' )
+-                                        ant.package( name: 'org.hibernate.persister*' )
+-                                        ant.package( name: ':org.hibernate.proxy' )
+-                                        ant.package( name: 'org.hibernate.tuple' )
+-                                        ant.package( name: 'org.hibernate.transform' )
+-                                        ant.package( name: 'org.hibernate.collection' )
+-                                        ant.package( name: 'org.hibernate.jdbc' )
+-                                        ant.package( name: 'org.hibernate.usertype' )
+-                                    }
+-                                    ant.group( title: 'Bytecode providers' ) {
+-                                        ant.package( name: 'org.hibernate.bytecode*' )
+-                                        ant.package( name: 'org.hibernate.intercept*' )
+-                                    }
+-                                    ant.group( title: 'Infinispan Integration' ) {
+-                                        ant.package( name: 'org.hibernate.cache.infinispan*' )
+-                                    }
+-                                    ant.group( title: 'JBossCache Integration' ) {
+-                                        ant.package( name: 'org.hibernate.cache.jbc*' )
+-                                    }
+-                                    ant.group( title: 'Testing Support' ) {
+-                                        ant.package( name: 'org.hibernate.junit*' )
+-                                    }
+-                                }
+-
+-                                imagesDir = targetDir + '/images'
+-                                ant.mkdir( dir: imagesDir )
+-                                ant.copy( toDir: imagesDir ) {
+-                                    fileset( dir: "${pom.basedir}/src/javadoc/images" )
+-                                }
+-                                ]]>
+-                            </source>
+-                        </configuration>
+-                    </execution>
+-                </executions>
+-            </plugin>
+-            <plugin>
+-                <groupId>org.apache.maven.plugins</groupId>
+-                <artifactId>maven-assembly-plugin</artifactId>
+-                <executions>
+-                    <execution>
+-                        <phase>deploy</phase>
+-                        <goals>
+-                            <goal>single</goal>
+-                        </goals>
+-                    </execution>
+-                </executions>
+-            </plugin>
+-        </plugins>
+-        <pluginManagement>
+-            <plugins>
+-                <plugin>
+-                    <groupId>org.apache.maven.plugins</groupId>
+-                    <artifactId>maven-assembly-plugin</artifactId>
+-                    <version>2.2-beta-2</version>
+-                    <configuration>
+-                        <descriptors>
+-                            <descriptor>src/assembly/hibernate-all.xml</descriptor>
+-                            <descriptor>src/assembly/dist.xml</descriptor>
+-                        </descriptors>
+-                        <archive>
+-                            <manifest>
+-                                <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+-                                <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+-                            </manifest>
+-                            <manifestEntries>
+-                                <Implementation-URL>http://hibernate.org</Implementation-URL>
+-                            </manifestEntries>
+-                        </archive>
+-                    </configuration>
+-                </plugin>
+-            </plugins>
+-        </pluginManagement>
+-    </build>
+-
+-    <!--
+-        The assemblies work off of dependency sets since the stuff to be
+-        aggregated is no longer sub-modules after moving assembly itself
+-        into this 'distribution' module.
+-    -->
+-    <dependencies>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-core</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-ehcache</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-jbosscache</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-infinispan</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-oscache</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-swarmcache</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-c3p0</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-proxool</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-entitymanager</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>${project.groupId}</groupId>
+-            <artifactId>hibernate-envers</artifactId>
+-            <version>${project.version}</version>
+-        </dependency>
+-
+-        <!-- optional deps for bytecode providers since they are optional on core -->
+-        <dependency>
+-            <groupId>javassist</groupId>
+-            <artifactId>javassist</artifactId>
+-            <optional>true</optional>
+-        </dependency>
+-        <dependency>
+-            <groupId>cglib</groupId>
+-            <artifactId>cglib</artifactId>
+-            <optional>true</optional>
+-        </dependency>
+-
+-        <!-- Because Maven is retarded -->
+-        <dependency>
+-            <groupId>org.hibernate</groupId>
+-            <artifactId>hibernate-validator</artifactId>
+-            <scope>provided</scope>
+-        </dependency>
+-        <dependency>
+-            <groupId>javax.validation</groupId>
+-            <artifactId>validation-api</artifactId>
+-            <scope>provided</scope>
+-        </dependency>
+-        <dependency>
+-            <groupId>org.jboss.javaee</groupId>
+-            <artifactId>jboss-jacc-api_JDK4</artifactId>
+-            <version>1.1.0</version>
+-            <scope>provided</scope>
+-            <exclusions>
+-                <exclusion>
+-                    <groupId>org.jboss.javaee</groupId>
+-                    <artifactId>jboss-servlet-api_3.0</artifactId>
+-                </exclusion>
+-                <exclusion>
+-                    <groupId>org.jboss.logging</groupId>
+-                    <artifactId>jboss-logging-spi</artifactId>
+-                </exclusion>
+-                <exclusion>
+-                    <groupId>org.jboss</groupId>
+-                    <artifactId>jboss-common-core</artifactId>
+-                </exclusion>
+-            </exclusions>
+-        </dependency>
+-        <dependency>
+-            <groupId>junit</groupId>
+-            <artifactId>junit</artifactId>
+-            <version>3.8.1</version>
+-            <scope>provided</scope>
+-        </dependency>
+-        <dependency>
+-            <groupId>ant</groupId>
+-            <artifactId>ant</artifactId>
+-            <version>1.6.5</version>
+-            <scope>provided</scope>
+-        </dependency>
+-    </dependencies>
+-
+-    <profiles>
+-        <profile>
+-            <!--
+-                A profile used implicitly by the release plugin.  Here we use
+-                it to implicitly execute assembly building when deploy is executed
+-                as part of release ( I think/hope :p )
+-            -->
+-            <id>release-profile</id>
+-            <activation>
+-                <property>
+-                    <name>performRelease</name>
+-                    <value>true</value>
+-                </property>
+-            </activation>
+-            <build>
+-                <plugins>
+-                    <plugin>
+-                        <groupId>org.apache.maven.plugins</groupId>
+-                        <artifactId>maven-assembly-plugin</artifactId>
+-                        <version>2.2-beta-2</version>
+-                        <executions>
+-                            <execution>
+-                                <phase>deploy</phase>
+-                                <goals>
+-                                    <goal>single</goal>
+-                                </goals>
+-                            </execution>
+-                        </executions>
+-                    </plugin>
+-                </plugins>
+-            </build>
+-        </profile>
+-    </profiles>
+-
+-</project>
+diff --git a/distribution/src/assembly/dist.xml b/distribution/src/assembly/dist.xml
+deleted file mode 100644
+index 00f9909099..0000000000
+--- a/distribution/src/assembly/dist.xml
++++ /dev/null
+@@ -1,214 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2007, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-
+-<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0"
+-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 http://maven.apache.org/xsd/assembly-1.1.0.xsd">
+-
+-    <!--
+-        Produces a dist-style bundle similar to what previous (non-mavenized) versions of
+-        Hibernate did.
+-    -->
+-
+-    <!-- todo : still need to account for overall site stuff -->
+-
+-    <id>dist</id>
+-    <formats>
+-        <format>zip</format>
+-        <format>tar.gz</format>
+-    </formats>
+-
+-    <includeBaseDirectory>true</includeBaseDirectory>
+-
+-    <files>
+-        <file>
+-            <source>../lgpl.txt</source>
+-        </file>
+-        <file>
+-            <source>../hibernate_logo.gif</source>
+-        </file>
+-        <file>
+-            <!-- todo : this should eventually become the release-notes bawany is working on -->
+-            <source>../changelog.txt</source>
+-        </file>
+-        <file>
+-            <source>target/${project.artifactId}-${project.version}-all.jar</source>
+-            <destName>hibernate3.jar</destName>
+-        </file>
+-        <file>
+-            <source>../testing/target/hibernate-testing-${project.version}.jar</source>
+-            <destName>hibernate-testing.jar</destName>
+-        </file>
+-    </files>
+-
+-    <dependencySets>
+-        <dependencySet>
+-            <!-- The normal required dependencySet -->
+-            <outputDirectory>lib/required</outputDirectory>
+-            <includes>
+-                <include>antlr:antlr</include>
+-
+-                <include>commons-collections:commons-collections</include>
+-
+-                <include>dom4j:dom4j</include>
+-
+-                <include>javassist:javassist</include>
+-
+-                <include>org.slf4j:slf4j-api</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <!-- The required dependencySet for jta so I can rename it... -->
+-            <outputDirectory>lib/required</outputDirectory>
+-            <includes>
+-                <include>org.jboss.javaee:jboss-transaction-api</include>
+-            </includes>
+-            <outputFileNameMapping>jta-1.1.jar</outputFileNameMapping>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <!-- The lib/jpa dependencySet -->
+-            <outputDirectory>lib/jpa</outputDirectory>
+-            <includes>
+-                <include>org.hibernate.javax.persistence:hibernate-jpa-2.0-api</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <outputDirectory>lib/optional/c3p0</outputDirectory>
+-            <includes>
+-                <include>c3p0:c3p0</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <outputDirectory>lib/optional/proxool</outputDirectory>
+-            <includes>
+-                <include>proxool:proxool</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <outputDirectory>lib/optional/ehcache</outputDirectory>
+-            <includes>
+-                <include>net.sf.ehcache:ehcache</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <outputDirectory>lib/optional/jbosscache</outputDirectory>
+-            <includes>
+-                <include>org.jboss.cache:jbosscache-core</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <outputDirectory>lib/optional/infinispan</outputDirectory>
+-            <includes>
+-                <include>org.infinispan:infinispan-core</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <outputDirectory>lib/optional/oscache</outputDirectory>
+-            <includes>
+-                <include>opensymphony:oscache</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <outputDirectory>lib/optional/swarmcache</outputDirectory>
+-            <includes>
+-                <include>swarmcache:swarmcache</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <outputDirectory>lib/bytecode/cglib</outputDirectory>
+-            <includes>
+-                <include>cglib:cglib</include>
+-            </includes>
+-        </dependencySet>
+-
+-        <dependencySet>
+-            <outputDirectory>lib/bytecode/javassist</outputDirectory>
+-            <includes>
+-                <include>javassist:javassist</include>
+-            </includes>
+-        </dependencySet>
+-    </dependencySets>
+-
+-    <fileSets>
+-        <!--
+-            Build the 'project' directory which includes the project sources
+-        -->
+-        <fileSet>
+-            <directory>..</directory>
+-            <useDefaultExcludes>true</useDefaultExcludes>
+-            <outputDirectory>project</outputDirectory>
+-            <excludes>
+-                <exclude>**/target/**</exclude>
+-                <exclude>**/*.ipr</exclude>
+-                <exclude>**/*.iml</exclude>
+-                <exclude>**/*.iws</exclude>
+-            </excludes>
+-        </fileSet>
+-        <!--
+-            Build the 'documentation/manual' directory containing the built
+-            reference manual documentation
+-        -->
+-        <fileSet>
+-            <directory>../documentation/manual/target/docbook/publish/</directory>
+-            <outputDirectory>documentation/manual</outputDirectory>
+-            <includes>
+-                <include>**/**</include>
+-            </includes>
+-        </fileSet>
+-        <!--
+-            Build the 'documentation/jbosscache-guide' directory containing the built
+-            reference manual documentation
+-        -->
+-        <fileSet>
+-            <directory>../documentation/jbosscache2/target/docbook/publish/</directory>
+-            <outputDirectory>documentation/jbosscache-guide</outputDirectory>
+-            <includes>
+-                <include>**/**</include>
+-            </includes>
+-        </fileSet>
+-        <!--
+-            Build the 'documentation/javadocs' directory containing the aggregated javadocs
+-        -->
+-        <fileSet>
+-            <directory>target/javadocs/</directory>
+-            <outputDirectory>documentation/javadocs</outputDirectory>
+-            <includes>
+-                <include>**/**</include>
+-            </includes>
+-        </fileSet>
+-    </fileSets>
+-
+-</assembly>
+\ No newline at end of file
+diff --git a/distribution/src/assembly/hibernate-all.xml b/distribution/src/assembly/hibernate-all.xml
+deleted file mode 100644
+index 2f4743e6e0..0000000000
+--- a/distribution/src/assembly/hibernate-all.xml
++++ /dev/null
+@@ -1,56 +0,0 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+-
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Middleware LLC.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  ~
+-  -->
+-
+-<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0"
+-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 http://maven.apache.org/xsd/assembly-1.1.0.xsd">
+-
+-    <!--
+-        Take the 'core' resoures and build a jar, ala the legacy hibernate3.jar
+-    -->
+-    <id>all</id>
+-    <formats>
+-        <format>jar</format>
+-    </formats>
+-
+-    <includeBaseDirectory>false</includeBaseDirectory>
+-    <baseDirectory>hibernate-all</baseDirectory>
+-
+-    <dependencySets>
+-        <dependencySet>
+-            <unpack>true</unpack>
+-            <includes>
+-                <include>org.hibernate:*</include>
+-            </includes>
+-            <excludes>
+-                <exclude>org.hibernate:hibernate-tools:*</exclude>
+-                <exclude>org.hibernate:jtidy:*</exclude>
+-            </excludes>
+-        </dependencySet>
+-    </dependencySets>
+-
+-</assembly>
+\ No newline at end of file
+diff --git a/distribution/src/javadoc/images/bkg_blkheader.png b/distribution/src/javadoc/images/bkg_blkheader.png
+deleted file mode 100644
+index 499e912008..0000000000
+Binary files a/distribution/src/javadoc/images/bkg_blkheader.png and /dev/null differ
+diff --git a/distribution/src/javadoc/images/bkg_gradient.gif b/distribution/src/javadoc/images/bkg_gradient.gif
+deleted file mode 100644
+index dca02cad71..0000000000
+Binary files a/distribution/src/javadoc/images/bkg_gradient.gif and /dev/null differ
+diff --git a/distribution/src/javadoc/images/bkgheader.png b/distribution/src/javadoc/images/bkgheader.png
+deleted file mode 100644
+index ec13b78bad..0000000000
+Binary files a/distribution/src/javadoc/images/bkgheader.png and /dev/null differ
+diff --git a/distribution/src/javadoc/images/h1_hdr.png b/distribution/src/javadoc/images/h1_hdr.png
+deleted file mode 100644
+index 31caf5efb5..0000000000
+Binary files a/distribution/src/javadoc/images/h1_hdr.png and /dev/null differ
+diff --git a/distribution/src/javadoc/package.html b/distribution/src/javadoc/package.html
+deleted file mode 100644
+index 42858c8697..0000000000
+--- a/distribution/src/javadoc/package.html
++++ /dev/null
+@@ -1,93 +0,0 @@
+-<!--
+-  ~ Hibernate, Relational Persistence for Idiomatic Java
+-  ~
+-  ~ Copyright (c) 2010, Red Hat Inc. or third-party contributors as
+-  ~ indicated by the @author tags or express copyright attribution
+-  ~ statements applied by the authors.  All third-party contributions are
+-  ~ distributed under license by Red Hat Inc.
+-  ~
+-  ~ This copyrighted material is made available to anyone wishing to use, modify,
+-  ~ copy, or redistribute it subject to the terms and conditions of the GNU
+-  ~ Lesser General Public License, as published by the Free Software Foundation.
+-  ~
+-  ~ This program is distributed in the hope that it will be useful,
+-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-  ~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-  ~ for more details.
+-  ~
+-  ~ You should have received a copy of the GNU Lesser General Public License
+-  ~ along with this distribution; if not, write to:
+-  ~ Free Software Foundation, Inc.
+-  ~ 51 Franklin Street, Fifth Floor
+-  ~ Boston, MA  02110-1301  USA
+-  -->
+-<body>
+-
+-<h2>Aggregated Hibernate Core JavaDocs</h2>
+-
+-Hibernate provides both<ul>
+-    <li>
+-        a native API comprised mainly of {@link org.hibernate.SessionFactory} and {@link org.hibernate.Session}
+-    </li>
+-    <li>
+-        an implementation of the <a href="">JSR-317</a> Java Persistence API (JPA) specification comprised mainly of
+-        {@link org.hibernate.ejb.EntityManagerFactoryImpl} and {@link org.hibernate.ejb.EntityManagerImpl}
+-    </li>
+-</ul>
+-<hr/>
+-
+-<h3>Native API</h3>
+-In addition to  {@link org.hibernate.SessionFactory} and {@link org.hibernate.Session}, applications using the
+-native API will often need to utilize the following interfaces:<ul>
+-    <li>{@link org.hibernate.cfg.Configuration}</li>
+-    <li>{@link org.hibernate.Hibernate}</li>
+-    <li>{@link org.hibernate.Transaction}</li>
+-    <li>{@link org.hibernate.Query}</li>
+-    <li>{@link org.hibernate.Criteria}</li>
+-    <li>{@link org.hibernate.criterion.Projection}</li>
+-    <li>{@link org.hibernate.criterion.Projections}</li>
+-    <li>{@link org.hibernate.criterion.Criterion}</li>
+-    <li>{@link org.hibernate.criterion.Restrictions}</li>
+-    <li>{@link org.hibernate.criterion.Order}</li>
+-    <li>{@link org.hibernate.criterion.Example}</li>
+-</ul>
+-These interfaces are fully intended to be exposed to application code.
+-<hr/>
+-
+-<h3>JPA</h3>
+-The JPA interfaces are all defined by the JPA specification.  For details see {@link javax.persistence}
+-<hr/>
+-
+-<h3>Extensions</h3>
+-Hibernate defines a number of interfaces that are completely intended to be extendable by application programmers and/or
+-integrators.  Listed below is a (not necessarily exhaustive) list of the most commonly utilized extension points:<ul>
+-    <li>{@link org.hibernate.EntityNameResolver}</li>
+-    <li>{@link org.hibernate.Interceptor} / {@link org.hibernate.EmptyInterceptor}</li>
+-    <li>{@link org.hibernate.Transaction} / {@link org.hibernate.transaction.TransactionFactory}</li>
+-    <li>{@link org.hibernate.context.CurrentSessionContext}</li>
+-    <li>{@link org.hibernate.dialect.Dialect}</li>
+-    <li>{@link org.hibernate.dialect.resolver.DialectResolver}</li>
+-    <li>{@link org.hibernate.event event listener} interfaces</li>
+-    <li>{@link org.hibernate.id.IdentifierGenerator}</li>
+-    <li>{@link org.hibernate.tuple.entity.EntityTuplizer} / {@link org.hibernate.tuple.component.ComponentTuplizer}</li>
+-    <li>{@link org.hibernate.type.Type} / {@link org.hibernate.usertype}</li>
+-</ul>
+-Note that there is a large degree of crossover between the notion of extension points and that of an integration SPI (below).
+-<hr/>
+-
+-<h3>Integration SPI</h3>
+-Hibernate provides a number of SPIs intended to integrate itself with various third party frameworks or application code to provide
+-additional capabilities.   The SPIs fall mainly into 2 categories:<ul>
+-    <li>Caching - {@link org.hibernate.cache.RegionFactory}</li>
+-    <li>JDBC Connection management - {@link org.hibernate.connection.ConnectionProvider}
+-</ul>
+-Certainly {@link org.hibernate.dialect.Dialect} could fit in here as well, though we chose to list it under extensions since application
+-developers tend to provide extended dialects rather frequently for various reasons.
+-<br/>
+-Another SPI that is not yet exposed but is planned for such is the <em>bytecode provider</em> SPI.  See {@link org.hibernate.bytecode}
+-for details.
+-<hr/>
+-
+-Complete Hibernate documentation may be found online at <a href="http://docs.jboss.org/hibernate/">http://docs.jboss.org/hibernate/</a>.
+-
+-</body>
+\ No newline at end of file
+diff --git a/distribution/src/javadoc/stylesheet.css b/distribution/src/javadoc/stylesheet.css
+deleted file mode 100644
+index fd51b1a36c..0000000000
+--- a/distribution/src/javadoc/stylesheet.css
++++ /dev/null
+@@ -1,174 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2010, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-
+-/*
+- * Custom Hibernate javadoc style sheet
+- */
+-
+-/* Page background color */
+-body {
+-    background: #FFFFFF url(images/bkg_gradient.gif) repeat-x;
+-    margin:0 auto;
+-	font-family:'Lucida Grande', Geneva, Verdana, Arial, sans-serif;
+-	font-size:12px;
+-	padding:0 2em;
+-	color:#333;
+-
+- }
+-
+-/* Common elements */
+-
+-font {
+-	font-family: inherit, sans-serif;
+-	font-size: inherit;
+-	color: inherit;
+-	font-weight: inherit;
+-}
+-
+-hr {
+-    border-style: none;
+-    border-bottom: 1px solid #CCCCCC;
+-}
+-
+-/* Links */
+-a:link {
+-    color:#003399;
+-}
+-a:visited {
+-    color:#888888;
+-}
+-a:hover {
+-    color:#6699cc;
+-}
+-a:active {
+-    color: #003399;
+-}
+-
+-/* Headings */
+-h1 {
+-    background: url(images/h1_hdr.png) no-repeat;
+-    line-height:1.2em;
+-	color:#586464;
+-	font-size:2em;
+-	padding:1.5em;
+-	margin-top: 0;
+-	text-align:left;
+-}
+-
+-h2 {
+-	color:#586464;
+-}
+-
+-
+-/* Default Table elements and colors */
+-
+-th, table {
+-	border-collapse:collapse;
+-	border-color: #E6E7E8;
+-}
+-
+-
+-.TableHeadingColor     {
+-	background:#000000 url(images/bkg_blkheader.png) repeat-x scroll left top;
+-	color:#FFFFFF;
+-	font-size:12px;
+-	font-weight:bold;
+-	height:31px;
+-	text-align:left;
+-	padding:1.5em;
+-}
+-
+-.TableHeadingColor th {
+-	padding-left: 10px;
+-}
+-
+-
+-.TableSubHeadingColor  {
+-    background: #ebe7d7;
+-}
+-.TableRowColor {
+-    background: #FFFFFF;
+-    border-color: #E6E7E8;
+-}
+-.TableRowColor td {
+-    line-height: 175%;
+-    padding-left: 10px;
+-}
+-
+-/* Font used in left-hand frame lists */
+-.FrameTitleFont   {
+-    font-size: 125%;
+-    font-family: Helvetica, Arial, sans-serif;
+-    font-weight: bold;
+-    margin-top: 1em;
+-    display: block;
+-}
+-.FrameHeadingFont {
+-    font-size: 125%;
+-    font-family: 'Lucida Grande', Geneva, Verdana, Arial, sans-serif;
+-    font-weight: bold;
+-    margin-top: 1em;
+-    display: block;
+-    color:#586464;
+-	border-bottom:1px dotted #CCCCCC;
+-}
+-.FrameItemFont {
+-    font-size: 100%;
+-    font-family: Helvetica, Arial, sans-serif
+-}
+-
+-/* Navigation bar fonts and colors */
+-
+-.NavBarCell1    {
+-    background: #ffffff url(images/bkgheader.png) repeat-x;
+-    line-height:3em;
+-	padding-left:10px;
+-	padding-right:10px;
+-}
+-
+-.NavBarFont1 {
+-	color: white;
+-}
+-.NavBarCell1 a {
+-	color: white;
+-}
+-
+-.NavBarCell1Rev {
+-    background-color:#FFFFFF;
+-    padding-left:6px;
+-    padding-right:6px;
+-}
+-.NavBarFont1 {
+-    color:#FFFFFF;
+-}
+-.NavBarFont1Rev {
+-    color:#243446;
+-}
+-
+-.NavBarCell2 {
+-    background-color:#FFFFFF;
+-}
+-.NavBarCell3 {
+-    background-color:#FFFFFF;
+-}
+diff --git a/distribution/src/site/apt/documentation.apt b/distribution/src/site/apt/documentation.apt
+deleted file mode 100644
+index a4a58458db..0000000000
+--- a/distribution/src/site/apt/documentation.apt
++++ /dev/null
+@@ -1,33 +0,0 @@
+- ------
+- Documentation
+- ------
+- Steve Ebersole
+- ------
+- 17 March 2008
+- ------
+-
+-~~ Hibernate, Relational Persistence for Idiomatic Java
+-~~
+-~~ Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+-~~ indicated by the @author tags or express copyright attribution
+-~~ statements applied by the authors.  All third-party contributions are
+-~~ distributed under license by Red Hat Middleware LLC.
+-~~
+-~~ This copyrighted material is made available to anyone wishing to use, modify,
+-~~ copy, or redistribute it subject to the terms and conditions of the GNU
+-~~ Lesser General Public License, as published by the Free Software Foundation.
+-~~
+-~~ This program is distributed in the hope that it will be useful,
+-~~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-~~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-~~for more details.
+-~~
+-~~ You should have received a copy of the GNU Lesser General Public License
+-~~ along with this distribution; if not, write to:
+-~~ Free Software Foundation, Inc.
+-~~ 51 Franklin Street, Fifth Floor
+-~~ Boston, MA  02110-1301  USA
+-
+-Hibernate Core - Documentation
+-
+-    Coming Soon...  intended as a central aggregation of documentation and resource information.
+\ No newline at end of file
+diff --git a/distribution/src/site/apt/index.apt b/distribution/src/site/apt/index.apt
+deleted file mode 100644
+index 3ce3b395c2..0000000000
+--- a/distribution/src/site/apt/index.apt
++++ /dev/null
+@@ -1,59 +0,0 @@
+- ------
+- Introduction
+- ------
+- Steve Ebersole
+- ------
+- 20 July 2007
+- ------
+-
+-~~ Hibernate, Relational Persistence for Idiomatic Java
+-~~
+-~~ Copyright (c) 2008, Red Hat Middleware LLC or third-party contributors as
+-~~ indicated by the @author tags or express copyright attribution
+-~~ statements applied by the authors.  All third-party contributions are
+-~~ distributed under license by Red Hat Middleware LLC.
+-~~
+-~~ This copyrighted material is made available to anyone wishing to use, modify,
+-~~ copy, or redistribute it subject to the terms and conditions of the GNU
+-~~ Lesser General Public License, as published by the Free Software Foundation.
+-~~
+-~~ This program is distributed in the hope that it will be useful,
+-~~ but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+-~~ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+-~~for more details.
+-~~
+-~~ You should have received a copy of the GNU Lesser General Public License
+-~~ along with this distribution; if not, write to:
+-~~ Free Software Foundation, Inc.
+-~~ 51 Franklin Street, Fifth Floor
+-~~ Boston, MA  02110-1301  USA
+-
+-Hibernate Core - Relational Persistence for Idiomatic Java
+-
+-    Hibernate is a powerful, high performance object/relational persistence and query
+-    service.  Hibernate lets you develop persistent classes following common object-oriented
+-    idioms such as association, inheritance, polymorphism, composition, and collections.
+-
+-    Hibernate's goal is to relieve the developer from 95 percent of common data persistence related
+-    programming tasks, compared to manual coding with SQL and the JDBC API.  Hibernate Core for Java
+-    generates SQL for you, relieves you from manual JDBC result set handling and object conversion,
+-    and keeps your application portable to all SQL databases.  However, unlike many other persistence
+-    solutions, Hibernate does not hide the power of SQL from you and guarantees that your investment
+-    in relational technology and knowledge is as valid as always.
+-
+-    Hibernate provides transparent persistence, the only requirement for a persistent class is a
+-    no-argument constructor. You don't even need classes, you can also persist a model using Maps of
+-    Maps, or just about anything else.
+-
+-    Hibernate offers sophisticated query options.  You can write plain SQL, object-oriented
+-    HQL (Hibernate Query Language), or create programatic Criteria and Example queries.  Hibernate can
+-    optimize object loading all the time, with various fetching and caching options.
+-
+-    Hibernate adapts to your development process, no matter if you start with a design from scratch or
+-    work with an existing database, and it will support any application architecture.  Combined with
+-    Hibernate EntityManager and Hibernate Annotations you can use Hibernate as a certified Java Persistence
+-    provider.
+-
+-    Please visit the {{{http://hibernate.org}website}} for more information.
+-
+-    Happpy Hibernating!
+diff --git a/distribution/src/site/resources/css/site.css b/distribution/src/site/resources/css/site.css
+deleted file mode 100644
+index df7a9c86dc..0000000000
+--- a/distribution/src/site/resources/css/site.css
++++ /dev/null
+@@ -1,31 +0,0 @@
+-/**
+- * Copyright © 2007  Red Hat Middleware, LLC. All rights reserved.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, v. 2.1. This program is distributed in the
+- * hope that it will be useful, but WITHOUT A WARRANTY; without even the implied
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+- * Lesser General Public License for more details. You should have received a
+- * copy of the GNU Lesser General Public License, v.2.1 along with this
+- * distribution; if not, write to the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+- *
+- * Red Hat Author(s): Steve Ebersole
+- */
+-
+-/*
+- * Apply the colors taken from the Hibernate logo in various places
+- * thoughout the generated site pages.
+- *
+- * brown : #aea477
+- * gray  : #59666c
+- */
+-
+-h1, h2, h3, h4, h5, h6 {
+-    color: #aea477;
+-}
+-
+-#navcolumn h5 {
+-    color: #59666c;
+-}
+diff --git a/distribution/src/site/resources/images/favicon.ico b/distribution/src/site/resources/images/favicon.ico
+deleted file mode 100644
+index 2fcbb8595f..0000000000
+Binary files a/distribution/src/site/resources/images/favicon.ico and /dev/null differ
+diff --git a/distribution/src/site/resources/images/hibernate_icon.png b/distribution/src/site/resources/images/hibernate_icon.png
+deleted file mode 100644
+index d3d16876cf..0000000000
+Binary files a/distribution/src/site/resources/images/hibernate_icon.png and /dev/null differ
+diff --git a/distribution/src/site/resources/images/hibernate_logo.png b/distribution/src/site/resources/images/hibernate_logo.png
+deleted file mode 100644
+index fc6604cc50..0000000000
+Binary files a/distribution/src/site/resources/images/hibernate_logo.png and /dev/null differ
+diff --git a/distribution/src/site/resources/images/maven-button-4.png b/distribution/src/site/resources/images/maven-button-4.png
+deleted file mode 100644
+index 2ccbb3745e..0000000000
+Binary files a/distribution/src/site/resources/images/maven-button-4.png and /dev/null differ
+diff --git a/distribution/src/site/site.xml b/distribution/src/site/site.xml
+deleted file mode 100644
+index 17a3c900d7..0000000000
+--- a/distribution/src/site/site.xml
++++ /dev/null
+@@ -1,61 +0,0 @@
+-<project name="Hibernate Core ${project.version}">
+-
+-    <bannerLeft>
+-        <name>Hibernate Core Project</name>
+-        <src>images/hibernate_logo.png</src>
+-        <href>http://hibernate.org</href>
+-    </bannerLeft>
+-    
+-    <version position="left"/>
+-    <publishDate position="navigation-bottom" format="yyyy.MM.dd"/>
+-<!--
+-    <poweredBy>
+-        <logo name="Maven" href="http://maven.apache.org/" img="images/maven-button-4.png"/>
+-    </poweredBy
+--->
+-    <body>
+-
+-        <head>
+-            <link rel="shortcut icon" href="images/favicon.ico"/>
+-        </head>
+-
+-        <links>
+-            <item name="Hibernate" href="http://hibernate.org"/>
+-            <item name="JBoss" href="http://jboss.org"/>
+-            <item name="Red Hat" href="http://redhat.com"/>
+-        </links>
+-
+-        <menu name="Overview">
+-            <item name="Introduction" href="index.html"/>
+-            <item name="Documentation" href="documentation.html"/>
+-        </menu>
+-
+-        <menu name="Information">
+-            <item name="Project Summary" href="project-summary.html"/>
+-            <item name="Project License" href="license.html"/>
+-            <item name="Issue Tracking" href="issue-tracking.html"/>
+-            <item name="Mailing Lists" href="mail-lists.html"/>
+-            <item name="Source Repository" href="source-repository.html"/>
+-            <item name="Continuous Integration" href="integration.html"/>
+-            <item name="Dependencies" href="dependencies.html"/>
+-            <item name="Dependency Convergence" href="dependency-convergence.html"/>
+-        </menu>
+-
+-        <menu name="Modules">
+-            <item name="Core" href="modules/core/index.html"/>
+-            <item name="JMX Capabilities" href="modules/jmx/index.html"/>
+-            <item name="Ehcache Integration" href="ehcache/index.html"/>
+-            <item name="JBossCache(1.x) Integration" href="jbc/index.html"/>
+-            <item name="JBossCache(2.x) Integration" href="jbc2/index.html"/>
+-            <item name="SwarmCache Integration" href="swarmcache/index.html"/>
+-            <item name="OSCache Integration" href="oscache/index.html"/>
+-            <item name="C3P0 Integration" href="c3p0/index.html"/>
+-            <item name="Proxool Integration" href="proxool/index.html"/>
+-            <item name="Testing Support" href="testing/index.html"/>
+-        </menu>
+-
+-    </body>
+-
+-</project>
+-
+-        
+\ No newline at end of file
+diff --git a/release/release.gradle b/release/release.gradle
+new file mode 100644
+index 0000000000..7bd2d48cce
+--- /dev/null
++++ b/release/release.gradle
+@@ -0,0 +1,222 @@
++apply plugin: 'base'
++apply plugin: 'idea'
++
++buildDir = "target"
++
++ideaModule {
++}
++
++
++
++// Javadocs ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++javadocBuildDir = dir( buildDirName + "/documentation/javadocs" )
++
++def List subProjectsToSkipForJavadoc = ['release'];
++
++task aggregateJavadocs(type: org.hibernate.build.gradle.javadoc.Javadoc) {
++    description = "Build the aggregated JavaDocs for all modules"
++    maxMemory = '512m'
++    destinationDir = javadocBuildDir.dir
++    configure( options ) {
++        overview = new File( projectDir, 'src/javadoc/package.html' )
++        stylesheetFile = new File( projectDir, 'src/javadoc/stylesheet.css' )
++        windowTitle = 'Hibernate JavaDocs'
++        docTitle = "Hibernate JavaDoc ($project.version)"
++        bottom = 'Copyright &copy; 2001-2010 <a href="http://redhat.com">Red Hat, Inc.</a>  All Rights Reserved.'
++        use = true
++        links = [ 'http://download.oracle.com/javase/6/docs/api/', 'http://download.oracle.com/javaee/6/api/' ]
++        group(
++            'Core API', [
++                'org.hibernate',
++                'org.hibernate.classic',
++                'org.hibernate.criterion',
++                'org.hibernate.mapping',
++                'org.hibernate.metadata',
++                'org.hibernate.cfg',
++                'org.hibernate.stat'
++            ]
++        )
++        group(
++            'Extension SPI', [
++                'org.hibernate.id*',
++                'org.hibernate.connection',
++                'org.hibernate.transaction',
++                'org.hibernate.type',
++                'org.hibernate.dialect*',
++                'org.hibernate.cache*',
++                'org.hibernate.event*',
++                'org.hibernate.property',
++                'org.hibernate.loader*',
++                'org.hibernate.persister*',
++                'org.hibernate.proxy',
++                'org.hibernate.tuple',
++                'org.hibernate.transform',
++                'org.hibernate.collection',
++                'org.hibernate.jdbc',
++                'org.hibernate.usertype'
++            ]
++        )
++        group(
++            'Bytecode providers', [
++                 'org.hibernate.bytecode*',
++                 'org.hibernate.intercept*'
++            ]
++        )
++        group (
++            'Infinispan Integration', ['org.hibernate.cache.infinispan*']
++        )
++        group (
++            'JBossCache Integration', ['org.hibernate.cache.jbc*']
++        )
++        group (
++            'Testing Support', ['org.hibernate.junit*']
++        )
++    }
++
++//    parent.subprojects.each{ subProject->
++//        if ( !subProjectsToSkipForJavadoc.contains( subProject.name ) ) {
++//            subProject.sourceSets.each { set ->
++//                if ( !"test".equals( set.name ) ) {
++//                    source set.java
++//
++//                    if( classpath ) {
++//                        classpath += set.classes + set.compileClasspath
++//                    }
++//                    else {
++//                        classpath = set.classes + set.compileClasspath
++//                    }
++//                }
++//            }
++//        }
++//    }
++    aggregator {
++        excludeSourceSetName 'test'
++        parent.subprojects.each{ subProject->
++            if ( ! subProjectsToSkipForJavadoc.contains( subProject.name ) ) {
++                project subProject
++            }
++        }
++    }
++}
++
++aggregateJavadocs.doLast {
++    copy {
++        from new File( projectDir, 'src/javadoc/images' )
++        into new File( javadocBuildDir.dir, "/images" )
++    }
++}
++
++System.out.println("Archives config : " + parent.project( 'hibernate-core' ).configurations.archives.files );
++
++// release bundles ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++releaseBuildDir = dir( buildDirName )
++
++//task prepareReleaseBundles( dependsOn: [buildDocs, aggregateJavadocs, uberJar] )
++task prepareReleaseBundles( dependsOn: [aggregateJavadocs] )
++
++releaseCopySpec = copySpec {
++    from new File( parent.projectDir, 'lgpl.txt' )
++    from new File( parent.projectDir, 'changelog.txt' )
++    from new File( parent.projectDir, 'hibernate_logo.gif' )
++
++    into('lib/required') {
++        from parent.project( 'hibernate-core' ).configurations.provided.files { dep -> dep.name == 'jta' }
++        from parent.project( 'hibernate-core' ).configurations.runtime
++        from parent.project( 'hibernate-core' ).configurations.archives.allArtifactFiles.filter{ file -> !file.name.endsWith('-sources.jar') }
++    }
++
++    into('lib/bytecode/cglib') {
++        from parent.project( 'hibernate-core' ).configurations.provided.files { dep -> dep.name == 'cglib' }
++    }
++
++    into('lib/bytecode/javassist') {
++        from parent.project( 'hibernate-core' ).configurations.provided.files { dep -> dep.name == 'javassist' }
++    }
++
++    into( 'lib/jpa' ) {
++        from parent.project( 'hibernate-entitymanager' ).configurations.archives.allArtifactFiles.filter{ file -> !file.name.endsWith('-sources.jar') }
++        from(
++                parent.project( 'hibernate-entitymanager' ).configurations.runtime
++                        - parent.project( 'hibernate-core' ).configurations.runtime
++                        - parent.project( 'hibernate-core' ).configurations.archives.allArtifactFiles
++        )
++    }
++
++    into( 'lib/envers' ) {
++        from(
++                ( parent.project( 'hibernate-envers' ).configurations.archives.allArtifactFiles.filter{ file -> !file.name.endsWith('-sources.jar') }
++                        + parent.project( 'hibernate-envers' ).configurations.runtime )
++                        - parent.project( 'hibernate-core' ).configurations.runtime
++                        - parent.project( 'hibernate-core' ).configurations.archives.allArtifactFiles
++                        - parent.project( 'hibernate-entitymanager' ).configurations.runtime
++                        - parent.project( 'hibernate-entitymanager' ).configurations.archives.allArtifactFiles
++        )
++    }
++
++    ['hibernate-c3p0', 'hibernate-proxool', 'hibernate-ehcache', 'hibernate-infinispan',
++            'hibernate-oscache', 'hibernate-swarmcache'].each { feature ->
++        final String shortName = feature.substring( 'hibernate-'.length() );
++        into('lib/optional/' + shortName) {
++            from (
++                    ( parent.project( feature ).configurations.archives.allArtifactFiles.filter{ file -> !file.name.endsWith('-sources.jar') }
++                            + parent.project( feature ).configurations.runtime )
++                            - parent.project( 'hibernate-core' ).configurations.runtime
++                            - parent.project( 'hibernate-core' ).configurations.archives.allArtifactFiles
++            )
++        }
++    }
++
++//    into('documentation/manual') {
++//        from new File( project.buildDir, 'docbook/publish' )
++//    }
++
++    into('documentation/javadocs') {
++        from javadocBuildDir.dir
++    }
++
++    into( 'project' ) {
++        from ( rootProject.projectDir ) {
++            exclude( '.git' )
++            exclude( '.gitignore' )
++            exclude( 'changelog.txt' )
++            exclude( 'lgpl.txt' )
++            exclude( 'hibernate_logo.gif' )
++            exclude( 'tagRelease.sh' )
++            exclude( 'gradlew' )
++            exclude( 'gradlew.bat' )
++            exclude( 'wrapper/*' )
++            exclude( '**/.gradle/**' )
++            exclude( '**/target/**' )
++            exclude( '.idea' )
++            exclude( '**/*.ipr' )
++            exclude( '**/*.iml' )
++            exclude( '**/*.iws' )
++            exclude( '**/atlassian-ide-plugin.xml' )
++            exclude( '**/.classpath' )
++            exclude( '**/.project' )
++            exclude( '**/.settings' )
++            exclude( '**/.nbattrs' )
++        }
++    }
++}
++
++task buildReleaseZip( type: Zip, dependsOn: [prepareReleaseBundles] ) {
++    description = "Build release bundle in ZIP format"
++    baseName = 'hibernate-release'
++    destinationDir = releaseBuildDir.dir
++    with project.releaseCopySpec
++}
++
++task buildReleaseTgz( type: Tar, dependsOn: [prepareReleaseBundles] ) {
++    description = "Build release bundle in GZIP format"
++    baseName = 'hibernate-release'
++    destinationDir = releaseBuildDir.dir
++    compression = Compression.GZIP
++    with project.releaseCopySpec
++}
++
++task buildReleaseBundles( dependsOn: [buildReleaseZip,buildReleaseTgz] ) {
++    description = "Build release bundle in all formats"
++}
+diff --git a/settings.gradle b/settings.gradle
+index 4f875a4bb3..f2f5c37050 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -1,18 +1,20 @@
+ include 'hibernate-core'
+ include 'hibernate-entitymanager'
+ include 'hibernate-envers'
+ 
+ include 'hibernate-c3p0'
+ include 'hibernate-proxool'
+ 
+ include 'hibernate-ehcache'
+ include 'hibernate-infinispan'
+ include 'hibernate-oscache'
+ include 'hibernate-swarmcache'
+ 
++include 'release'
++
+ 
+ rootProject.children.each { project ->
+     project.buildFileName = "${project.name}.gradle"
+     assert project.projectDir.isDirectory()
+     assert project.buildFile.isFile()
+ }
+\ No newline at end of file

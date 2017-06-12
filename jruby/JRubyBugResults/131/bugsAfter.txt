@@ -1,0 +1,2 @@
+1852918db0 Fix JRUBY-5364: become_java! / RubyClass.reify regression
+6eb8df5bd5 Fix JRUBY-4871: [1.9] Attempt to invoke any method on Delegator leads to ClassCastException

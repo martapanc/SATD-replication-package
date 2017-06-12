@@ -1,0 +1,16 @@
+3fa818235 Bug 60812 - JMeterThread does not honor contract of JMeterStopTestNowException Bugzilla Id: 60812
+520166ca4 Bug 60797 - TestAction in pause mode can last beyond configured duration of test Bugzilla Id: 60797
+ea7682133 Bug 60564 - Migrating LogKit to SLF4J - core/testelement,threads,util,visualizers package Contributed by Woonsan Ko This closes #273 Bugzilla Id: 60564
+bd3b94bb5 Bug 60530 - Add API to create JMeter threads while test is running Based on a contribution by Logan Mauzaize & Maxime Chassagneux Bugzilla Id: 60530
+7d8faded6 Sonar : Fix errors, code smells and false-positive Also use Timer.isModifiable() introduced within Bug 60018 Bugzilla Id: 60018
+01618c3e6 Bug 60018 - Timer : Add a factor to apply on pauses Bugzilla Id: 60018
+b32997c38 Bug 60049 - When using Timers with high delays or Constant Throughput Timer with low throughput, Scheduler may take a lot of time to exit, same for Shutdown test Comment code Bugzilla Id: 60049
+3fd2896a6 Bug 60049 - When using Timers with high delays or Constant Throughput Timer with low throughput, Scheduler may take a lot of time to exit, same for Shutdown test Bugzilla Id: 60049
+482e1edb1 Bug 60050 - CSV Data Set : Make it clear in the logs when a thread will exit due to this configuration Bugzilla Id: 60050
+5f87f3092 Bug 59882 - Reduce memory allocations for better throughput Based on PR 217 contributed by Benoit Wiart (b.wiart at ubik-ingenierie.com)
+28c3e8d2e Bug 59133 - Regression in custom Thread Group in nightly build before 3.0 (6 march 2016) #resolve #164 https://github.com/apache/jmeter/pull/164 Bugzilla Id: 59133
+6c9d00ae1 Bug 59067 - JMeter fails to iterate over Controllers that are children of a TransactionController having "Generate parent sample" checked after an assertion error occurs on a Thread Group with "Start Next Thread Loop" Bugzilla Id: 59067
+fd62770a0 Bug 58736 - Add Sample Timeout support Ensure sampleEnded is called Drop property  JMeterThread.sampleStarted, users who don't want to use the feature won't add the Sample Timeout element Bugzilla Id: 58736
+cbdd5614d Bug 58728 - Drop old behavioural properties Bugzilla Id: 58728
+373a03821 bug 52968 added a call to processSampler in order to mark the transaction sampler in error and generate the associated sampler result. Add an explanation for that and extract that code in a dedicated method to make clear that the triggerEndOfLoopOnParentControllers will not process any new sampler #resolve #56
+6cb0db932 Bug 58726 - Remove the jmeterthread.startearlier parameter #resolve #58 Bugzilla Id: 58726

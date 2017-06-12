@@ -1,0 +1,25 @@
+c46daa4cf0 HHH-7440, HHH-7368, HHH-7369, HHH-7370 - Redesign dialect-specific LIMIT clause appliance
+3f6e6339d9 HHH-7068 - Cursor state not valid error from AS400
+4270b4777f HHH-7068 - Fix for "Cursor state not valid" error from AS400 on queries with setFirstResult.
+6c7379c38f HHH-6817 Logging of strings containing the percent character broken
+8fcbf71a11 HHH-6809: Changed Loader.hasMaxRows() to return false if maxRows is zero, and removed bad expectation from FooBarTest.testFindByCriteria()
+129c0f1348 HHH-6732 more logging trace statements are missing guards against unneeded string creation
+4a4f636caf HHH-6330 - Remove entity mode switching capability
+e01bb8a911 HHH-6258:  Wrap trace and debug log statements to lessen the load on JBossLogManagerLogger.doLog.  This improved throughput quite a bit.
+360317eedf HHH-6200 - Split org.hibernate.hql package into api/spi/internal
+4ee0d4237d HHH-6198 - Split org.hibernate.event package into api/spi/internal
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+36ba1bcafb HHH-6192 - Split org.hibernate.collection package up into api/sip/internal
+c930ebcd7d HHH-6191 - repackage org.hibernate.cache per api/spi/internal split
+ff74ceaaa4 HHH-6155 - Migrate o.h.impl package to o.h.internal
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes
+ef35cd7be3 HHH-6076 - query with setFirstResult throws Exception on derby
+de38d784c7 HHH-6076 - query with setFirstResult throws Exception on derby
+fe8c7183d1 HHH-5697 - Support for multi-tenancy
+ad5f88c2d6 HHH-5961 : Contextual LOB creator is used when the JDBC driver does not support JDBC4 Connection.createBlob()
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+08d9fe2117 HHH-5949 - Migrate, complete and integrate TransactionFactory as a service
+e7daff9d93 HHH-5782 HHH-5783 : Remove "throws SQLException" from ConnectionManager methods; ConnectionManager should set timeout
+b006a6c3c5 HHH-5765 : Refactor JDBCContext/ConnectionManager spi/impl and to use new proxies
+3ca8216c7c HHH-5765 : Wire in SQLExceptionHelper for converting SQLExceptions
+34c2839dcc HHH-5616 - Switch to Gradle for builds

@@ -1,0 +1,3 @@
+bc41e092e Bug 57193: Put <a...> on one line, as it will confuse javadoc  otherwise. Bugzilla Id: 57193
+e9bcada30 Bug 52519 - XMLSchemaAssertion uses JMeter JVM file.encoding instead of response encoding
+0a717bbad Bug 41873 - Add name to AssertionResult and display AssertionResult in ViewResultsFullVisualizer

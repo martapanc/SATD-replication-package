@@ -1,0 +1,1 @@
+1852918db0 Fix JRUBY-5364: become_java! / RubyClass.reify regression

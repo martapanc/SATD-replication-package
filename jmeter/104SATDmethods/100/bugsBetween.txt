@@ -1,0 +1,3 @@
+9de489add Bug 56708 - __jexl2 doesn't scale with multiple CPU cores Bugzilla Id: 56708
+ea92414e2 Bug 54199 - Move to Java 6 add @Override Bugzilla Id: 54199
+4171b5a6f Bug 52680 - Mention version in which function was introduced

@@ -1,0 +1,14 @@
+021d52822 make AntClassLoader$ResourceEnumeration adhere to the Enumeration contract.  PR 51579
+b33d33d75 embrace java.util.jar.  PR 48853
+3e2cbab6b reduce performance loss in AntClassLoader from 1000% to about 50%.  PR 48853
+44b6fcc18 use the same logic as getResource in getResourceAsStream.  PR 44103
+329f6d356 report name of corrupt ZIP to System.err,  PR 47593
+c8e91147e properly set CodeSource when loading classes.  PR 20174
+26f846b83 allow access to parent.  PR 35436
+8ebe808f7 override getResources in a new AntClassLoader subclass that will be used consistently when Ant is running on Java5+.  PR 46752
+59f1d6794 don't add the same file more than once.  PR 45848.
+758a6bcb9 Pr: 42259 inspired on optimization suggested by Tom Brus
+44cf7f076 solve problem refering jars specfied by Class-Path attribute in manifest of a ant task jar file, when this ant task jar file is located in a directory with space. Bugzilla Report 37085.
+8fdf27262 Impossible to use implicit classpath for <taskdef> when Ant core loader != Java application loader and Path.systemClassPath taken from ${java.class.path} PR: 30161 Submitted by: Jesse Glick (jglick at netbeans dot org)
+55c133cec Generate proper file URLs in AntClassLoader#getResource, PR: 28060
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof

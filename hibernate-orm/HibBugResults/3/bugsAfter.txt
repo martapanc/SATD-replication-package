@@ -1,0 +1,39 @@
+2c968538a5 HHH-9728 - Audit Settings to decide what should become a SessionFactoryServiceRegistry service
+9caca0ce37 HHH-9490 - Migrate from dom4j to jaxb for XML processing; HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc); HHH-7078 - Split NamingStrategy into ImplicitNamingStrategy/PhysicalNamingStrategy; HHH-6005 - Better handling of implicit column naming with @ElementCollection of @Embeddables; HHH-9633 - Add tests that explicitly test the "main" NamingStrategy impls
+cd590470c0 HHH-8741 - More checkstyle cleanups
+1e74abf511 HHH-8654 - Ability to get notified of interesting Session events
+f073b979d4 HHH-8654 - Ability to get noitified of interesting Session events
+fdcfeca511 HHH-4118 warn if hibernate.hbm2ddl.auto has unrecognized value
+bcd6185809 HHH-4910 The collection cache is evicted if a related collection element is inserted, removed or updated
+489ee4a734 HHH-7943 Added support for ehcache and infinispan strategies and OSGi services.  Numerous ehcache and infinispan CL fixes.
+b6d740d6d2 HHH-7910 Transaction timeout can cause non-threadsafe session access by reaper thread
+2ff69d24c4 HHH-7872 - Improved L2 cache storage of "reference" data
+06b0faaf57 HHH-7746 - Investigate alternative batch loading algorithms
+3e69b7bd53 HHH-7725 - Make handling multi-table bulk HQL operations more pluggable
+c9fd71fe57 HHH-7683 - Optimize performance of AbstractLazyInitializer.prepareForPossibleSpecialSpecjInitialization()
+4ad49a02c9 HHH-7556 - Clean up packages
+a385792178 HHH-7305 - NPE in LogicalConnectionImpl when multi tenancy is used without providing a release mode manually
+244623cce9 HHH-6822 - Split notions of (1) "naming" a SessionFactory and (2) specifying a JNDI name to which to bind it
+6c7379c38f HHH-6817 Logging of strings containing the percent character broken
+129c0f1348 HHH-6732 more logging trace statements are missing guards against unneeded string creation
+182150769a HHH-6371 - Develop metamodel binding creation using a push approach
+8a5415d367 HHH-6359 : Integrate new metamodel into entity tuplizers
+92ad3eed80 HHH-6297 remove legacy cache api
+ba44ae26cb HHH-6110 : Integrate new metamodel into persisters
+360317eedf HHH-6200 - Split org.hibernate.hql package into api/spi/internal
+c930ebcd7d HHH-6191 - repackage org.hibernate.cache per api/spi/internal split
+16e86687c9 HHH-6150 - JBoss AS7 integration work
+62da5aa5bc HHH-6097 - Review log levels, especially related to i18n messages
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes
+3ff0288da5 HHH-5697 - Support for multi-tenancy
+815baf4348 HHH-6051 - Create a sessionfactory scoped ServiceRegistry
+19791a6c7d HHH-6026 - Migrate bytecode provider integrations to api/spi/internal split
+82d2ef4b1f HHH-6025 - Remove cglib dependencies
+ad5f88c2d6 HHH-5961 : Contextual LOB creator is used when the JDBC driver does not support JDBC4 Connection.createBlob()
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+73e85ee761 HHH-5781 - Refactor code in org.hibernate.jdbc to spi/internal and remove obsolete code
+08d9fe2117 HHH-5949 - Migrate, complete and integrate TransactionFactory as a service
+7262276fa9 HHH-5778 : Wire in new batch code
+b006a6c3c5 HHH-5765 : Refactor JDBCContext/ConnectionManager spi/impl and to use new proxies
+fda684a5a6 HHH-5765 : remove dialect and connection provider from Settings
+3ca8216c7c HHH-5765 : Wire in SQLExceptionHelper for converting SQLExceptions

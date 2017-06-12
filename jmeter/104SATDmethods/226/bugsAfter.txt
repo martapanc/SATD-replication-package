@@ -1,0 +1,5 @@
+1ee63ff4b Bug 60830 Timestamps in CSV file could be corrupted due to sharing a SimpleDateFormatter across threads Bugzilla Id: 60830
+46234ac04 Bug 60830 - Timestamps in CSV file could be corrupted due to sharing a SimpleDateFormatter across threads Bugzilla Id: 60830
+88a092424 Bug 60564 - Migrating LogKit to SLF4J - core/samplers,save,services,swing,testbeans (1/2) Contributed by Woonsan Ko This comments #271 Bugzilla Id: 60564
+bac01a627 Bug 60229 - Add a new metric : sent_bytes Bugzilla Id: 60229
+58c262ee3 Bug 60106 - Settings defaults : Switch "jmeter.save.saveservice.connect_time" to true (after 3.0) Bugzilla Id: 60106

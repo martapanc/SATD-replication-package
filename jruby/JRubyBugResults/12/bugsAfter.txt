@@ -1,0 +1,43 @@
+bcc26747f5 Use RubyModule.JavaClassKindOf fixes jruby/jruby#614
+efe615a2a3 IO.copy_stream should handle objects that respond to read or write. Fixes #437
+3f56e551e4 Fix JRUBY-7046 - always copy files in 128M chunks.  Might be slightly slower than the optimized version that tried to transfer the entire file with the fallback, but that one relied on parsing exception messages, and I think the fallback was broken anyway (always copied from the same file position).
+6de4987a92 Rework the previous logic (calling #to_path) for #393. Also, fix #399.
+ebbfbacfc1 Revert "Fix JRUBY-6974"
+f5e2f5fd0b Fix JRUBY-6974
+73ce313ae3 Revert "Fix JRUBY-6162"
+daa36aa25f Partially fix JRUBY-6893: fcntl(Fcntl::F_GETFL) always return 0
+2d497afa89 Fix JRUBY-6162
+1b3665d0fc Fix JRUBY-6851: IO#set_encoding doesn't work with Encoding object
+8fecee704c Fix JRUBY-6572 and unexclude a bunch of passing tests.
+c725e7dae4 Also fix JRUBY-6180 on Windows
+353fea102b Fix JRUBY-5876
+30095bb645 Fix JRUBY-5222
+cb777c23ff Partial fix for JRUBY-6442
+f8408dac26 Fix JRUBY-5348
+c0b57cdb87 Fix JRUBY-4913
+0ae6d4570a Try fixing JRUBY-6180. Error message matching may not be correct, so we will need confirmation.
+00d30e159b Fix JRUBY-6291: Closing One Stream From IO.popen4 Results in Stream Closed Error When Reading Other Streams
+ed560a8ca7 Fix JRUBY-6198: When calling dup on file open in binmode the new object does not respect binmode
+3adbb9e36d Fix JRUBY-6205: 'Bad file descriptor' when using IO.popen4 with OpenJDK 7
+b7c3cc24bd Fix JRUBY-6212: IO#inspect in 1.9 could be prettier
+c0615e746e Fix for JRUBY-6101.
+ac992dfaa8 Fix JRUBY-5888: missing File#readbyte
+7bca899059 Move org.jruby.ext.ffi.Util.checkStringSafety() to org.jruby.util.StringSupport.checkStringSafety(). This should fix JRUBY-5835: [ruboto] File#read fails with jruby-jars-1.6.2
+0b55907500 Fix JRUBY-4828: Null-byte vulnerability via org.jruby.ext.ffi.Util.checkStringSafety()
+dc2ff992f5 Fix JRUBY-5685: IO.popen4 does not work when arguments contain *
+5d094dbf5c Fix JRUBY-5688: Process::Status#pid is missing
+864087b8c8 Fix JRUBY-5532: IO.foreach: Can't convert Hash into String
+15832d3b4d Fix JRUBY-5514: Errno::EBADF is sometimes raised instead of IOError when TCPSocket#readline is called after TCPSocket#close
+26351a1be2 Fix JRUBY-5487: Kernel#select's read_array parameter is not respected
+2e751d6699 Fix JRUBY-5503: Timeout::timeout makes IO#close block if there's a #read present
+5c55540d73 fix JRUBY-5400: [1.9] IO.ungetc needs to accept multibyte char
+20924a2ab8 fix JRUBY-5436: File.open mode doesnt accept "r:ENC:-"
+891409e4b2 Improve and expand fix for JRUBY-5406 and centralize encoding lookup logic in EncodingService.
+2270b58753 Fix JRUBY-5389: IO.popen doesn't support Array of String's arg in 1.9 mode
+d60304cf18 Fix for JRUBY-5193: a File named "classpath:/path" uses ByteList's classloaders
+b89d8a699f Fix JRUBY-4595: [1.9] File.binread is missing
+99a5b31897 Additional fix for JRUBY-5122: fread read size calcuration error
+2ae49952b1 Fix IO#autoclose= to take an argument and expose that and IO#autoclose in 1.8 mode. JRUBY-5114.
+0b7aed72d4 Alternative fix for JRUBY-5114: provide an autoclose flag on all IO objects that will allow turning off the close-on-finalize behavior. Also modified the "to_io" impls for InputStream, OutputStream, and Channel to take an :autoclose option.
+3871049378 Fix for JRUBY-4908: IO.popen4 returns the wrong pid in Linux
+1df3506c0a Fix for JRUBY-4908: IO.popen4 returns the wrong pid in Linux

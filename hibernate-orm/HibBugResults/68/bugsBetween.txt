@@ -1,0 +1,12 @@
+9938937fe7 HHH-8637 - Downcasting with TREAT operator should also filter results by the specified Type
+af03365c86 HHH-8573: Persister is taken according to the actual type of the replaced object
+45d46b619b HHH-6813 Corrected EntityType#getRHSUniqueKeyPropertyName() and added regression test.
+bc6f5d8a17 HHH-6813 @Id @OneToOne cause NullPointerException during query
+f77b068e91 HHH-7714 Add support for EntityMode.MAP to JPA Criteria API (cherry picked from commit 2758b8b49400b3aae6fbbfc78226f1f622f1bae5)
+32e8765615 HHH-7771 : Deprecate obsolete Type, AssociationType, and TypeFactory methods
+9968ce3adb HHH-7359 Corrected trace logging of HibernateProxy objects
+37b645999c HHH-7225 - NullPointerException after persisting null entity value as natural-Id
+4a4f636caf HHH-6330 - Remove entity mode switching capability
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

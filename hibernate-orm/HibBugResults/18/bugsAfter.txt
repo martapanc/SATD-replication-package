@@ -1,0 +1,3 @@
+4ee0d4237d HHH-6198 - Split org.hibernate.event package into api/spi/internal
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes

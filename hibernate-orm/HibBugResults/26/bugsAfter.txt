@@ -1,0 +1,6 @@
+360317eedf HHH-6200 - Split org.hibernate.hql package into api/spi/internal
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+2641842ba9 HHH-5843 - Avoid useless branches during HQL parsing when trace logging is disabled
+adbe3920f1 HHH-5843 - Avoid useless branches during HQL parsing when trace logging is disabled

@@ -1,0 +1,5 @@
+996d567731 HHH-6214 Converting RegionFactory to a Service
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+c930ebcd7d HHH-6191 - repackage org.hibernate.cache per api/spi/internal split
+815baf4348 HHH-6051 - Create a sessionfactory scoped ServiceRegistry
+731d00fd6d HHH-6047 - allow nesting of ServiceRegistry

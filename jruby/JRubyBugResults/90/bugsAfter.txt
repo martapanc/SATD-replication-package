@@ -1,0 +1,3 @@
+d9090c3aa9 Use lseekLong to get lseek return value. Fixes #3817.
+623bc59746 Only treate -1 ret from lseek as error. Fixes #3435.
+f156123392 Only set EAGAIN when written == 0 and length > 0. Fixes #2957

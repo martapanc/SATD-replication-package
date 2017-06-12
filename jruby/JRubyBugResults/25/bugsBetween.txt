@@ -1,0 +1,1 @@
+20ff6278cc Fix JRUBY-5322: NPE forcing to compile a script

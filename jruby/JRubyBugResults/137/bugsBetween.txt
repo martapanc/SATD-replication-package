@@ -1,0 +1,2 @@
+cb9ebb7286 JI cleanup: remove old hack/workaround for long-since-fixed JRUBY-948; provide underscore __aliases__ for methods removed from blank-slated JavaPackageModuleTemplate, to facilitate workarounds for issues like JRUBY-1086/JRUBY-1275 (IRB tab completion). All this code eventually needs to move to Java, but this should help in the interim.
+33d8b80e93 Fix for JRUBY-1197: handle digits in Java method names gracefully when turning into non-camel-cased.

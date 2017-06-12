@@ -1,0 +1,2 @@
+d493ef889d Fix JRUBY-1976, make Java Fields coerce things that aren't JavaObjects correctly, such as JavaConstructor, JavaMethod and JavaField.
+c311eb0020 Fix for JRUBY-2843, fix basicsocket#close_read

@@ -1,0 +1,6 @@
+8e2f2a9da6 HHH-8597 : Delete org.hibernate.loader.plan2 and related code
+dc7cdf9d88 HHH-8276 - Integrate LoadPlans into UniqueEntityLoader (PoC)
+1825a4762c HHH-8211 Checkstyle and FindBugs fix-ups
+b6fd7bf223 HHH-7841 - Redesign Loader
+f3298620ee HHH-7841 - Redesign Loader
+560a397a01 HHH-7841 - Redesign Loader

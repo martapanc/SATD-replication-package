@@ -1,0 +1,7 @@
+6f9771e84 Bug 43450 - add save/restore of error count; fix Calculator to use error count
+be023bb62 Bug 43450 (partial fix) - Allow SampleCount to be saved/restored from CSV files
+9a3d4075a Bug 43430 - Count of active threads is incorrect for remote samples
+1b221e055 Bug 42919 - Failure Message blank in CSV output [now records first non-blank message]
+fc0611c06 Bug 41277 - add Latency and Encoding to CSV output
+1f186f591 Bug 40772 - correctly parse missing fields
+5c126dc98 Bug 29481 - fix reloading sample results so subresults not counted twice

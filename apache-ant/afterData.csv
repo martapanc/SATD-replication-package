@@ -1,0 +1,185 @@
+1
+10
+11;/11/After/When loading re 6ea9dc102_diff.java;0;0;0;0;0;0;0
+12
+13
+14;/14/After/When loading re 6ea9dc102_diff.java;0;0;0;0;0;0;0
+15
+16
+17;/17/After/add an option t a0c1be104_diff.java;0;0;0;0;0;0;0
+17;/17/After/Add support for 53db3a260_diff.java;0;0;0;0;0;0;0
+17;/17/After/Allow params of f0565366f_diff.java;0;0;0;0;0;0;0
+17;/17/After/microoptimizati 5f20b9914_diff.java;0;0;0;0;0;0;0
+17;/17/After/Minor updates b 0df2b1de3_diff.java;0;0;0;0;0;0;0
+17;/17/After/PR 56748 Spelli 43844a7e6_diff.java;0;0;0;0;0;0;0
+17;/17/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+17;/17/After/Try to load Tra 58069d347_diff.java;0;0;0;0;0;0;0
+18
+19;/19/After/configurable Us 834d0d120_diff.java;0;0;0;0;0;0;0
+19;/19/After/PR 56747 Docume 47a3b5144_diff.java;0;0;0;0;0;0;0
+2
+20
+21
+22
+23
+24;/24/After/adding if and u 46c940785_diff.java;0;0;0;0;0;0;0
+24;/24/After/allow targets t bd52e7b9b_diff.java;0;0;0;0;0;0;0
+24;/24/After/extension-point 13941782f_diff.java;0;0;0;0;0;0;0
+24;/24/After/fix for Target  51ce8fac7_diff.java;0;0;0;0;0;0;0
+24;/24/After/PR 47830 : impl df121a6cf_diff.java;0;0;0;0;0;0;0
+25
+26
+27;/27/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+28;/28/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+29;/29/After/add Git, Mercur 43de42a38_diff.java;0;0;0;0;0;0;0
+29;/29/After/don't assume Fi bea36bbd2_diff.java;0;0;0;0;0;0;0
+29;/29/After/don't run into  1d3ca73f3_diff.java;0;0;0;0;0;0;0
+29;/29/After/don't scan dire 6a87b53fc_diff.java;0;0;0;0;0;0;0
+29;/29/After/honor followsym 446436982_diff.java;0;0;0;0;0;0;0
+29;/29/After/Make DirectoryS 17d4b3461_diff.java;0;0;0;0;0;0;0
+29;/29/After/removeNotFollow e46fd219c_diff.java;0;0;0;0;0;0;0
+29;/29/After/restrict impact d85d2da8e_diff.java;0;0;0;0;0;0;0
+29;/29/After/synchronize acc 379895a02_diff.java;0;0;0;0;0;0;0
+3
+30;/30/After/microoptimizati 5f20b9914_diff.java;0;0;0;0;0;0;0
+30;/30/After/PR 54026 Zip ta 0282d8fe2_diff.java;0;0;0;0;0;0;0
+30;/30/After/Provide more co ef4c94df7_diff.java;0;0;0;0;0;0;0
+30;/30/After/weed out race-c 234c1d9ff_diff.java;0;0;0;0;0;0;0
+31
+32
+33
+34;/34/After/ Javadoc.postPr d3f98c2b7_diff.java;0;0;0;0;0;0;0
+34;/34/After/failOnWarning a 812852292_diff.java;4;0;4;0;0;0;0
+34;/34/After/NPE in javadoc  39734fdce_diff.java;0;0;0;0;0;0;0
+35;/35/After/PR 56748 Spelli 43844a7e6_diff.java;0;0;0;0;0;0;0
+36;/36/After/PR 52706: allow abec7e48e_diff.java;0;0;0;0;0;0;0
+36;/36/After/PR 56748 Spelli 43844a7e6_diff.java;0;0;0;0;0;0;0
+36;/36/After/provide a Map b ff41336fc_diff.java;0;0;0;0;0;0;0
+37
+38
+39
+4
+40;/40/After/<javac>'s execu f0c61ad2f_diff.java;0;0;0;0;0;0;0
+40;/40/After/add an option t 5ecf92bf5_diff.java;0;0;0;0;0;0;2
+40;/40/After/Allow users to  c5a945fe3_diff.java;0;0;0;0;0;0;3
+40;/40/After/Be a little mor cc9f4f71f_diff.java;0;0;0;0;0;0;0
+40;/40/After/compiler attrib a245b4e9e_diff.java;0;0;0;0;0;0;0
+40;/40/After/Empty package-i 28c651a95_diff.java;0;0;0;0;0;0;5
+40;/40/After/PR 37546: Use a f6af37217_diff.java;0;0;0;0;0;0;0
+40;/40/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+40;/40/After/support sources 4a07176ab_diff.java;0;0;0;0;0;0;0
+41
+42
+43
+44;/44/After/Eclipse tries t 1348ebb91_diff.java;0;0;0;0;0;0;0
+45;/45/After/<javac>'s execu f0c61ad2f_diff.java;0;0;0;0;0;0;0
+45;/45/After/add an option t 5ecf92bf5_diff.java;0;0;0;0;0;0;0
+45;/45/After/Allow users to  c5a945fe3_diff.java;0;0;0;0;0;0;0
+45;/45/After/Be a little mor cc9f4f71f_diff.java;0;0;0;0;0;0;0
+45;/45/After/compiler attrib a245b4e9e_diff.java;0;0;0;0;0;0;0
+45;/45/After/Empty package-i 28c651a95_diff.java;0;0;0;0;0;0;0
+45;/45/After/PR 37546: Use a f6af37217_diff.java;0;0;0;0;0;0;0
+45;/45/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+45;/45/After/support sources 4a07176ab_diff.java;0;0;0;0;0;0;0
+46
+47;/47/After/<javac>'s execu f0c61ad2f_diff.java;0;0;0;0;0;0;0
+47;/47/After/add an option t 5ecf92bf5_diff.java;0;0;0;0;0;0;0
+47;/47/After/Allow users to  c5a945fe3_diff.java;0;0;0;0;0;0;0
+47;/47/After/Be a little mor cc9f4f71f_diff.java;0;0;0;0;0;0;0
+47;/47/After/compiler attrib a245b4e9e_diff.java;0;0;0;0;0;0;0
+47;/47/After/Empty package-i 28c651a95_diff.java;0;0;0;0;0;0;0
+47;/47/After/PR 37546: Use a f6af37217_diff.java;0;0;0;0;0;0;0
+47;/47/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+47;/47/After/support sources 4a07176ab_diff.java;0;0;0;0;0;0;0
+48
+49
+5
+50;/50/After/PR 56748 Spelli 43844a7e6_diff.java;0;0;0;0;0;0;0
+51;/51/After/Add a magic pro fa52b460c_diff.java;0;0;0;0;0;0;0
+51;/51/After/Add make's keep b7c2f5f64_diff.java;0;0;0;0;0;0;0
+51;/51/After/Add subproject  2c68e6ab6_diff.java;0;0;0;0;0;0;0
+51;/51/After/Added multiple  c672e8778_diff.java;0;0;0;0;0;0;0
+51;/51/After/Avoid Concurren 11b928d06_diff.java;0;0;0;0;0;0;0
+51;/51/After/better reportin 6356d19ab_diff.java;0;0;0;0;0;0;0
+51;/51/After/Don't use getRe afb49574c_diff.java;0;0;0;0;0;0;0
+51;/51/After/Enhance perform 695ce2ed1_diff.java;0;0;0;0;0;0;0
+51;/51/After/Ensure logging  7573ef75f_diff.java;0;0;0;0;0;0;0
+51;/51/After/filterset used  e4209b284_diff.java;0;0;0;0;0;0;0
+51;/51/After/fix NPE when lo f00dea8ea_diff.java;0;0;0;0;0;0;0
+51;/51/After/Flush output of 987c943d0_diff.java;0;0;0;0;0;0;0
+51;/51/After/Javadoc fixes f e0b5c6045_diff.java;0;0;0;0;0;0;0
+51;/51/After/make allowNativ b8a829b11_diff.java;0;0;0;0;0;0;0
+51;/51/After/new attribute a c1142173a_diff.java;0;0;0;0;0;0;0
+51;/51/After/NPE in Project. b0d9f8aa0_diff.java;0;0;0;0;0;0;0
+51;/51/After/Obtain subproje 629a2649e_diff.java;0;0;0;0;0;0;0
+51;/51/After/Properties.prop 39868ef36_diff.java;0;0;0;0;0;0;0
+51;/51/After/Properties.prop 7e145de4f_diff.java;0;0;0;0;0;0;0
+51;/51/After/Refactored Targ 284174e86_diff.java;0;0;0;0;0;0;0
+51;/51/After/References not  12383504a_diff.java;0;0;0;0;0;0;0
+51;/51/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+51;/51/After/Remove synchron a7e2a93ee_diff.java;0;0;0;0;0;0;0
+51;/51/After/Try to get the  c692a67a3_diff.java;0;0;0;0;0;0;0
+52
+53
+54
+55
+56
+57
+58
+59
+6;/6/After/<apply> differe 0e2cfd51d_diff.java;0;0;0;0;0;0;0
+6;/6/After/add Git, Mercur 43de42a38_diff.java;0;0;0;0;0;0;0
+6;/6/After/Allow <sync> to 28d39b09a_diff.java;0;0;0;0;0;0;0
+6;/6/After/Be a little mor cc9f4f71f_diff.java;0;0;0;0;0;0;0
+6;/6/After/do not scan nee 6ff7df960_diff.java;0;0;0;0;0;0;0
+6;/6/After/don't assume Fi bea36bbd2_diff.java;0;0;0;0;0;0;0
+6;/6/After/don't run into  1d3ca73f3_diff.java;0;0;0;0;0;0;0
+6;/6/After/don't scan dire 6a87b53fc_diff.java;0;0;0;0;0;0;0
+6;/6/After/Eliminate possi 0777fa853_diff.java;0;0;0;0;0;0;0
+6;/6/After/honor followsym 446436982_diff.java;0;0;0;0;0;0;0
+6;/6/After/Make DirectoryS 17d4b3461_diff.java;0;0;0;0;0;0;0
+6;/6/After/Not 100% sure t 2fbb2e62a_diff.java;0;0;0;0;0;0;0
+6;/6/After/Optimize Direct 787728897_diff.java;0;0;0;0;0;0;0
+6;/6/After/Optimize scanni 9a7f8d24f_diff.java;0;0;0;0;0;0;0
+6;/6/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+6;/6/After/removeNotFollow e46fd219c_diff.java;0;0;0;0;0;0;0
+6;/6/After/restrict impact d85d2da8e_diff.java;0;0;0;0;0;0;0
+6;/6/After/synchronize acc 379895a02_diff.java;0;0;0;0;0;0;0
+60
+61;/61/After/PR 56748 Spelli 43844a7e6_diff.java;0;0;0;0;0;0;0
+62;/62/After/PR 56748 Spelli 43844a7e6_diff.java;0;0;0;0;0;0;0
+63
+64;/64/After/microoptimizati 5f20b9914_diff.java;2;1;3;0;0;0;0
+65;/65/After/Adds functional 202be1f5e_diff.java;0;0;0;0;0;0;0
+65;/65/After/changed email a 85b203207_diff.java;0;0;0;0;0;0;0
+65;/65/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+66;/66/After/Adds functional 202be1f5e_diff.java;0;0;0;0;0;0;0
+66;/66/After/changed email a 85b203207_diff.java;0;0;0;0;0;0;0
+66;/66/After/remove authors  c885f5683_diff.java;0;0;0;0;0;0;0
+67
+68
+69
+7
+70;/70/After/deal more grace 9bd753321_diff.java;0;0;0;0;0;0;0
+8;/8/After/Merge handling  362376d62_diff.java;0;0;0;0;0;0;0
+9;/9/After/A bug in SQLExe 9a672c032_diff.java;0;0;0;0;0;0;0
+9;/9/After/Allow ant to co 352396620_diff.java;0;0;0;0;0;0;0
+9;/9/After/Allow more cont f97926a10_diff.java;0;0;0;0;0;0;0
+9;/9/After/Allow Result Se 740ed5fbf_diff.java;0;0;0;1;1;2;0
+9;/9/After/allow SQLWarnin eaffd9d71_diff.java;0;0;0;0;0;0;0
+9;/9/After/Allow subclasse 72e471f0b_diff.java;6;12;18;1;1;2;0
+9;/9/After/Avoid calling g be45954b9_diff.java;0;0;0;0;0;0;0
+9;/9/After/errorproperty a cfb2e0108_diff.java;2;0;2;0;0;0;0
+9;/9/After/Fix for SQLExec 2a1a857ad_diff.java;0;0;0;0;0;0;0
+9;/9/After/Fix performance f358c00ad_diff.java;0;0;0;0;0;0;0
+9;/9/After/fix resultset u 543148ca1_diff.java;0;0;0;0;0;0;0
+9;/9/After/Log all stateme f82a8c58d_diff.java;0;0;0;0;0;0;0
+9;/9/After/Minor updates b 0df2b1de3_diff.java;1;1;2;0;0;0;0
+9;/9/After/most likely fix 2f46b6af9_diff.java;2;1;3;0;0;0;0
+9;/9/After/new showWarning 1a8500873_diff.java;0;0;0;0;0;0;0
+9;/9/After/option to prese 2270580b7_diff.java;20;20;40;0;0;0;1
+9;/9/After/outputencoding  7dbdd6081_diff.java;5;0;5;0;0;0;0
+9;/9/After/Remove direct c 3396e7c32_diff.java;0;0;0;0;0;0;0
+9;/9/After/rowcountpropert 4e4a35935_diff.java;0;0;0;0;0;0;0
+9;/9/After/sql's onerror=' 02b3a7d13_diff.java;6;2;8;0;0;0;0
+9;/9/After/work on PR 2645 e1f227ae3_diff.java;0;0;0;0;0;0;0

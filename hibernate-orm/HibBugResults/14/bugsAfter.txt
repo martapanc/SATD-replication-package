@@ -1,0 +1,8 @@
+3a813dcbb4 HHH-11646 revert errant after -> afterQuery search and replace
+17b8d2e294 HHH-11538 - Skip generating joins for entity references used in equality and nullness predicates
+87e3f0fd28 HHH-10664 - Prep 6.0 feature branch - merge hibernate-entitymanager into hibernate-core (first sucessful full compile of consolidated hibernate-core)
+e64d028306 HHH-10122 - Deprecate ".class" property-style entity-type-expression format
+6bb8d03595 HHH-9637 : Join is reused when 2 explicit joins are used for the same ToOne association
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers
+611f8a0e1c HHH-9803 - Checkstyle fix ups
+6c404c30f7 HHH-9642 : Join fetch not performing join fetch for @Embeddable with @OneToMany

@@ -1,0 +1,2 @@
+a806626a27 HHH-6199 - Split org.hibernate.exception package into api/spi/internal
+34c2839dcc HHH-5616 - Switch to Gradle for builds

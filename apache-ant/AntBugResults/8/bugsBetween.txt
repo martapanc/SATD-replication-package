@@ -1,0 +1,11 @@
+c4c9d2552 clean up Inflater instance as some JDKs won't do it for us.  PR 42696.  Submitted by Mounir
+6cd0de102 Parse central directory part of ZIP extra fields.  PR 46637
+8264511a2 use nio for decoding of names - merge from commons-compress rev 746933
+3cb22aa1c Support more modern encoding flag where archives signal filenames as UTF-8.  Based on submissions by Wolfgang Glas to commons-compress and TAMURA Kent to Ant.  PR 45548.
+817fd3199 fix a bunch of findbugs reported problems in the zip, tar and bzip2 classes.  PR 46661
+601cdf67b Make sure ZIP archive is closed even when a RuntimeExpection occurs.  PR 46559
+9b4b922d2 fail early if ZipFile is applied to a non-ZIP archive.  PR 45463.  Suggested by Alison Winters.
+7d174c342 Made up my mind on the fix for PR 35000.  Empty != broken, so make it two separate use cases.
+80e8b2977 an archive with an empty central directory is broken.  PR 35000.  Submitted by Thomas Aglassinger.
+32f2e37a9 JDK 1.2 is EOL and documentation is no more available. Point to JDK 5 API PR: 37203
+b977b55da <unzip> and <untar> could leave streams open.  PR 34893

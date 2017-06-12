@@ -1,0 +1,64 @@
+377c300071 HHH-8162 Make unique constraint handling on schema update configurable
+cf921df1d0 HHH-8092 Added comment about unique constraints in schema update.
+d184cb3eb4 HHH-7462 - Make JACC service
+b5457f37e2 HHH-8092 Configuration#generateSchemaUpdateScript does not create unique constraints
+fbdca39506 HHH-1904 Identifier too long
+42f3422720 HHH-7890 Quoting identifiers breaks @UniqueConstraint
+394458f6a6 HHH-8010 Support app-managed EntityManagerFactory and SessionFactory creation by OSGi bundles
+8515ce197a HHH-8026 Duplicate constraint names with unique=true
+2725a7d49e HHH-4084 @UniqueConstraint(columnNames="") causes StringIndexOutOfBoundsException
+4d68ddf7b0 HHH-7991 Correct all instances of Thread.currentThread().getContextClassLoader()
+9ab924041d HHH-7957 - Integrate Public Review Draft of the JPA 2.1 spec : schema generation
+7976e2396a HHH-7580 - Complete 2-phase SessionFactory building design
+e7b188c924 HHH-5869 - Add suport for nationalized character mappings
+7b9b9b39c0 HHH-2448 Generate identical column aliases among cluster
+12c7ab93c3 HHH-7797 Simplified UniqueKey creation and corrected a couple of @UniqueConstraint bugs.
+41397f22d1 HHH-7797 Use unique indexes on nullable columns for DB2.  Correctly handle @UniqueConstraint table annotations on second passes.
+4204f2c5fe HHH-7797 Finished first take on UniqueDelegate and rolled into .cfg and .mapping
+4e434f6197 HHH-7721 SQLFunctionRegistry findSQLFunction does not honor case sensitivity
+8e30a2b86d HHH-7134 - Detection of wrong circularity when two tables with same name in different schemas
+4ad49a02c9 HHH-7556 - Clean up packages
+7f10972048 HHH-2808 CLONE -Impossible to define caching for a subclass's collection in hibernate.cgf.xml
+ad2a9ef651 HHH-7387 - Integrate Draft 6 of the JPA 2.1 spec : AttributeConverter
+5671de517d HHH-5043 Incorrect handling of hibernate.default_schema in SchemaUpdate
+5068b8e808 HHH-7195 Table does not handle quoted catalog
+fa1183f3f9 HHH-6271 Unifying error logger in XMLHelper and standalone ErrorLogger. Removing the former and integrating some features of the latter into ErrorLogger.
+8373871c30 HHH-6271 Javadocs and some generics fixes
+89911003e3 HHH-6336 - Add TenantIdentifierResolver
+23a62802c8 HHH-4358 - Having to use @ForceDiscriminator kind of breaks JPA compatibility
+e75b8a77b1 HHH-6967 - HHH-6906 - Clean up javadoc warnings
+d00c9c85d8 Merge branch 'HHH-6068' of https://github.com/lukasz-antoniak/hibernate-core into lukasz-antoniak-HHH-6068
+6c7379c38f HHH-6817 Logging of strings containing the percent character broken
+129c0f1348 HHH-6732 more logging trace statements are missing guards against unneeded string creation
+2ac8c0c007 HHH-6068 - Honor JPA default schema and catalog
+f4fa176255 HHH-6683 - Consolidate (consistency) building of service registries
+9f214d8018 HHH-6640 - Add ability for Integrator to prepare ServiceRegistryBuilder and MetadataImplementor as part of lifecycle
+7c39b19ab2 HHH-6091 Move DefaultIdentifierGeneratorFactory; use MutableIdentifierGeneratorFactory for public contracts
+68f7d9b713 HHH-6586 - Document metamodel package as experimental and unsupported
+4ee0d4237d HHH-6198 - Split org.hibernate.event package into api/spi/internal
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+e7c26b28a6 HHH-6183 - Deprecate Configuration
+0537740ffa HHH-2578 - redesign SessionFactory building
+ff74ceaaa4 HHH-6155 - Migrate o.h.impl package to o.h.internal
+f07b88c75f HHH-6150 - JBoss AS7 integration work
+53e0439880 HHH-6144 - Introduce ServiceRegistryBuilder
+ad17f89c4c HHH-6097 - Review log levels, especially related to i18n messages
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes
+9d697660f6 HHH-5947: 'Fix' that at least improves the error message
+e3a0525fb1 HHH-5913 - Implement set of event listeners as a service
+42c609cfdd HHH-5913 - Implement set of event listeners as a service
+e8ebe8e396 HHH-5913 - Implement set of event listeners as a service
+5adf2960c2 HHH-5913 - Implement set of event listeners as a service
+815baf4348 HHH-6051 - Create a sessionfactory scoped ServiceRegistry
+731d00fd6d HHH-6047 - allow nesting of ServiceRegistry
+0b10334e40 HHH-5991 : add Configuration.buildSessionFactory() (without ServiceRegistry arg)
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+ddfcc44d76 HHH-5916 - Add support for a programmatic way to define a default EntityPersister and CollectionPersister class implementation
+08d9fe2117 HHH-5949 - Migrate, complete and integrate TransactionFactory as a service
+55eb37ed52 HHH-5916 Expose PersisterClassProvider configuration
+b2a7967624 HHH-5903 - Rename ServicesRegistry to ServiceRegistry
+d7c48d779c HHH-5916 Expose PersisterClassProvider configuration
+011d7e1114 HHH-5903 - Rename ServicesRegistry to ServiceRegistry
+91d444423b HHH-5765 : Wire in dialect factory and resolvers from service registry
+88543c7a58 HHH-5765 : Wire in connection provider from service registry
+34c2839dcc HHH-5616 - Switch to Gradle for builds

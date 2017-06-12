@@ -1,0 +1,10 @@
+ea090c4eb Bug 60564 - Migrating LogKit to SLF4J - core/samplers,save,services,swing,testbeans (2/2) Contributed by Woonsan Ko This closes #271 Bugzilla Id: 60564
+66ee22a99 Bug 52741 - TestBeanGUI default values do not work at second time or later
+0d647fff5 Bug 52552 - Help reference only works in English
+cde354555 Bug 52279 - Switching to another language loses icons in Tree and logs error Can't obtain GUI class from ... Better fix after discussion on dev mailing list, thanks sebb for your review
+9a3c9b818 Bug 52280 - The menu item Options / Choose Language does not change all the displayed text to the new language
+a4e473598 Bug 52280 - The menu item Options / Choose Language does not change all the displayed text to the new language Fix the menu categories labels
+6237f65f7 Bug 52279 - Switching to another language loses icons in Tree and logs error Can't obtain GUI class from ...
+b43c12b5e Bug 52160 - Don't display TestBeanGui items which are flagged as hidden
+87951a11f clearGui() now calls clearGuiFields() - see Bug 43332
+7c3ae3640 Bug 42947 - TestBeanGUI fields not being updated for short-cut keys

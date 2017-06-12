@@ -1,0 +1,21 @@
+e6b1b0acc Bug 57193: Add param and return tags to javadoc Bugzilla Id: 57193
+32f301947 Bug 54268 - Improve memory and CPU usage Improve CPU by caching response as String instead of computing it for each post processor Improve memory by eagerly cleaning the cached field Bugzilla Id: 54268
+e417a04bf Bug 54267 - Start Next Thread Loop setting doesn't work in custom thread groups Bugzilla Id: 54267
+faa9e3ca0 Bug 54204 - Result Status Action Handler : Add start next thread loop option Bugzilla Id: 54204
+95d97c944 Bug 53418 - New OnDemandThreadGroup that creates threads when needed instead of creating them on Test startup Bugzilla Id: 53418
+03ea5d70c Bug 52968 - Option Start Next Loop in Thread Group does not mark parent Transaction Sampler in error when an error occurs
+ec46abc7a Bug 45839 - Test Action : Allow premature exit from a loop
+0a63e84b2 Bug 52330 - With next-Loop-On-Error after error samples are not executed in next loop
+c64a5b2bc Fix to Start Next Loop broken feature, fixes following issues: - Bug 51865 - Infinite loop inside thread group does not work properly if "Start next loop after a Sample error" option set - Bug 51868 - A lot of exceptions in jmeter.log while using option "Start next loop" for thread - Bug 51866 - Counter under loop doesn't work properly if "Start next loop on error" option set for thread group
+708a7949f Bug 51880 - The shutdown command is not working if I invoke it before all the thread are started Part2 - fix to startUp delay (previous fix was to rampUp delay)
+77babfc75 Bug 51888 - Occasional deadlock when stopping a testplan
+dfdf1dbc8 Bug 51880 - The shutdown command is not working if I invoke it before all the thread are started.
+b56c8c975 Bug 47921 - Variables not released for GC after JMeterThread exits.
+65a69f812 Since add Start Next Loop behavior ([Bug 30563] Thread Group should have a start next loop option on Sample Error), some new bugs on transaction controller with option Generate as parent enabled are come. Fix.
+17c919ff8 Bug 30563 - Thread Group should have a start next loop option on Sample Error
+ca8e0c22b Bug 48749 - Allowing custom Thread Groups
+f3bca638d Bug 45903 - allow Assertions to apply to sub-samples - generic implementation (specific assertions to follow)
+9a3d4075a Bug 43430 - Count of active threads is incorrect for remote samples
+cf1c0dc65 Bug 41913 - TransactionController now creates samples as sub-samples of the transaction
+be00b0cb0 Bug 41140 - run PostProcessor in forward order
+0415393d9 Bug 38391 - use long to accumulate delays

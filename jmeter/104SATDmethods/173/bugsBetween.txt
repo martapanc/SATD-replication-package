@@ -1,0 +1,9 @@
+3b7e03d0f Bug 58705 - Make org.apache.jmeter.testelement.property.MultiProperty iterable #resolve #48 Bugzilla Id: 58705
+4a087408e Bug 55694 - Assertions and Extractors : Avoid NullPointerException when scope is variable and variable is missing Bugzilla Id: 55694
+ef65b97b8 Bug 45903 - allow Assertions to apply to sub-samples Implemented for Duration, Response and Size
+2ab1c97a1 Bug 45904 - Allow 'Not' Response Assertion to succeed with null sample
+6e4d7a932 Bug 45749 - Response Assertion does not work with a substring that is not a valid RE
+d3e1f36e4 Bug 43584 - Replace comma to avoid problem with CSV files
+0709a6744 Bug 40991 - Allow Assertions to check Headers
+0a717bbad Bug 41873 - Add name to AssertionResult and display AssertionResult in ViewResultsFullVisualizer
+cfd28b1fb Bug 40369 (partial) add equals matching to Response Assertion Also tidied up the interfaces somewhat

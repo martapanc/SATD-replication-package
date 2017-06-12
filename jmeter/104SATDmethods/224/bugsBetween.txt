@@ -1,0 +1,3 @@
+069288026 Bug 60361 - ModuleController : If a Test plan contains a Module Controller which references an unexistant Controller, JMeter in GUI mode will not stop Bugzilla Id: 60361
+cbdd5614d Bug 58728 - Drop old behavioural properties Bugzilla Id: 58728
+49d06f401 Bug 57731 - TESTSTART.MS has always the value of the first Test started in Server mode in NON GUI Distributed testing Bugzilla Id: 57731

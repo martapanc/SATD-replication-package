@@ -1,0 +1,6 @@
+9caca0ce37 HHH-9490 - Migrate from dom4j to jaxb for XML processing; HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc); HHH-7078 - Split NamingStrategy into ImplicitNamingStrategy/PhysicalNamingStrategy; HHH-6005 - Better handling of implicit column naming with @ElementCollection of @Embeddables; HHH-9633 - Add tests that explicitly test the "main" NamingStrategy impls
+cd590470c0 HHH-8741 - More checkstyle cleanups
+e0cfc6bf2e HHH-6736 Added support for SELECT ... FOR UPDATE SKIP LOCKED
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

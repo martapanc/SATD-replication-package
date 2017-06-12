@@ -1,0 +1,2 @@
+8dc882706f Fix for JRUBY-3661: Incorrect super call site caching with multiple included modules
+5ddeaaa8a8 Fix related to JRUBY-2181: Change RubyModule#addMethod to put/replace methods atomically, since searchMethod does not synchronize on methods. (Should also be a tiny perf improvement.) Also includes some minor cleanup of signatures to support generics and prevent adding methods to IncludedModuleWrapper.

@@ -1,0 +1,4 @@
+f4c36a10f8 HHH-6439: Added getAddUniqueConstraintString method to Dialect and updated UniqueKey classes to use it
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

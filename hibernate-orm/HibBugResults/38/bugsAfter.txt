@@ -1,0 +1,2 @@
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers
+f679a3c783 HHH-8597 : Rename org.hibernate.loader.plan2 to org.hibernate.loader.plan

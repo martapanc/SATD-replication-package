@@ -1,0 +1,2 @@
+bcc26747f5 Use RubyModule.JavaClassKindOf fixes jruby/jruby#614
+efe615a2a3 IO.copy_stream should handle objects that respond to read or write. Fixes #437

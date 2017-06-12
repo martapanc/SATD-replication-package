@@ -1,0 +1,4 @@
+fe8c7183d1 HHH-5697 - Support for multi-tenancy
+19791a6c7d HHH-6026 - Migrate bytecode provider integrations to api/spi/internal split
+262f25311d HHH-5791 : NPE merging transient entity with non-nullable property set to null with delayed insert if check_nullability set to false
+34c2839dcc HHH-5616 - Switch to Gradle for builds

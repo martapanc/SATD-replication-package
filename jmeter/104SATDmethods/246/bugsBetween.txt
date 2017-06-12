@@ -1,0 +1,5 @@
+ebb9c4e45 Bug 58100 - Performance enhancements : Replace Random by ThreadLocalRandom Bugzilla Id: 58100
+ee0c987ff Bug 57193: Add param and return tags to javadoc Bugzilla Id: 57193
+ec8d230cd Bug 54004 - Webservice Sampler : Allow adding headers to request with Header Manager Bugzilla Id: 54004
+74834bae0 Bug 52939 - Webservice Sampler : Make MaintainSession configurable
+3126f8c56 Bug 52937 - Webservice Sampler : Clear Soap Documents Cache at end of Test

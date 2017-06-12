@@ -1,0 +1,17 @@
+249;/249/After/Bug 27780  76ac18a7_diff.java;0;0;0;0;0;0;1
+249;/249/After/Bug 41705  90684a56_diff.java;0;0;0;0;0;0;1
+249;/249/After/Bug 50684  592bf6b7_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 51861  4b9cb415_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 51861  dcf739f0_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 52613  ddc3bf4d_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 53765  472da151_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 55606  22bc84d7_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 55606  2ed95f96_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 55606  832fa54b_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 57193: 0d45f17f_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 57193: 5be9daa8_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 57193: ee0c987f_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 59044  3282578e_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 59060  564705a4_diff.java;0;0;0;0;0;0;0
+249;/249/After/Bug 60543  2c182abb_diff.java;0;0;0;0;0;0;0
+249;/249/After/Reduce the f459b334_diff.java;0;0;0;0;0;0;0

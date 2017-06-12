@@ -1,0 +1,8 @@
+a44c6efe5 Bug 53039 - HTTP Request : Be able to handle responses which size exceeds 2147483647 bytes Fix deprecated calls to setBytes(int) Bugzilla Id: 53039
+74885f034 Bug 53042 - Introduce a new Interface to be implemented by AbstractSampler to allow Sampler to decide wether a config element applies to Sampler
+fed4b33a8 Bug 53027 - Jmeter starts throwing exceptions while using SMTP Sample in a test plan with HTTP Cookie Mngr or HTTP Request Defaults
+67fc58bb9 Bug 49862 - Improve SMTPSampler Request output.
+a3d623b63 Bug 49775 - Allow sending messages without a body
+91e79e3ed Bug 49603 - Allow accepting expired certificates on Mail Reader Sampler
+270ae7482 Bug 49622 - Allow sending messages without a subject (SMTP Sampler)
+cf33f2724 Bug 49552 - Add Message Headers on SMTPSampler

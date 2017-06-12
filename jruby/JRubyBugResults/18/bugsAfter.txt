@@ -1,0 +1,1 @@
+a40de0ef64 Store the JavaProxyClass cache in JavaSupport (fixes #164)

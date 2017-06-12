@@ -1,0 +1,10 @@
+ba40f9ccdc Fix for JRUBY-3158: Wrong ruby methods called on object of same class from Java code.
+27d262b3c5 Spec for already-fixed JRUBY-3262: JRuby 1.1.6 regression: ClassFormatError if Ruby superclass of Ruby class implements super-interface of Java interface
+761eabb2fb Fix and specs for JRUBY-2999: Regression: Inheriting method with same name from two Java interfaces causes Java classloader error
+a4387186d8 Fix for JRUBY-2993: implementing java class causes exception
+5d89d09d77 Fix for JRUBY-2965: Sparodic Linkage Error On Startup
+a36d3e4175 Fix JRUBY-2928, the same fix as for equals applied to hashCode and toString
+133abfcab6 Fix JRUBY-2927 and enable the test case for it.
+343af19a25 Fix for JRUBY-2926. Make equals short circuit to Object.equals for interfaces
+0828bab485 Fix for JRUBY-2903, allow interface methods to be implemented with underscore-cased names.
+14759c6a52 Fixes and specs for JRUBY-2863, inherited interfaces not getting superinterface methods implemented in Ruby.

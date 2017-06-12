@@ -1,0 +1,7 @@
+5f20b9914 microoptimizations.  PR 50716
+d85c862e9 support modules with space in their names in <cvs> and <cvschangelog>, will be supported in <cvstagdiff> once PR 35301 is fixed.  PR 38220.
+0140d366b Make port attribute work for some "non-standard" CVS clients.  submitted by Johann Herunter.  PR 30124.
+228efb0ef Pr 43330, suppress printing of cvs password in case it is given on the command line.
+236873d6e Prevent AbstractCvsTask from closing its output and error streams prematurely PR: 30097 Submitted by: Will Wang (telerice at yahoo dot com)
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof
+5ec7e1db1 Add a new cvsversion task Modify CvsChangeLog to accept a branch as the tag attribute ChangeLogTask.java now inherits from AbstractCvsTask PR: 13510

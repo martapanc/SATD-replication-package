@@ -1,0 +1,8 @@
+dc7cdf9d88 HHH-8276 - Integrate LoadPlans into UniqueEntityLoader (PoC)
+6b5a428b3f HHH-7527 - OSGI manifests for hibernate-orm : clean up org.hibernate.engine.spi package duplication between hem and core
+4a4f636caf HHH-6330 - Remove entity mode switching capability
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+303691c80e HHH-5914 - Remove deprecated Hibernate type constants from org.hibernate.Hibernate and manuals
+1421c3f54d HHH-5284 - Allow Type to dictate the default length/scale/precision
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

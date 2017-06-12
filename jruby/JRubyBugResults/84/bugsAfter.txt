@@ -1,0 +1,19 @@
+3efc72f47b Add Kernel#__dir__. Fixes #651.
+0d22cef263 Fix #391.
+6de4987a92 Rework the previous logic (calling #to_path) for #393. Also, fix #399.
+cf3a2b0da1 Fix #393. For #open, there is an implicit call to #to_path if #to_open fails. See, for example: https://github.com/ruby/ruby/blob/de794ae/io.c#L6170
+648df615b1 Fix JRUBY-6994: exec() in chdir block doesn't inherit cwd
+a5e3a4ccfe Fix JRUBY-6949
+0931687127 Fix JRUBY-6885
+4246d96f63 Fix JRUBY-6832
+846be19993 Fix JRUBY-6766
+7cf0e2e95f Fix JRUBY-6788: Missing prompt in rails console
+8ec1150d8e Fixes JRUBY-6677
+195b90243b Fix JRUBY-6570: autoload :Time, 'time' doesn't work
+677cf1bd46 Implement Kernel#Hash. Fixes JRUBY-6496.
+a75ddbea79 Additional fixes for JRUBY-6434
+f8408dac26 Fix JRUBY-5348
+24031a9cca Fix JRUBY-6234: Kernel.system doesn't work with environement parameters
+636d625c43 Applies @knu's patch, https://gist.github.com/1160870 . This patch fixes errors of pure Java Nokogiri tests. A discussion is done at https://github.com/tenderlove/nokogiri/commit/8ee889b81a173a00bc652c68ed8ed512125ee418#commitcomment-542636
+f636731047 Fix JRUBY-5729: Process.respond_to?(:fork) must return false
+4bd7f02608 Fix JRUBY-5680: eval("self", Kernel.binding)

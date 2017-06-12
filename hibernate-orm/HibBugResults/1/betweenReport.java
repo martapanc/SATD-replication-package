@@ -1,0 +1,957 @@
+1/report.java
+Satd-method: public JBossCacheRegionFactory(Properties props) {
+********************************************
+********************************************
+1/Between/ HHH-5647  d2c88d55_diff.java
+————————————————————————————————————————————————
+*** Lines Changed in Satd-Method: ***
+
+-    public JBossCacheRegionFactory(Properties props) {
+
+Lines added: 0. Lines removed: 1. Tot = 1
+————————————————————————————————————————————————
+*** Changed calls OF Satd-Method in Diff: ***
+public 
++	public Aggregator(Javadoc javadocTask) {
++	public void excludeSourceSetName(String name) {
++	public void excludeSourceSetNames(String[] names) {
++	public void project(Project project) {
++    public File getDestinationDir() {
++    public void setDestinationDir(File destinationDir) {
++    public String getMaxMemory() {
++    public void setMaxMemory(String maxMemory) {
++    public String getTitle() {
++    public void setTitle(String title) {
++    public boolean isVerbose() {
++    public void setVerbose(boolean verbose) {
++    public FileCollection getClasspath() {
++    public void setClasspath(FileCollection configuration) {
++    public MinimalJavadocOptions getOptions() {
++    public void setOptions(MinimalJavadocOptions options) {
++    public boolean isFailOnError() {
++    public void setFailOnError(boolean failOnError) {
++    public File getOptionsFile() {
++    public String getExecutable() {
++    public void setExecutable(String executable) {
++    public void aggregator(Closure closure) {
++public class Authenticator extends DefaultTask {
++	public void configureNexusAuthentication() {
++	public static final String ALT_PROP_FILE_NAME = "jboss-nexus.properties";
++	public static final String USER = "JBOSS_NEXUS_USERNAME";
++	public static final String PASS = "JBOSS_NEXUS_PASSWORD";
++public class UploadManager implements Plugin<Project> {
++	public void apply(Project project) {
++				public void execute(final Upload uploadTask) {
++								public void execute(MavenDeployer deployer) {
+-public abstract class BasicRegionAdapter implements Region {
+-    public static final String ITEM = CacheHelper.ITEM;
+-    public BasicRegionAdapter(Cache jbcCache, String regionName, String regionPrefix) {
+-    public String getName() {
+-    public Cache getCacheInstance() {
+-    public Fqn getRegionFqn() {
+-    public Object getMemberId()
+-    public void ensureRegionRootExists() {
+-    public boolean checkValid()
+-    public void destroy() throws CacheException {
+-	public boolean contains(Object key) {
+-    public long getSizeInMemory() {
+-    public long getElementCountInMemory() {
+-    public long getElementCountOnDisk() {
+-    public Map toMap() {
+-    public long nextTimestamp() {
+-    public int getTimeout() {
+-    public Transaction suspend() {
+-    public void resume(Transaction tx) {
+-    public static Fqn<String> getTypeFirstRegionFqn(String regionName, String regionPrefix, String regionType) {
+-    public static Fqn<String> getTypeLastRegionFqn(String regionName, String regionPrefix, String regionType) {
+-    public static String escapeRegionName(String regionName, String regionPrefix) {
+-    public void nodeModified(NodeModifiedEvent event)
+-    public void nodeInvalidated(NodeInvalidatedEvent event)
+-    public void viewChanged(ViewChangedEvent event) {
+-public interface CacheInstanceManager {
+-    public Cache getEntityCacheInstance();
+-    public Cache getCollectionCacheInstance();
+-    public Cache getQueryCacheInstance();
+-    public Cache getTimestampsCacheInstance();
+-    public void start(Settings settings, Properties properties) throws CacheException;
+-    public void stop();
+-public class JBossCacheRegionFactory implements RegionFactory {
+-    public JBossCacheRegionFactory(Properties props) {
+-    public JBossCacheRegionFactory() {
+-    public JBossCacheRegionFactory(CacheInstanceManager cacheInstanceManager) {
+-    public CacheInstanceManager getCacheInstanceManager() {
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-    public void stop() {
+-    public boolean isMinimalPutsEnabledByDefault() {
+-	public AccessType getDefaultAccessType() {
+-	public long nextTimestamp() {
+-    public EntityRegion buildEntityRegion(String regionName, Properties properties, CacheDataDescription metadata)
+-    public CollectionRegion buildCollectionRegion(String regionName, Properties properties,
+-    public QueryResultsRegion buildQueryResultsRegion(String regionName, Properties properties) throws CacheException {
+-    public TimestampsRegion buildTimestampsRegion(String regionName, Properties properties) throws CacheException {
+-    public static String getRegionPrefix(Properties properties) {
+-public class JndiMultiplexedJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-    public JndiMultiplexedJBossCacheRegionFactory(Properties props) {
+-    public JndiMultiplexedJBossCacheRegionFactory() {
+-public class JndiSharedJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-    public JndiSharedJBossCacheRegionFactory(Properties props) {
+-    public JndiSharedJBossCacheRegionFactory() {
+-public class MultiplexedJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-    public MultiplexedJBossCacheRegionFactory(Properties props) {
+-    public MultiplexedJBossCacheRegionFactory() {
+-public class SharedJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-    public SharedJBossCacheRegionFactory(Properties props) {
+-    public SharedJBossCacheRegionFactory() {
+-public abstract class TransactionalDataRegionAdapter extends BasicRegionAdapter implements TransactionalDataRegion {
+-    public TransactionalDataRegionAdapter(Cache jbcCache, String regionName, String regionPrefix,
+-    public boolean isTransactionAware() {
+-    public CacheDataDescription getCacheDataDescription() {
+-public class OptimisticTransactionalAccessDelegate extends TransactionalAccessDelegate {
+-    public OptimisticTransactionalAccessDelegate(TransactionalDataRegionAdapter region, PutFromLoadValidator validator) {
+-    public void evict(Object key) throws CacheException {
+-    public void evictAll() throws CacheException
+-    public boolean insert(Object key, Object value, Object version) throws CacheException {
+-    public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version, boolean minimalPutOverride)
+-    public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version) throws CacheException {
+-    public void remove(Object key) throws CacheException {
+-    public void removeAll() throws CacheException {
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-public class PutFromLoadValidator {
+-	public static final long NAKED_PUT_INVALIDATION_PERIOD = 20 * 1000;
+-	public PutFromLoadValidator(TransactionManager transactionManager) {
+-	public boolean acquirePutFromLoadLock(Object key) {	
+-	public void releasePutFromLoadLock(Object key) {
+-	public boolean invalidateKey(Object key) {
+-	public boolean invalidateRegion() {
+-	public void registerPendingPut(Object key) {
+-		public void put(PendingPut pendingPut) {
+-		public PendingPut remove(Object ownerForPut) {
+-		public int size() {
+-		public boolean acquireLock(long time, TimeUnit unit) {
+-		public void releaseLock() {
+-		public void invalidate() {
+-public class TransactionalAccessDelegate {
+-    public TransactionalAccessDelegate(BasicRegionAdapter adapter, PutFromLoadValidator validator) {
+-    public Object get(Object key, long txTimestamp) throws CacheException {
+-   public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version) throws CacheException {
+-   public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version, boolean minimalPutOverride)
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-    public SoftLock lockRegion() throws CacheException {
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-    public boolean insert(Object key, Object value, Object version) throws CacheException {
+-    public boolean afterInsert(Object key, Object value, Object version) throws CacheException {
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-    public boolean afterUpdate(Object key, Object value, Object currentVersion, Object previousVersion, SoftLock lock)
+-    public void remove(Object key) throws CacheException {
+-    public void removeAll() throws CacheException {
+-    public void evict(Object key) throws CacheException {
+-    public void evictAll() throws CacheException {
+-public class JndiMultiplexingCacheInstanceManager extends MultiplexingCacheInstanceManager {
+-    public static final String CACHE_FACTORY_RESOURCE_PROP = "hibernate.cache.region.jbc2.cachefactory";
+-    public JndiMultiplexingCacheInstanceManager() {
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-public class JndiSharedCacheInstanceManager extends SharedCacheInstanceManager {
+-    public static final String CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.shared";
+-    public JndiSharedCacheInstanceManager() {
+-public class MultiplexingCacheInstanceManager implements CacheInstanceManager {
+-    public static final String CACHE_FACTORY_RESOURCE_PROP = "hibernate.cache.jbc.configs";
+-    public static final String LEGACY_CACHE_FACTORY_RESOURCE_PROP = "hibernate.cache.region.jbc2.configs";
+-    public static final String CHANNEL_FACTORY_RESOURCE_PROP = "hibernate.cache.jbc.jgroups.stacks";
+-    public static final String LEGACY_CHANNEL_FACTORY_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.jgroups.stacks";
+-    public static final String ENTITY_CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.entity";
+-    public static final String LEGACY_ENTITY_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.entity";
+-    public static final String COLLECTION_CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.collection";
+-    public static final String LEGACY_COLLECTION_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.collection";
+-    public static final String TIMESTAMP_CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.timestamps";
+-    public static final String LEGACY_TIMESTAMP_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.ts";
+-    public static final String QUERY_CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.query";
+-    public static final String LEGACY_QUERY_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.query";
+-    public static final String DEF_CACHE_FACTORY_RESOURCE = "org/hibernate/cache/jbc/builder/jbc-configs.xml";    
+-    public static final String DEF_JGROUPS_RESOURCE = "org/hibernate/cache/jbc/builder/jgroups-stacks.xml";
+-    public static final String DEF_ENTITY_RESOURCE = "optimistic-entity";
+-    public static final String DEF_TS_RESOURCE = "timestamps-cache";
+-    public static final String DEF_QUERY_RESOURCE = "local-query";
+-    public MultiplexingCacheInstanceManager() {
+-    public MultiplexingCacheInstanceManager(
+-	public CacheManager getCacheFactory() {
+-	public void setCacheFactory(CacheManager factory) {
+-	public ChannelFactory getChannelFactory() {
+-	public void setChannelFactory(ChannelFactory factory) {
+-    public Cache getEntityCacheInstance() {
+-    public Cache getCollectionCacheInstance() {
+-    public Cache getQueryCacheInstance() {
+-    public Cache getTimestampsCacheInstance() {
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-    public void stop() {
+-public class SharedCacheInstanceManager implements CacheInstanceManager {
+-    public static final String CACHE_RESOURCE_PROP = "hibernate.cache.jbc.cfg.shared";
+-    public static final String LEGACY_CACHE_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.shared";
+-    public static final String DEFAULT_CACHE_RESOURCE = "treecache.xml";
+-    public static final String CHANNEL_FACTORY_RESOURCE_PROP = "hibernate.cache.jbc.cfg.jgroups.stacks";
+-    public static final String LEGACY_CHANNEL_FACTORY_RESOURCE_PROP = "hibernate.cache.region.jbc2.cfg.jgroups.stacks";
+-    public static final String DEF_JGROUPS_RESOURCE = "org/hibernate/cache/jbc/builder/jgroups-stacks.xml";
+-    public SharedCacheInstanceManager() {
+-    public SharedCacheInstanceManager(ChannelFactory channelFactory) {
+-    public SharedCacheInstanceManager(Cache cache) {
+-    public Cache getEntityCacheInstance() {
+-    public Cache getCollectionCacheInstance() {
+-    public Cache getQueryCacheInstance() {
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-    public Cache getTimestampsCacheInstance() {
+-    public void stop() {
+-public class CollectionRegionImpl extends TransactionalDataRegionAdapter implements CollectionRegion {
+-    public static final String TYPE = "COLL";
+-    public CollectionRegionImpl(Cache jbcCache, String regionName, String regionPrefix, CacheDataDescription metadata) {
+-    public CollectionRegionAccessStrategy buildAccessStrategy(AccessType accessType) throws CacheException {
+-    public PutFromLoadValidator getPutFromLoadValidator() {
+-public class OptimisticReadOnlyAccess extends OptimisticTransactionalAccess {
+-    public OptimisticReadOnlyAccess(CollectionRegionImpl region) {
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-    public SoftLock lockRegion() throws CacheException {
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-public class OptimisticTransactionalAccess extends TransactionalAccess {
+-    public OptimisticTransactionalAccess(CollectionRegionImpl region) {
+-public class ReadOnlyAccess extends TransactionalAccess {
+-	public ReadOnlyAccess(CollectionRegionImpl region) {
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-    public SoftLock lockRegion() throws CacheException {
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-public class TransactionalAccess implements CollectionRegionAccessStrategy {
+-    public TransactionalAccess(CollectionRegionImpl region) {
+-	public CollectionRegion getRegion() {
+-	public Object get(Object key, long txTimestamp) throws CacheException {
+-	public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version) throws CacheException {
+-	public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version, boolean minimalPutOverride)
+-	public void remove(Object key) throws CacheException {
+-	public void removeAll() throws CacheException {
+-	public void evict(Object key) throws CacheException {
+-	public void evictAll() throws CacheException {
+-	public SoftLock lockItem(Object key, Object version) throws CacheException {
+-	public SoftLock lockRegion() throws CacheException {
+-	public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-	public void unlockRegion(SoftLock lock) throws CacheException {
+-public class EntityRegionImpl extends TransactionalDataRegionAdapter implements EntityRegion {
+-    public static final String TYPE = "ENTITY";
+-    public EntityRegionImpl(Cache jbcCache, String regionName, String regionPrefix, CacheDataDescription metadata) {
+-    public EntityRegionAccessStrategy buildAccessStrategy(AccessType accessType) throws CacheException {
+-    public PutFromLoadValidator getPutFromLoadValidator() {
+-public class OptimisticReadOnlyAccess extends OptimisticTransactionalAccess {
+-    public OptimisticReadOnlyAccess(EntityRegionImpl region) {
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-    public SoftLock lockRegion() throws CacheException {
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-    public boolean afterUpdate(Object key, Object value, Object currentVersion, Object previousVersion, SoftLock lock)
+-public class OptimisticTransactionalAccess extends TransactionalAccess {
+-    public OptimisticTransactionalAccess(EntityRegionImpl region) {
+-public class ReadOnlyAccess extends TransactionalAccess {
+-    public ReadOnlyAccess(EntityRegionImpl region) {
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-    public SoftLock lockRegion() throws CacheException {
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-    public boolean afterUpdate(Object key, Object value, Object currentVersion, Object previousVersion, SoftLock lock)
+-public class TransactionalAccess implements EntityRegionAccessStrategy {
+-    public TransactionalAccess(EntityRegionImpl region) {
+-    public EntityRegion getRegion() {
+-    public Object get(Object key, long txTimestamp) throws CacheException {
+-    public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version) throws CacheException {
+-    public boolean putFromLoad(Object key, Object value, long txTimestamp, Object version, boolean minimalPutOverride)
+-    public boolean insert(Object key, Object value, Object version) throws CacheException {
+-    public boolean update(Object key, Object value, Object currentVersion, Object previousVersion)
+-    public void remove(Object key) throws CacheException {
+-    public void removeAll() throws CacheException {
+-    public void evict(Object key) throws CacheException {
+-    public void evictAll() throws CacheException {
+-    public SoftLock lockItem(Object key, Object version) throws CacheException {
+-    public SoftLock lockRegion() throws CacheException {
+-    public void unlockItem(Object key, SoftLock lock) throws CacheException {
+-    public void unlockRegion(SoftLock lock) throws CacheException {
+-    public boolean afterInsert(Object key, Object value, Object version) throws CacheException {
+-    public boolean afterUpdate(Object key, Object value, Object currentVersion, Object previousVersion, SoftLock lock)
+-public class QueryResultsRegionImpl extends TransactionalDataRegionAdapter implements QueryResultsRegion {
+-    public static final String QUERY_CACHE_LOCAL_ONLY_PROP = "hibernate.cache.jbc.query.localonly";
+-    public static final String LEGACY_QUERY_CACHE_LOCAL_ONLY_PROP = "hibernate.cache.region.jbc2.query.localonly";
+-    public static final String TYPE = "QUERY";
+-    public QueryResultsRegionImpl(Cache jbcCache, String regionName, String regionPrefix, Properties properties) {
+-    public void evict(Object key) throws CacheException {
+-    public void evictAll() throws CacheException {
+-    public Object get(Object key) throws CacheException {
+-    public void put(Object key, Object value) throws CacheException {
+-public class ClusteredConcurrentTimestampsRegionImpl extends TransactionalDataRegionAdapter implements TimestampsRegion {
+-    public static final String TYPE = "TS";
+-    public ClusteredConcurrentTimestampsRegionImpl(Cache jbcCache, String regionName, String regionPrefix, Properties properties) {
+-    public void evict(Object key) throws CacheException {
+-    public void evictAll() throws CacheException {
+-    public Object get(Object key) throws CacheException {
+-    public void put(Object key, Object value) throws CacheException {
+-    public void preInvalidate(Object key, Object value) throws CacheException {
+-    public void invalidate(Object key, Object value, Object preInvalidateValue) throws CacheException {
+-    public void destroy() throws CacheException {
+-    public void nodeModified(NodeModifiedEvent event) {
+-    public void nodeRemoved(NodeRemovedEvent event) {
+-public class TimestampsRegionImpl extends TransactionalDataRegionAdapter implements TimestampsRegion {
+-    public static final String TYPE = "TS";
+-    public TimestampsRegionImpl(Cache jbcCache, String regionName, String regionPrefix, Properties properties) {
+-    public void evict(Object key) throws CacheException {
+-    public void evictAll() throws CacheException {
+-    public Object get(Object key) throws CacheException {
+-    public void put(Object key, Object value) throws CacheException {
+-    public void destroy() throws CacheException {
+-    public void nodeModified(NodeModifiedEvent event) {
+-    public void nodeRemoved(NodeRemovedEvent event) {
+-public class CacheHelper {
+-    public static enum Internal { NODE, LOCAL };
+-    public static final String ITEM = "item";
+-    public static final String DUMMY = "dummy";
+-    public static boolean isClusteredInvalidation(Cache cache) {
+-    public static boolean isClusteredInvalidation(Configuration.CacheMode cacheMode) {
+-    public static boolean isClusteredReplication(Cache cache) {
+-    public static boolean isClusteredReplication(Configuration.CacheMode cacheMode) {
+-    public static boolean isSynchronous(Cache cache) {
+-    public static boolean isSynchronous(Configuration.CacheMode cacheMode) {
+-    public static Set getChildrenNames(Cache cache, Fqn fqn) {
+-    public static Object get(Cache cache, Fqn region, Object key) throws CacheException {
+-    public static Object getAllowingTimeout(Cache cache, Fqn region, Object key) throws CacheException {
+-    public static void put(Cache cache, Fqn region, Object key, Object value) throws CacheException {
+-    public static void put(Cache cache, Fqn region, Object key, Object value, Option option) throws CacheException {
+-    public static void putAllowingTimeout(Cache cache, Fqn region, Object key, Object value, Option option) throws CacheException {
+-    public static boolean putForExternalRead(Cache cache, Fqn region, Object key, Object value) throws CacheException {
+-    public static boolean putForExternalRead(Cache cache, Fqn region, Object key, Object value, Option option)
+-    public static void remove(Cache cache, Fqn region, Object key) throws CacheException {
+-    public static void remove(Cache cache, Fqn region, Object key, Option option) throws CacheException {
+-    public static void removeAll(Cache cache, Fqn region) throws CacheException {
+-    public static void removeAll(Cache cache, Fqn region, Option option) throws CacheException {
+-    public static void removeNode(Cache cache, Fqn region, Object key, Option option) throws CacheException {
+-    public static Node addNode(Cache cache, Fqn fqn, boolean localOnly, boolean resident, DataVersion version)
+-    public static void setInvocationOption(Cache cache, Option option) {
+-    public static void setDataVersionOption(Cache cache, DataVersion version) {
+-    public static Fqn getInternalFqn(Fqn region)
+-    public static void sendEvictNotification(Cache cache, Fqn region, Object member, Object key, Option option)
+-    public static void sendEvictAllNotification(Cache cache, Fqn region, Object member, Option option)
+-public class CircumventChecksDataVersion implements DataVersion {
+-    public static final DataVersion INSTANCE = new CircumventChecksDataVersion();
+-    public static Option getInvocationOption() {
+-    public boolean newerThan(DataVersion dataVersion) {
+-public class DataVersionAdapter implements DataVersion {
+-    public DataVersionAdapter(Object currentVersion, Object previousVersion, Comparator versionComparator,
+-    public boolean newerThan(DataVersion dataVersion) {
+-    public String toString() {
+-public class NonLockingDataVersion implements DataVersion {
+-    public static final DataVersion INSTANCE = new NonLockingDataVersion();
+-    public static Option getInvocationOption() {
+-    public boolean newerThan(DataVersion dataVersion) {
+-public class JBossCacheRegionFactory extends org.hibernate.cache.jbc.JBossCacheRegionFactory {
+-    public JBossCacheRegionFactory(Properties props) {
+-    public JBossCacheRegionFactory() {
+-    public JBossCacheRegionFactory(CacheInstanceManager cacheInstanceManager) {
+-public class JndiMultiplexedJBossCacheRegionFactory extends org.hibernate.cache.jbc.JndiMultiplexedJBossCacheRegionFactory {
+-    public JndiMultiplexedJBossCacheRegionFactory(Properties props) {
+-    public JndiMultiplexedJBossCacheRegionFactory() {
+-public class JndiSharedJBossCacheRegionFactory extends org.hibernate.cache.jbc.JndiSharedJBossCacheRegionFactory {
+-    public JndiSharedJBossCacheRegionFactory(Properties props) {
+-    public JndiSharedJBossCacheRegionFactory() {
+-public class MultiplexedJBossCacheRegionFactory extends org.hibernate.cache.jbc.MultiplexedJBossCacheRegionFactory {
+-    public MultiplexedJBossCacheRegionFactory(Properties props) {
+-    public MultiplexedJBossCacheRegionFactory() {
+-public class SharedJBossCacheRegionFactory extends org.hibernate.cache.jbc.SharedJBossCacheRegionFactory {
+-    public SharedJBossCacheRegionFactory(Properties props) {
+-    public SharedJBossCacheRegionFactory() {
+-public abstract class AbstractEntityCollectionRegionTestCase extends AbstractRegionImplTestCase {
+-    public AbstractEntityCollectionRegionTestCase(String name) {
+-    public void testSupportedAccessTypesOptimistic() throws Exception {
+-    public void testSupportedAccessTypesPessimistic() throws Exception {
+-    public void testIsTransactionAware() throws Exception {
+-    public void testGetCacheDataDescription() throws Exception {
+-public abstract class AbstractGeneralDataRegionTestCase extends AbstractRegionImplTestCase {
+-    public AbstractGeneralDataRegionTestCase(String name) {
+-    public void testEvictOptimistic() throws Exception {
+-    public void testEvictPessimistic() throws Exception {
+-    public void testEvictAllOptimistic() throws Exception {
+-    public void testEvictAllPessimistic() throws Exception {
+-public abstract class AbstractJBossCacheTestCase extends UnitTestCase {
+-    public static final String REGION_PREFIX = "test";
+-    public AbstractJBossCacheTestCase(String name) {
+-public abstract class AbstractRegionImplTestCase extends AbstractJBossCacheTestCase {
+-    public AbstractRegionImplTestCase(String name) {
+-    public void testActivationDeactivation() throws Exception {
+-    public void testToMap() throws Exception {
+-public class JBossCacheComplianceTest extends TestCase {
+-    public JBossCacheComplianceTest(String x) {
+-    public void testCacheLevelStaleWritesFail() throws Throwable {
+-        public ManualDataVersion(int version) {
+-        public boolean newerThan(DataVersion dataVersion) {
+-        public static Option gen(int version) {
+-public class JBossCacheRegionFactoryTestCase extends AbstractJBossCacheTestCase {
+-    public JBossCacheRegionFactoryTestCase(String name) {
+-    public void testDefaultConfig() throws Exception {
+-    public void testInjectedCacheInstanceManager() {
+-public class JbcConfigsXmlValidityTestCase extends AbstractJBossCacheTestCase
+-   public JbcConfigsXmlValidityTestCase(String name)
+-   public static Test suite() throws Exception {
+-   public void testOptimisticEntity() throws Exception
+-   public void testPessimisticEntity() throws Exception
+-   public void testPessimisticEntityRepeatable() throws Exception
+-   public void testOptimisticShared() throws Exception
+-   public void testPessimisticShared() throws Exception
+-   public void testPessimisticSharedRepeatable() throws Exception
+-   public void testLocalQuery() throws Exception
+-   public void testReplicatedQuery() throws Exception
+-   public void testTimestampsCache() throws Exception
+-   public void testAdditionalConfigs() throws Exception
+-public class PutFromLoadValidatorUnitTestCase extends TestCase {
+-	public PutFromLoadValidatorUnitTestCase(String name) {
+-	public void testNakedPut() throws Exception {
+-	public void testNakedPutTransactional() throws Exception {
+-	public void testRegisteredPut() throws Exception {
+-	public void testRegisteredPutTransactional() throws Exception {
+-	public void testNakedPutAfterKeyRemoval() throws Exception {
+-	public void testNakedPutAfterKeyRemovalTransactional() throws Exception {
+-	public void testNakedPutAfterRegionRemoval() throws Exception {
+-	public void testNakedPutAfterRegionRemovalTransactional() throws Exception {
+-	public void testRegisteredPutAfterKeyRemoval() throws Exception {
+-	public void testRegisteredPutAfterKeyRemovalTransactional()
+-	public void testRegisteredPutAfterRegionRemoval() throws Exception {
+-	public void testRegisteredPutAfterRegionRemovalTransactional()
+-	public void testRegisteredPutWithInterveningKeyRemoval() throws Exception {
+-	public void testRegisteredPutWithInterveningKeyRemovalTransactional()
+-	public void testRegisteredPutWithInterveningRegionRemoval()
+-	public void testRegisteredPutWithInterveningRegionRemovalTransactional()
+-	public void testDelayedNakedPutAfterKeyRemoval() throws Exception {
+-	public void testDelayedNakedPutAfterKeyRemovalTransactional()
+-	public void testDelayedNakedPutAfterRegionRemoval() throws Exception {
+-	public void testDelayedNakedPutAfterRegionRemovalTransactional()
+-	public void testMultipleRegistrations() throws Exception {
+-	public void testMultipleRegistrationsTransactional() throws Exception {
+-			public void run() {
+-	public void testRemovalCleanup() throws Exception {
+-	public void testPendingPutCleanup() throws Exception {
+-	public void testInvalidateKeyBlocksForInProgressPut() throws Exception {
+-	public void testInvalidateRegionBlocksForInProgressPut() throws Exception {
+-		    public Boolean call() throws Exception {
+-		    public Void call() throws Exception {
+-		public int getOveragePendingPutQueueLength() {
+-		public int getPendingPutQueueLength() {
+-		public int getRemovalQueueLength() {
+-public abstract class CacheInstanceManagerTestBase extends AbstractJBossCacheTestCase {
+-    public CacheInstanceManagerTestBase(String name) {
+-    public void testUse2ndLevelCache() throws Exception {
+-    public void testUseQueryCache() throws Exception {
+-public class MultiplexedCacheInstanceManagerTestCase extends CacheInstanceManagerTestBase {
+-    public MultiplexedCacheInstanceManagerTestCase(String name) {
+-public class SharedCacheInstanceManagerTestCase extends CacheInstanceManagerTestBase {
+-    public SharedCacheInstanceManagerTestCase(String name) {
+-public abstract class AbstractCollectionRegionAccessStrategyTestCase extends AbstractJBossCacheTestCase {
+-    public static final String REGION_NAME = "test/com.foo.test";
+-    public static final String KEY_BASE = "KEY";
+-    public static final String VALUE1 = "VALUE1";
+-    public static final String VALUE2 = "VALUE2";
+-    public static Test getTestSetup(Class testClass, String configName) {
+-    public static Test getTestSetup(Test test, String configName) {
+-    public AbstractCollectionRegionAccessStrategyTestCase(String name) {
+-    public boolean isBlockingReads()
+-    public abstract void testCacheConfiguration();
+-    public void testGetRegion() {
+-    public void testPutFromLoad() throws Exception {
+-    public void testPutFromLoadMinimal() throws Exception {
+-            public void run() {
+-            public void run() {
+-    public void testRemove() {
+-    public void testRemoveAll() {
+-    public void testEvict() {
+-    public void testEvictAll() {
+-        public AccessStrategyTestSetup(Test test, String configName) {
+-        public AccessStrategyTestSetup(Test test, String configName, String configResource) {
+-public abstract class AbstractReadOnlyAccessTestCase extends AbstractCollectionRegionAccessStrategyTestCase {
+-    public AbstractReadOnlyAccessTestCase(String name) {
+-public abstract class AbstractTransactionalAccessTestCase extends AbstractCollectionRegionAccessStrategyTestCase {
+-    public AbstractTransactionalAccessTestCase(String name) {
+-public class CollectionRegionImplTestCase extends AbstractEntityCollectionRegionTestCase {
+-    public CollectionRegionImplTestCase(String name) {
+-public class MvccInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public MvccInvalidatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class MvccReadOnlyExtraAPITestCase extends OptimisticReadOnlyExtraAPITestCase {
+-    public MvccReadOnlyExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-public class MvccReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-    public MvccReadOnlyTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class MvccReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public MvccReplicatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class MvccTransactionalExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-    public MvccTransactionalExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-public class OptimisticInvalidatedTransactionalTestCase 
+-    public OptimisticInvalidatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class OptimisticReadOnlyExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-    public OptimisticReadOnlyExtraAPITestCase(String name) {
+-    public void testLockItem() {
+-    public void testLockRegion() {
+-public class OptimisticReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-    public OptimisticReadOnlyTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class OptimisticReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public OptimisticReplicatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class OptimisticTransactionalExtraAPITestCase extends AbstractJBossCacheTestCase {
+-    public static final String REGION_NAME = "test/com.foo.test";
+-    public static final String KEY = "KEY";
+-    public static final String VALUE1 = "VALUE1";
+-    public static final String VALUE2 = "VALUE2";
+-    public OptimisticTransactionalExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-    public void testLockItem() {
+-    public void testLockRegion() {
+-    public void testUnlockItem() {
+-    public void testUnlockRegion() {
+-    public static class MockSoftLock implements SoftLock {
+-public class PessimisticInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public PessimisticInvalidatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class PessimisticReadOnlyExtraAPITestCase extends OptimisticReadOnlyExtraAPITestCase {
+-    public PessimisticReadOnlyExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-public class PessimisticReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-    public PessimisticReadOnlyTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class PessimisticReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public PessimisticReplicatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class PessimisticTransactionalExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-    public PessimisticTransactionalExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-public abstract class AbstractEntityRegionAccessStrategyTestCase extends AbstractJBossCacheTestCase {
+-    public static final String REGION_NAME = "test/com.foo.test";
+-    public static final String KEY_BASE = "KEY";
+-    public static final String VALUE1 = "VALUE1";
+-    public static final String VALUE2 = "VALUE2";
+-    public static Test getTestSetup(Class testClass, String configName) {
+-    public static Test getTestSetup(Test test, String configName) {
+-    public static Test getTestSetup(Class testClass, String configName, String configResource) {
+-    public static Test getTestSetup(Test test, String configName, String configResource) {
+-    public AbstractEntityRegionAccessStrategyTestCase(String name) {
+-    public abstract void testCacheConfiguration();
+-    public void testGetRegion() {
+-    public void testPutFromLoad() throws Exception {
+-    public void testPutFromLoadMinimal() throws Exception {
+-            public void run() {
+-            public void run() {
+-    public void testInsert() throws Exception {
+-            public void run() {
+-            public void run() {
+-    public boolean isBlockingReads()
+-    public void testUpdate() throws Exception {
+-            public void run() {
+-            public void run() {
+-    public void testRemove() {
+-    public void testRemoveAll() {
+-    public void testEvict() {
+-    public void testEvictAll() {
+-        public AccessStrategyTestSetup(Test test, String configName) {
+-        public AccessStrategyTestSetup(Test test, String configName, String configResource) {
+-public abstract class AbstractReadOnlyAccessTestCase extends AbstractEntityRegionAccessStrategyTestCase {
+-    public AbstractReadOnlyAccessTestCase(String name) {
+-    public void testPutFromLoad() throws Exception {
+-    public void testPutFromLoadMinimal() throws Exception {
+-    public void testUpdate() throws Exception {
+-public abstract class AbstractTransactionalAccessTestCase extends AbstractEntityRegionAccessStrategyTestCase {
+-    public AbstractTransactionalAccessTestCase(String name) {
+-    public void testContestedPutFromLoad() throws Exception {
+-            public void run() {
+-            public void run() {
+-public class EntityRegionImplTestCase extends AbstractEntityCollectionRegionTestCase {
+-    public EntityRegionImplTestCase(String name) {
+-public class MvccInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public MvccInvalidatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-	public boolean isBlockingReads() {
+-public class MvccReadOnlyExtraAPITestCase extends OptimisticReadOnlyExtraAPITestCase {
+-    public MvccReadOnlyExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-public class MvccReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-    public MvccReadOnlyTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-	public boolean isBlockingReads() {
+-public class MvccReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public MvccReplicatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-	public boolean isBlockingReads() {
+-public class MvccTransactionalExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-    public MvccTransactionalExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-public class OptimisticInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public OptimisticInvalidatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class OptimisticReadOnlyExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-    public OptimisticReadOnlyExtraAPITestCase(String name) {
+-    public void testLockItem() {
+-    public void testLockRegion() {
+-    public void testAfterUpdate() {
+-public class OptimisticReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-    public OptimisticReadOnlyTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class OptimisticReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public OptimisticReplicatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class OptimisticTransactionalExtraAPITestCase extends AbstractJBossCacheTestCase {
+-    public static final String REGION_NAME = "test/com.foo.test";
+-    public static final String KEY = "KEY";
+-    public static final String VALUE1 = "VALUE1";
+-    public static final String VALUE2 = "VALUE2";
+-    public OptimisticTransactionalExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-    public void testLockItem() {
+-    public void testLockRegion() {
+-    public void testUnlockItem() {
+-    public void testUnlockRegion() {
+-    public void testAfterInsert() {
+-    public void testAfterUpdate() {
+-    public static class MockSoftLock implements SoftLock {
+-public class PessimisticInvalidatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public PessimisticInvalidatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class PessimisticReadOnlyExtraAPITestCase extends OptimisticReadOnlyExtraAPITestCase {
+-    public PessimisticReadOnlyExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-public class PessimisticReadOnlyTestCase extends AbstractReadOnlyAccessTestCase {
+-    public PessimisticReadOnlyTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class PessimisticReplicatedTransactionalTestCase extends AbstractTransactionalAccessTestCase {
+-    public PessimisticReplicatedTransactionalTestCase(String name) {
+-    public static Test suite() throws Exception {
+-    public void testCacheConfiguration() {
+-public class PessimisticTransactionalExtraAPITestCase extends OptimisticTransactionalExtraAPITestCase {
+-    public PessimisticTransactionalExtraAPITestCase(String name) {
+-    public void testCacheConfiguration() {
+-public abstract class AbstractEntityCacheFunctionalTestCase extends CacheTestCaseBase {
+-    public AbstractEntityCacheFunctionalTestCase(String x) {
+-    public void testEmptySecondLevelCacheEntry() throws Exception {
+-    public void testStaleWritesLeaveCacheConsistent() {
+-public abstract class AbstractQueryCacheFunctionalTestCase extends AbstractEntityCacheFunctionalTestCase {
+-    public AbstractQueryCacheFunctionalTestCase(String x) {
+-    public void testQueryCacheInvalidation() {
+-public abstract class CacheTestCaseBase extends FunctionalTestCase {
+-    public CacheTestCaseBase(String x) {
+-    public String[] getMappings() {
+-    public void configure(Configuration cfg) {
+-    public String getCacheConcurrencyStrategy() {
+-    public void afterConfigurationBuilt(Mappings mappings, Dialect dialect) {
+-public class Contact implements Serializable
+-   public Contact()
+-   public Integer getId()
+-   public void setId(Integer id)
+-   public String getName()
+-   public void setName(String name)
+-   public String getTlf()
+-   public void setTlf(String tlf)
+-   public Customer getCustomer()
+-   public void setCustomer(Customer customer)
+-public class Customer implements Serializable
+-   public Customer()
+-   public Integer getId()
+-   public void setId(Integer id)
+-   public String getName()
+-   public void setName(String string)
+-   public Set<Contact> getContacts()
+-   public void setContacts(Set<Contact> contacts)
+-public abstract class DualNodeTestCaseBase extends CacheTestCaseBase
+-   public static final String CACHE_MANAGER_NAME_PROP = "hibernate.test.cluster.node.id";
+-   public DualNodeTestCaseBase(String x)
+-   public void configure(Configuration cfg)
+-   public ExecutionEnvironment getSecondNodeEnvironment() {
+-   public class SecondNodeSettings implements ExecutionEnvironment.Settings {
+-      public SecondNodeSettings() {
+-      public void configure(Configuration arg0)
+-      public boolean createSchema()
+-      public boolean recreateSchemaAfterFailure()
+-      public void afterConfigurationBuilt(Mappings arg0, Dialect arg1)
+-      public void afterSessionFactoryBuilt(SessionFactoryImplementor arg0)
+-      public boolean appliesTo(Dialect arg0)
+-      public String getBaseForMappings()
+-      public String getCacheConcurrencyStrategy()
+-      public String[] getMappings()
+-      public boolean overrideCacheStrategy()
+-public class Item {
+-    public String getDescription() {
+-    public void setDescription(String description) {
+-    public Long getId() {
+-    public void setId(Long id) {
+-    public String getName() {
+-    public void setName(String name) {
+-public class MVCCConcurrentWriteTest extends CacheTestCaseBase {
+-    public MVCCConcurrentWriteTest(String x) {
+-    public void testPingDb() throws Exception {
+-    public void configure(Configuration cfg) {
+-    public void testSingleUser() throws Exception {
+-    public void testManyUsers() throws Exception {
+-    public void cleanup() throws Exception {
+-    public Set<Integer> getCustomerIDs() {
+-        public UserRunner(final Integer cId, CountDownLatch completionLatch) {
+-        public void run() {
+-        public boolean isSuccess() {
+-        public int getCompletedIterations() {
+-        public Throwable getCauseOfFailure() {
+-        public Integer getCustomerId() {
+-        public String toString() {
+-	public static String getStackTrace(Throwable throwable) {
+-    public static Test suite() {
+-public class MVCCEntityReplicationTest extends PessimisticEntityReplicationTest
+-   public MVCCEntityReplicationTest(String name)
+-public class MVCCJBossCacheTest extends AbstractQueryCacheFunctionalTestCase {
+-    public MVCCJBossCacheTest(String x) {
+-    public static Test suite() {
+-public class MVCCSessionRefreshTest extends PessimisticSessionRefreshTest
+-   public MVCCSessionRefreshTest(String x)
+-   public static Test suite() throws Exception {
+-public class OptimisticEntityReplicationTest extends PessimisticEntityReplicationTest
+-   public OptimisticEntityReplicationTest(String name)
+-public class OptimisticJBossCacheTest extends AbstractQueryCacheFunctionalTestCase {
+-    public OptimisticJBossCacheTest(String x) {
+-    public static Test suite() {
+-public class OptimisticSessionRefreshTest extends PessimisticSessionRefreshTest
+-   public OptimisticSessionRefreshTest(String x)
+-   public static Test suite() throws Exception {
+-public class PessimisticEntityReplicationTest
+-   public PessimisticEntityReplicationTest(String name)
+-   public void testAll() throws Exception
+-   public class MyListener
+-      public void clear()
+-      public void nodeVisited(NodeVisitedEvent event)
+-public class PessimisticJBossCacheTest extends AbstractQueryCacheFunctionalTestCase {
+-    public PessimisticJBossCacheTest(String x) {
+-    public static Test suite() {
+-public class PessimisticRepeatableSessionRefreshTest extends PessimisticSessionRefreshTest
+-   public PessimisticRepeatableSessionRefreshTest(String x)
+-   public static Test suite() throws Exception {
+-public class PessimisticSessionRefreshTest extends DualNodeTestCaseBase
+-   public static final String OUR_PACKAGE = PessimisticSessionRefreshTest.class.getPackage().getName();
+-   public PessimisticSessionRefreshTest(String x)
+-   public static Test suite() throws Exception {
+-   public String[] getMappings()
+-   public void testRefreshAfterExternalChange() throws Exception
+-public class VersionedItem extends Item {
+-    public Long getVersion() {
+-    public void setVersion(Long version) {
+-public class MVCCBulkOperationsTest 
+-   public static Test suite() throws Exception {
+-   public MVCCBulkOperationsTest(String name)
+-public class OptimisticBulkOperationsTest 
+-   public static Test suite() throws Exception {
+-   public OptimisticBulkOperationsTest(String name)
+-public class PessimisticBulkOperationsTest
+-   public PessimisticBulkOperationsTest(String name)
+-   public void testBulkOperations() throws Exception
+-   public void createContacts() throws Exception
+-   public int deleteContacts() throws Exception
+-   public List<Integer> getContactsByCustomer(String customerName)
+-   public List<Integer> getContactsByTLF(String tlf) throws Exception
+-   public int updateContacts(String name, String newTLF) throws Exception
+-   public int updateContactsWithOneManual(String name, String newTLF) throws Exception
+-   public Contact getContact(Integer id) throws Exception
+-   public void cleanup() throws Exception
+-public class Account implements Serializable
+-   public Integer getId()
+-   public void setId(Integer id)
+-   public AccountHolder getAccountHolder()
+-   public void setAccountHolder(AccountHolder accountHolder)
+-   public Integer getBalance()
+-   public void setBalance(Integer balance)
+-   public String getBranch()
+-   public void setBranch(String branch)
+-   public boolean equals(Object obj)
+-   public int hashCode( )
+-   public String toString()
+-public class AccountHolder implements Serializable
+-   public AccountHolder( ) {
+-   public AccountHolder(String lastName, String ssn)
+-   public String getLastName( ) { return this.lastName; }
+-   public void setLastName(String lastName) { this.lastName = lastName; }
+-   public String getSsn( ) { return ssn; }
+-   public void setSsn(String ssn) { this.ssn = ssn; }
+-   public boolean equals(Object obj)
+-   public int hashCode( )
+-   public String toString()
+-public class CacheAccessListener
+-   public void clear()
+-   public void nodeModified(NodeModifiedEvent event)
+-   public void nodeCreated(NodeCreatedEvent event)
+-   public void nodeVisited(NodeVisitedEvent event)
+-   public boolean getSawRegionModification(String regionName)
+-   public boolean getSawRegionAccess(String regionName)
+-public class ClassLoaderTestDAO
+-   public ClassLoaderTestDAO(SessionFactory factory, TransactionManager tm) throws Exception
+-   public Object getSmith() {
+-   public Object getJones() {
+-   public Object getBarney() {
+-   public void updateAccountBranch(Integer id, String branch) throws Exception
+-   public int getCountForBranch(String branch, boolean useRegion) throws Exception
+-   public void createAccount(Object holder, Integer id, Integer openingBalance, String branch) throws Exception
+-   public Account getAccount(Integer id) throws Exception
+-   public Account getAccountWithRefresh(Integer id) throws Exception
+-   public void updateAccountBalance(Integer id, Integer newBalance) throws Exception
+-   public String getBranch(Object holder, boolean useRegion) throws Exception
+-   public int getTotalBalance(Object holder, boolean useRegion)
+-   public void cleanup() throws Exception
+-   public void remove()
+-public class MVCCIsolatedClassLoaderTest extends PessimisticIsolatedClassLoaderTest
+-   public MVCCIsolatedClassLoaderTest(String name)
+-   public static Test suite() throws Exception {
+-public class OptimisticIsolatedClassLoaderTest extends PessimisticIsolatedClassLoaderTest
+-   public OptimisticIsolatedClassLoaderTest(String name)
+-   public static Test suite() throws Exception {
+-public class PessimisticIsolatedClassLoaderTest
+-   public static final String OUR_PACKAGE = PessimisticIsolatedClassLoaderTest.class.getPackage().getName();
+-   public PessimisticIsolatedClassLoaderTest(String name)
+-   public static Test suite() throws Exception {
+-   public String[] getMappings()
+-   public void testIsolatedSetup() throws Exception
+-   public void testClassLoaderHandlingNamedQueryRegion() throws Exception {
+-   public void testClassLoaderHandlingStandardQueryCache() throws Exception {
+-public class CustomClassLoaderCacheManager extends CacheManagerImpl
+-   public CustomClassLoaderCacheManager(String configFileName, 
+-public class DualNodeConnectionProviderImpl implements ConnectionProvider {
+-	public static ConnectionProvider getActualConnectionProvider() {
+-	public void configure(Properties props) throws HibernateException {
+-	public Connection getConnection() throws SQLException {
+-	public void closeConnection(Connection conn) throws SQLException {
+-	public void close() throws HibernateException {
+-	public boolean supportsAggressiveRelease() {
+-public class DualNodeJtaTransactionImpl implements Transaction {
+-	public DualNodeJtaTransactionImpl(DualNodeJtaTransactionManagerImpl jtaTransactionManager) {
+-	public int getStatus() {
+-	public void commit()
+-	public void rollback() throws IllegalStateException, SystemException {
+-	public void setRollbackOnly() throws IllegalStateException, SystemException {
+-	public void registerSynchronization(Synchronization synchronization)
+-	public void enlistConnection(Connection connection) {
+-	public Connection getEnlistedConnection() {
+-	public boolean enlistResource(XAResource xaResource)
+-	public boolean delistResource(XAResource xaResource, int i) throws IllegalStateException, SystemException {
+-public class DualNodeJtaTransactionManagerImpl implements TransactionManager {
+-	public synchronized static DualNodeJtaTransactionManagerImpl getInstance(String nodeId) {
+-	public synchronized static void cleanupTransactions() {
+-    public synchronized static void cleanupTransactionManagers() {       
+-	public int getStatus() throws SystemException {
+-	public Transaction getTransaction() throws SystemException {
+-	public DualNodeJtaTransactionImpl getCurrentTransaction() {
+-	public void begin() throws NotSupportedException, SystemException {
+-	public Transaction suspend() throws SystemException {
+-	public void resume(Transaction transaction)
+-	public void commit()
+-	public void rollback() throws IllegalStateException, SecurityException, SystemException {
+-	public void setRollbackOnly() throws IllegalStateException, SystemException {
+-	public void setTransactionTimeout(int i) throws SystemException {
+-	public String toString() {
+-public class DualNodeTestUtil
+-   public static final String NODE_ID_PROP = "hibernate.test.cluster.node.id";
+-   public static final String LOCAL = "local";
+-   public static final String REMOTE = "remote";
+-public class DualNodeTransactionManagerLookup implements TransactionManagerLookup {
+-	public TransactionManager getTransactionManager(Properties props) throws HibernateException {
+-	public String getUserTransactionName() {
+-	public Object getTransactionIdentifier(Transaction transaction) {
+-public class IsolatedCacheTestSetup extends SelectedClassnameClassLoaderTestSetup
+-   public static final String DEF_CACHE_FACTORY_RESOURCE = MultiplexingCacheInstanceManager.DEF_CACHE_FACTORY_RESOURCE;
+-   public static final String DEF_JGROUPS_RESOURCE = MultiplexingCacheInstanceManager.DEF_JGROUPS_RESOURCE;
+-   public IsolatedCacheTestSetup(Test test,
+-public class TestCacheInstanceManager extends MultiplexingCacheInstanceManager {
+-    public static CacheManager getTestCacheManager(String name) {
+-    public static void addTestCacheManager(String name,CacheManager manager) {
+-    public static void clearCacheManagers() {
+-    public TestCacheInstanceManager() {
+-    public void start(Settings settings, Properties properties) throws CacheException {
+-   public void stop()
+-public class TestJBossCacheRegionFactory extends JBossCacheRegionFactory {
+-    public TestJBossCacheRegionFactory(Properties props) {
+-    public TestJBossCacheRegionFactory() {
+-public class QueryRegionImplTestCase extends AbstractGeneralDataRegionTestCase {
+-    public QueryRegionImplTestCase(String name) {
+-    public void testPutDoesNotBlockGetOptimistic() throws Exception {
+-    public void testPutDoesNotBlockGetPessimistic() throws Exception {
+-    public void testPutDoesNotBlockGetMVCC() throws Exception {
+-            public void run() {
+-            public void run() {
+-    public void testGetDoesNotBlockPutOptimistic() throws Exception {
+-    public void testGetDoesNotBlockPutPessimistic() throws Exception {
+-    public void testGetDoesNotBlockPutPessimisticRepeatableRead() throws Exception {
+-    public void testGetDoesNotBlockPutMVCC() throws Exception {
+-            public void run() {
+-            public void run() {
+-    public class GetBlocker {
+-        public void nodeVisisted(NodeVisitedEvent event) {
+-public class ClusteredConcurrentTimestampRegionTestCase extends AbstractJBossCacheTestCase {
+-    public ClusteredConcurrentTimestampRegionTestCase(String name) {
+-    public void testSimplePreinvalidate() throws Exception {
+-    public void testInitialState() throws Exception {
+-    public void testSimpleInvalidate() throws Exception {
+-    public void testConcurrentActivityClustered() throws Exception {
+-    public void testConcurrentActivityNonClustered() throws Exception {
+-        public void run() {
+-public class TimestampsRegionImplTestCase extends AbstractGeneralDataRegionTestCase {
+-    public TimestampsRegionImplTestCase(String name) {
+-public class BatchModeTransactionManagerLookup
+-    public TransactionManager getTransactionManager(Properties props) throws HibernateException {
+-    public String getUserTransactionName() {
+-	public Object getTransactionIdentifier(Transaction transaction) {
+-public class CacheManagerTestSetup extends TestSetup
+-   public static final String DEF_CACHE_FACTORY_RESOURCE = MultiplexingCacheInstanceManager.DEF_CACHE_FACTORY_RESOURCE;
+-   public static final String DEF_JGROUPS_RESOURCE = MultiplexingCacheInstanceManager.DEF_JGROUPS_RESOURCE;
+-   public CacheManagerTestSetup(Test test, AtomicReference<CacheManager> cacheManagerRef)
+-   public CacheManagerTestSetup(Test test, String jbcConfig, String jgConfig, AtomicReference<CacheManager> cacheManagerRef)
+-   public CacheManagerTestSetup(Test test, String jbcConfig, ChannelFactory channelFactory, AtomicReference<CacheManager> cacheManagerRef)
+-public class CacheTestSupport {
+-    public CacheTestSupport(Logger log) {
+-    public void registerCache(Cache cache) {
+-    public void registerFactory(RegionFactory factory) {
+-    public void unregisterCache(Cache cache) {
+-    public void unregisterFactory(RegionFactory factory) {
+-    public void setUp() throws Exception {   
+-    public void tearDown() throws Exception {       
+-    public void avoidConcurrentFlush() {
+-public class CacheTestUtil {
+-    public static String LOCAL_OPTIMISIC_CACHE;
+-    public static String LOCAL_PESSIMISTIC_CACHE;
+-    public static Configuration buildConfiguration(String regionPrefix, Class regionFactory, boolean use2ndLevel, boolean useQueries) {
+-    public static Configuration buildLocalOnlyConfiguration(String regionPrefix, boolean optimistic, boolean use2ndLevel, boolean useQueries) {
+-    public static JBossCacheRegionFactory startRegionFactory(Configuration cfg) 
+-    public static JBossCacheRegionFactory startRegionFactory(Configuration cfg, CacheTestSupport testSupport) 
+-    public static void stopRegionFactory(JBossCacheRegionFactory factory, CacheTestSupport testSupport) {
+-    public static TestSuite createFailureExpectedSuite(Class testClass) {
+-public class SelectedClassnameClassLoader extends ClassLoader
+-   public SelectedClassnameClassLoader(String[] includedClasses,
+-   public SelectedClassnameClassLoader(String[] includedClasses,
+-   public String toString()  {
+-public class SelectedClassnameClassLoaderTestSetup extends TestSetup
+-   public SelectedClassnameClassLoaderTestSetup(Test test,
+
+Lines added containing method: 31. Lines removed containing method: 905. Tot = 936
+————————————————————————————————————————————————
+*** Changed calls of methods FROM Satd-Method in Diff: ***
+Method calls found: 
+********************************************
+********************************************

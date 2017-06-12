@@ -1,0 +1,2 @@
+c930ebcd7d HHH-6191 - repackage org.hibernate.cache per api/spi/internal split
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes

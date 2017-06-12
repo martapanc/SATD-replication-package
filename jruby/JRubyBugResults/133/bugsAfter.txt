@@ -1,0 +1,4 @@
+5e78f58b81 Fix JRUBY-6538: 'obj !~ thing' is not the same as obj.send(:!~, thing)
+58d4d4c90e Fix JRUBY-6534: Broken block-local vars in 1.9 mode
+3e6d201fe4 Fix JRUBY-6504: Block parameter syntax issue where the closing | comes at the beginning of the line
+1dd08acd07 Fix JRUBY-6237: Allow the syntax `a = b = f 1`

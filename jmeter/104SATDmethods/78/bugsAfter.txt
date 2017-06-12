@@ -1,0 +1,4 @@
+3fa818235 Bug 60812 - JMeterThread does not honor contract of JMeterStopTestNowException Bugzilla Id: 60812
+520166ca4 Bug 60797 - TestAction in pause mode can last beyond configured duration of test Bugzilla Id: 60797
+ea7682133 Bug 60564 - Migrating LogKit to SLF4J - core/testelement,threads,util,visualizers package Contributed by Woonsan Ko This closes #273 Bugzilla Id: 60564
+bd3b94bb5 Bug 60530 - Add API to create JMeter threads while test is running Based on a contribution by Logan Mauzaize & Maxime Chassagneux Bugzilla Id: 60530

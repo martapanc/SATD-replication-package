@@ -1,0 +1,3 @@
+08d9fe2117 HHH-5949 - Migrate, complete and integrate TransactionFactory as a service
+3ca8216c7c HHH-5765 : Wire in SQLExceptionHelper for converting SQLExceptions
+34c2839dcc HHH-5616 - Switch to Gradle for builds

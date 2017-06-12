@@ -1,0 +1,2 @@
+17953cd07 Bug 38031 - add mnemonic for Edit
+7d7e1252a Bug 35525 - Added Spanish localisation

@@ -1,0 +1,5 @@
+51ce8fac7 fix for Target rewriting for nested "include" only works when "as" is specified, Bugzilla PR 54940
+46c940785 adding if and unless namespaces allowing to put conditions on all tasks and nested elements. Code written by Peter Reilly. Bugzilla PR 43362.
+bd52e7b9b allow targets to deal with missing extension points.  PR 49473.  Submitted by Danny Yates.
+13941782f extension-point doesn't work with import.  PR 48804
+df121a6cf PR 47830 : implementation of the ProjectHelperRepository to make Ant able to choose a ProjectHelper, and some doc about it

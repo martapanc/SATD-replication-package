@@ -1,0 +1,11 @@
+9793404945 Fix for JRUBY-5086: jruby should output more full of a stack trace in 1.9 mode
+a4d33150bc Final fixes and test for JRUBY-4264: threadContextMap leaks RubyThread on death of adopted thread
+93b1257dad Revert "Fix for JRUBY-4484: jruby -rtracer doesn't trace"
+26f5d63fd5 Fix for JRUBY-4531: java_send for static methods
+5f3de42461 Fix for JRUBY-4484: jruby -rtracer doesn't trace
+d9835f8206 Interpreter fix for JRUBY-4497: return in eigenclass definition is not working
+cbe7b2b790 Fix for JRUBY-4262: Weird Proc test makes JRuby to skip the rest of the tests completely
+25720ab186 Fix for JRUBY-1531: Tracing in compiler / Tracing AOT compiled code
+1d1e533478 Kinda hacky fixes for exceptions thrown from toplevel; backtrace isn't great, but it isn't NullPointerException. Should at least improve JRUBY-3439 and JRUBY-3345. I will leave the latter open to continue fixing the trace.
+99f983249e Rejigger how binding works with files and line numbers. It appears that we weren't tracking everything we needed in a binding. Instead of holding the current frame plus the current file+line, we held only the current frame. This led to us constantly setting and clearing the frame's line numbers in an attempt to get traces to line up. With binding carrying the original file+line, that juggling is no longer necessary. This fixes an eval spec and should improve backtraces across eval calls, which had numerous peculiarities before. This also fixes JRUBY-2328: Overriding require causes eval to give wrong __FILE__ in certain circumstances.
+b585f5861b Fix for JRUBY-3397: defined? CONST is not following proper constant lookup rules

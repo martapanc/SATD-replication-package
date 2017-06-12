@@ -1,0 +1,2 @@
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof
+6650efb10 Next try for PR: 12844 (Stochern im Nebel)

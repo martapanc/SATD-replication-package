@@ -1,0 +1,4 @@
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+36ba1bcafb HHH-6192 - Split org.hibernate.collection package up into api/sip/internal
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split

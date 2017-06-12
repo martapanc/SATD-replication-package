@@ -1,0 +1,2 @@
+285abc026 Bug 60859 - Save Responses to a file : 2 elements with different configuration will overlap Add JUnits Bugzilla Id: 60859
+11d942f4a Bug 60564 - Migrating LogKit to SLF4J - core/engine,plugin,report,reporters packages (2/2) Contributed by Woonsan Ko This closes #270 Bugzilla Id: 60564

@@ -1,0 +1,14 @@
+5ac6e9479c Time#localtime was missing the : when passing HH:MM to getTimeZone. Fixes #747
+b67c1a6142 Fix #565.
+43d635d38a Fix #591.
+1c2e4ce9c9 Fix #591.
+57cda3a7d7 Fix JRUBY-6811: Time.at rounding errors below milliseconds
+d72c9f4f88 Fix JRUBY-6952
+969bf6f5b7 Implement Time#round. This fixes JRUBY-6813.
+0ac40a96db Fix JRUBY-6809: Time::utc sub-millisecond inaccuracy, causes incorrect date in Rails
+75c5448980 Attempt to fix JRUBY-6650.  This now seems to produce/load the same output as MRI
+ac0aff594c Fix JRUBY-6631: Time#nsec always returns 0
+8749c50e51 Fix JRUBY-6386: time.localtime not taking any arguments
+abeb961582 Fix JRUBY-5315: Time constructors don't support fractional seconds
+ac1cd2ff34 Revert "Fix JRUBY-5315: Time constructors don't support fractional seconds"
+e603a5ed65 Fix JRUBY-5315: Time constructors don't support fractional seconds

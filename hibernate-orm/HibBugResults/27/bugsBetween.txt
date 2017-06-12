@@ -1,0 +1,1 @@
+3e5a8b6603 HHH-9701 - Develop "immutable EntityEntry" impl

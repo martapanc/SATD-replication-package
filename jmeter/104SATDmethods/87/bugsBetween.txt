@@ -1,0 +1,7 @@
+ebb9c4e45 Bug 58100 - Performance enhancements : Replace Random by ThreadLocalRandom Bugzilla Id: 58100
+0d6bdceb1 Bug 57193: Add param and return tags to javadoc Bugzilla Id: 57193
+176640e49 Bug 57193: Add javadoc @param, @return and @throws tags, or fill  them. Bugzilla Id: 57193
+eb3c238dc Bug 57193: Escape &, < and > in javadoc Bugzilla Id: 57193
+935ec9c09 Bug 55623 - Invalid/unexpected configuration values should not be silently ignored Bugzilla Id: 55623
+cb248782e Bug 54268 - Improve CPU and memory usage Factor out code Bugzilla Id: 54268
+a96760645 Bug 53311 - JMeterUtils#runSafe should not throw Error when interrupted

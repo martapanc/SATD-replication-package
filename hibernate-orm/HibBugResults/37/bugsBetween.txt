@@ -1,0 +1,6 @@
+4a4f636caf HHH-6330 - Remove entity mode switching capability
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+36ba1bcafb HHH-6192 - Split org.hibernate.collection package up into api/sip/internal
+1421c3f54d HHH-5284 - Allow Type to dictate the default length/scale/precision
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

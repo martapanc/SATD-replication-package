@@ -1,0 +1,10 @@
+3a813dcbb4 HHH-11646 revert errant after -> afterQuery search and replace
+87e3f0fd28 HHH-10664 - Prep 6.0 feature branch - merge hibernate-entitymanager into hibernate-core (first sucessful full compile of consolidated hibernate-core)
+1e44e7420b HHH-10267 - Support defining lazy attribute fetch groups
+472f4ab9ef HHH-10280 - Remove legacy bytecode enhancement artifacts
+6d77ac39c5 HHH-9937 - bytecode enhancement - expose loaded state in LazyAttributeLoader
+c6fa2b1df1 HHH-8558 - Bytecode enhancer: lazy loading support
+5b1da92498 HHH-9838 - Leverage ClassLoaderService during JavassistLazyInitializer#getProxyFactory
+9e063ffa25 HHH-9837 - Remove reliance during annotation binding on org.hibernate.internal.util.ClassLoaderHelper HHH-9841 - Redesign org.hibernate.property.PropertyAccessorFactory
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers
+611f8a0e1c HHH-9803 - Checkstyle fix ups

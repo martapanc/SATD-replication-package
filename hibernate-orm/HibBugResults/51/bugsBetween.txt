@@ -1,0 +1,15 @@
+129c0f1348 HHH-6732 more logging trace statements are missing guards against unneeded string creation
+a806626a27 HHH-6199 - Split org.hibernate.exception package into api/spi/internal
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+36ba1bcafb HHH-6192 - Split org.hibernate.collection package up into api/sip/internal
+c930ebcd7d HHH-6191 - repackage org.hibernate.cache per api/spi/internal split
+ff74ceaaa4 HHH-6155 - Migrate o.h.impl package to o.h.internal
+6504cb6d78 HHH-6098 - Slight naming changes in regards to new logging classes
+fe8c7183d1 HHH-5697 - Support for multi-tenancy
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+73e85ee761 HHH-5781 - Refactor code in org.hibernate.jdbc to spi/internal and remove obsolete code
+08d9fe2117 HHH-5949 - Migrate, complete and integrate TransactionFactory as a service
+7262276fa9 HHH-5778 : Wire in new batch code
+b006a6c3c5 HHH-5765 : Refactor JDBCContext/ConnectionManager spi/impl and to use new proxies
+3ca8216c7c HHH-5765 : Wire in SQLExceptionHelper for converting SQLExceptions
+34c2839dcc HHH-5616 - Switch to Gradle for builds

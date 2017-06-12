@@ -1,0 +1,60 @@
+// This functionality should eventually go away, as it is replaced by model exporters
+// This is a kludge to deal with enumerators, which crash the doSwitch
+//FB TBD can we come up with a better algorithm for choosing the default label feature?
+//DMS Why not this?
+// Second alternative should be getModelProject()?
+// This is a big festering hack to make the images the right size from the start
+// if there are multiple variables in declaration
+// TODO handle class cast exception better.
+// TODO // This is faster than many charAt() calls
+// Note that the way they are sorted, the values of index[i++] always increase
+// //TBD rethink where exactly some of the following methods belong (GenModel or GenPackage)
+//DMS  Do a better job with specific exceptions? Just use chained RuntimeExceptions?
+// This is copied from ItemProviderAdapterFactory
+// The eAnnotations and eGenericType are possible containment references
+// call the workaround
+// TODO So what should be the eType be now?
+// TODO Hack that should be removed.
+// REVISIT: Remove this code
+// Assume that it's an attribute for now
+// TODO This is really quite attrocious since there is code that will assume an iterator that returns strings!
+// Why? -- In many cases
+// Ensure that this race condition is thread safe
+// Because of the old factoring approach in the create method
+// Unused?
+// Motif kludge: we would get something random instead of null
+//DMS should we let this exception out?
+// Specialize this to return a resource locator for messages specific to this validator
+// Do nothing for now, and avoid propagating the exception
+// Only file-scheme URIs will be re-encoded. If a URI was decoded in the workaround
+// TODO fix the space above
+// EATM this would be wrong.
+// TODO factor up into GenBaseImpl
+// TODO deprecate (since getPluginClass() is no longer called)
+// this is a fall-back, however, this should never be called
+//DMS handle this well.
+// EATM Kind of hacky.
+//DMS factor this into a method? Use a non-static subclass? 
+// TODO deprecate (since no longer used by getEditPluginClass()
+// This runs the operation, and shows progress
+// EATM Demand create metadata
+//REVISIT: do we really need to support block names as in Unicode 3.1
+// TODO REMOVE THIS BOGUS EMPTY LINE
+// Note: Registry based authority is being removed from
+// call workaround
+// TODO // I'm concerned that folders will often return 401 or even 403
+// I don't know if we should be run this deferred
+// temporary structure to hold node's attributes + namespaces in scope
+//DMS this doesn't really produce nice output
+// If the delegate URI can be handled as a file
+// The label is not used
+//DMS What if Eclipse is running, but an invalid facade has been specified?
+// EATM Call the deprecated method which does the same thing
+// This assumes we only get a SET notification, which isn't a good assumption
+// EATM This might be better written as a single loop for the EObject case?
+// if there are multiple variables in declaration
+// Per Schema 1.0 it is not clear if the result returned should be a valid URI
+// HACK: reading encoding
+//TBD return (user selected subset?) of referenced packages that contain super classes of classes in this package.
+// REVISIT: Remove this code.
+// TODO factor up into GenBaseImpl?

@@ -1,0 +1,1 @@
+72cb7ea99 Bug 60564 - Migrating LogKit to SLF4J - Replace logkit loggers with slf4j ones with keeping the current logkit binding solution

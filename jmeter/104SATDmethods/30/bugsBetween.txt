@@ -1,0 +1,1 @@
+d6b7c4fd0 Bug 51822 - (part 1) save 1 invocation of GuiPackage#getCurrentGui

@@ -1,0 +1,2 @@
+223933936 Bug 60564 - Migrating LogKit to SLF4J - Replace logkit loggers with slf4j ones with keeping the current logkit binding solution
+f03a8bdbe Bug 57114 - Performance : Functions that only have values as instance variable should not synchronize execute Bugzilla Id: 57114

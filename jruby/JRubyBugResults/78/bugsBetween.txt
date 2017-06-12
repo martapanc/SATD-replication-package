@@ -1,0 +1,2 @@
+ffe5c350d2 Fix JRUBY-5225: New method-name-mangling may not be JVM specification compliant
+2b166c98a4 Fix for JRUBY-4825: __FILE__ is not expanded when it is used from within a a compiled ruby script used as the main class of an executable jar

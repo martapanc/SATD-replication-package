@@ -1,0 +1,3 @@
+ef415543d PR35852: Committed changes provided by Benjamin Burgess
+509ae3e1f Fix a NPE that occurred apparently because Folder.list() can return null Thanks to Bob Evans PR: 31965
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof

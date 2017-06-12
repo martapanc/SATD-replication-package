@@ -1,0 +1,5 @@
+06b0faaf57 HHH-7746 - Investigate alternative batch loading algorithms
+4a4f636caf HHH-6330 - Remove entity mode switching capability
+fb44ad936d HHH-6196 - Split org.hibernate.engine package into api/spi/internal
+0816d00e59 HHH-5986 - Refactor org.hibernate.util package for spi/internal split
+34c2839dcc HHH-5616 - Switch to Gradle for builds

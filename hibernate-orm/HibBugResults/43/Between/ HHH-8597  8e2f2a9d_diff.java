@@ -1,0 +1,14148 @@
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/internal/AbstractJoinableAssociationImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/internal/AbstractJoinableAssociationImpl.java
+deleted file mode 100644
+index acc41f7839..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/internal/AbstractJoinableAssociationImpl.java
++++ /dev/null
+@@ -1,115 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.internal;
+-import java.util.Map;
+-
+-import org.hibernate.Filter;
+-import org.hibernate.MappingException;
+-import org.hibernate.engine.FetchStyle;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.spi.CollectionReference;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.loader.spi.JoinableAssociation;
+-import org.hibernate.persister.entity.OuterJoinLoadable;
+-import org.hibernate.sql.JoinType;
+-
+-/**
+- * This class represents a joinable association.
+- *
+- * @author Gavin King
+- * @author Gail Badner
+- */
+-public abstract class AbstractJoinableAssociationImpl implements JoinableAssociation {
+-	private final PropertyPath propertyPath;
+-	private final Fetch currentFetch;
+-	private final EntityReference currentEntityReference;
+-	private final CollectionReference currentCollectionReference;
+-	private final JoinType joinType;
+-	private final String withClause;
+-	private final Map<String, Filter> enabledFilters;
+-	private final boolean hasRestriction;
+-
+-	public AbstractJoinableAssociationImpl(
+-			Fetch currentFetch,
+-			EntityReference currentEntityReference,
+-			CollectionReference currentCollectionReference,
+-			String withClause,
+-			boolean hasRestriction,
+-			Map<String, Filter> enabledFilters) throws MappingException {
+-		this.propertyPath = currentFetch.getPropertyPath();
+-		if ( currentFetch.getFetchStrategy().getStyle() == FetchStyle.JOIN ) {
+-			joinType = currentFetch.isNullable() ? JoinType.LEFT_OUTER_JOIN : JoinType.INNER_JOIN;
+-		}
+-		else {
+-			joinType = JoinType.NONE;
+-		}
+-		this.currentFetch = currentFetch;
+-		this.currentEntityReference = currentEntityReference;
+-		this.currentCollectionReference = currentCollectionReference;
+-		this.withClause = withClause;
+-		this.hasRestriction = hasRestriction;
+-		this.enabledFilters = enabledFilters; // needed later for many-to-many/filter application
+-	}
+-
+-	@Override
+-	public PropertyPath getPropertyPath() {
+-		return propertyPath;
+-	}
+-
+-	@Override
+-	public JoinType getJoinType() {
+-		return joinType;
+-	}
+-
+-	@Override
+-	public Fetch getCurrentFetch() {
+-		return currentFetch;
+-	}
+-
+-	@Override
+-	public EntityReference getCurrentEntityReference() {
+-		return currentEntityReference;
+-	}
+-
+-	@Override
+-	public CollectionReference getCurrentCollectionReference() {
+-		return currentCollectionReference;
+-	}
+-
+-	@Override
+-	public boolean hasRestriction() {
+-		return hasRestriction;
+-	}
+-
+-	@Override
+-	public String getWithClause() {
+-		return withClause;
+-	}
+-
+-	@Override
+-	public Map<String, Filter> getEnabledFilters() {
+-		return enabledFilters;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/internal/AbstractLoadQueryImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/internal/AbstractLoadQueryImpl.java
+deleted file mode 100755
+index 9e75c62e9e..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/internal/AbstractLoadQueryImpl.java
++++ /dev/null
+@@ -1,323 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.internal;
+-import java.util.List;
+-
+-import org.hibernate.MappingException;
+-import org.hibernate.engine.internal.JoinHelper;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.internal.util.StringHelper;
+-import org.hibernate.loader.CollectionAliases;
+-import org.hibernate.loader.EntityAliases;
+-import org.hibernate.loader.plan.exec.spi.AliasResolutionContext;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.loader.spi.JoinableAssociation;
+-import org.hibernate.persister.collection.QueryableCollection;
+-import org.hibernate.persister.entity.Joinable;
+-import org.hibernate.persister.walking.internal.FetchStrategyHelper;
+-import org.hibernate.sql.ConditionFragment;
+-import org.hibernate.sql.DisjunctionFragment;
+-import org.hibernate.sql.InFragment;
+-import org.hibernate.sql.JoinFragment;
+-import org.hibernate.sql.JoinType;
+-
+-/**
+- * Represents a generic load query used for generating SQL.
+- *
+- * This code is based on the SQL generation code originally in
+- * org.hibernate.loader.JoinWalker.
+- *
+- * @author Gavin King
+- * @author Jon Lipsky
+- * @author Gail Badner
+- */
+-public abstract class AbstractLoadQueryImpl {
+-
+-	private final List<JoinableAssociation> associations;
+-
+-	protected AbstractLoadQueryImpl(List<JoinableAssociation> associations) {
+-		this.associations = associations;
+-	}
+-
+-	protected String orderBy(final String orderBy, AliasResolutionContext aliasResolutionContext) {
+-		return mergeOrderings( orderBy( associations, aliasResolutionContext ), orderBy );
+-	}
+-
+-	protected static String mergeOrderings(String ordering1, String ordering2) {
+-		if ( ordering1.length() == 0 ) {
+-			return ordering2;
+-		}
+-		else if ( ordering2.length() == 0 ) {
+-			return ordering1;
+-		}
+-		else {
+-			return ordering1 + ", " + ordering2;
+-		}
+-	}
+-
+-	/**
+-	 * Generate a sequence of <tt>LEFT OUTER JOIN</tt> clauses for the given associations.
+-	 */
+-	protected final JoinFragment mergeOuterJoins(SessionFactoryImplementor factory, AliasResolutionContext aliasResolutionContext)
+-	throws MappingException {
+-		JoinFragment joinFragment = factory.getDialect().createOuterJoinFragment();
+-		JoinableAssociation previous = null;
+-		for ( JoinableAssociation association : associations ) {
+-			final String rhsAlias = aliasResolutionContext.resolveAssociationRhsTableAlias( association );
+-			final String[] aliasedLhsColumnNames = aliasResolutionContext.resolveAssociationAliasedLhsColumnNames(
+-					association
+-			);
+-			final String[] rhsColumnNames = JoinHelper.getRHSColumnNames( association.getAssociationType(), factory );
+-			final String on = resolveOnCondition( factory, association, aliasResolutionContext );
+-			if ( previous != null && previous.isManyToManyWith( association ) ) {
+-				addManyToManyJoin(
+-						joinFragment,
+-						association,
+-						( QueryableCollection ) previous.getJoinable(),
+-						rhsAlias,
+-						aliasedLhsColumnNames,
+-						rhsColumnNames,
+-						on
+-				);
+-			}
+-			else {
+-				addJoins(
+-						joinFragment,
+-						association,
+-						rhsAlias,
+-						aliasedLhsColumnNames,
+-						rhsColumnNames,
+-						on
+-				);
+-			}
+-			previous = association;
+-		}
+-		return joinFragment;
+-	}
+-
+-	/**
+-	 * Get the order by string required for collection fetching
+-	 */
+-	// TODO: why is this static?
+-	protected static String orderBy(
+-			List<JoinableAssociation> associations,
+-			AliasResolutionContext aliasResolutionContext)
+-	throws MappingException {
+-		StringBuilder buf = new StringBuilder();
+-		JoinableAssociation previous = null;
+-		for ( JoinableAssociation association : associations ) {
+-			final String rhsAlias = aliasResolutionContext.resolveAssociationRhsTableAlias( association );
+-			if ( association.getJoinType() == JoinType.LEFT_OUTER_JOIN ) { // why does this matter?
+-				if ( association.getJoinable().isCollection() ) {
+-					final QueryableCollection queryableCollection = (QueryableCollection) association.getJoinable();
+-					if ( queryableCollection.hasOrdering() ) {
+-						final String orderByString = queryableCollection.getSQLOrderByString( rhsAlias );
+-						buf.append( orderByString ).append(", ");
+-					}
+-				}
+-				else {
+-					// it might still need to apply a collection ordering based on a
+-					// many-to-many defined order-by...
+-					if ( previous != null && previous.getJoinable().isCollection() ) {
+-						final QueryableCollection queryableCollection = (QueryableCollection) previous.getJoinable();
+-						if ( queryableCollection.isManyToMany() && previous.isManyToManyWith( association ) ) {
+-							if ( queryableCollection.hasManyToManyOrdering() ) {
+-								final String orderByString = queryableCollection.getManyToManyOrderByString( rhsAlias );
+-								buf.append( orderByString ).append(", ");
+-							}
+-						}
+-					}
+-				}
+-			}
+-			previous = association;
+-		}
+-		if ( buf.length() > 0 ) {
+-			buf.setLength( buf.length() - 2 );
+-		}
+-		return buf.toString();
+-	}
+-
+-	/**
+-	 * Render the where condition for a (batch) load by identifier / collection key
+-	 */
+-	protected StringBuilder whereString(String alias, String[] columnNames, int batchSize) {
+-		if ( columnNames.length==1 ) {
+-			// if not a composite key, use "foo in (?, ?, ?)" for batching
+-			// if no batch, and not a composite key, use "foo = ?"
+-			InFragment in = new InFragment().setColumn( alias, columnNames[0] );
+-			for ( int i = 0; i < batchSize; i++ ) {
+-				in.addValue( "?" );
+-			}
+-			return new StringBuilder( in.toFragmentString() );
+-		}
+-		else {
+-			//a composite key
+-			ConditionFragment byId = new ConditionFragment()
+-					.setTableAlias(alias)
+-					.setCondition( columnNames, "?" );
+-	
+-			StringBuilder whereString = new StringBuilder();
+-			if ( batchSize==1 ) {
+-				// if no batch, use "foo = ? and bar = ?"
+-				whereString.append( byId.toFragmentString() );
+-			}
+-			else {
+-				// if a composite key, use "( (foo = ? and bar = ?) or (foo = ? and bar = ?) )" for batching
+-				whereString.append('('); //TODO: unnecessary for databases with ANSI-style joins
+-				DisjunctionFragment df = new DisjunctionFragment();
+-				for ( int i=0; i<batchSize; i++ ) {
+-					df.addCondition(byId);
+-				}
+-				whereString.append( df.toFragmentString() );
+-				whereString.append(')'); //TODO: unnecessary for databases with ANSI-style joins
+-			}
+-			return whereString;
+-		}
+-	}
+-
+-	/**
+-	 * Generate a select list of columns containing all properties of the entity classes
+-	 */
+-	protected final String associationSelectString(AliasResolutionContext aliasResolutionContext)
+-	throws MappingException {
+-
+-		if ( associations.size() == 0 ) {
+-			return "";
+-		}
+-		else {
+-			StringBuilder buf = new StringBuilder( associations.size() * 100 );
+-			for ( int i=0; i<associations.size(); i++ ) {
+-				JoinableAssociation association = associations.get( i );
+-				JoinableAssociation next = ( i == associations.size() - 1 )
+-				        ? null
+-				        : associations.get( i + 1 );
+-				if ( !shouldAddToSql( association.getCurrentFetch() ) ) {
+-					continue;
+-				}
+-
+-				final Joinable joinable = association.getJoinable();
+-				final EntityAliases currentEntityAliases =
+-						association.getCurrentEntityReference() == null ?
+-								null :
+-								aliasResolutionContext.resolveAliases( association.getCurrentEntityReference() ).getColumnAliases();
+-				final CollectionAliases currentCollectionAliases =
+-						association.getCurrentCollectionReference() == null ?
+-								null :
+-								aliasResolutionContext.resolveAliases( association.getCurrentCollectionReference() ).getCollectionColumnAliases();
+-				final String selectFragment = joinable.selectFragment(
+-						next == null ? null : next.getJoinable(),
+-						next == null ? null : aliasResolutionContext.resolveAssociationRhsTableAlias( next ),
+-						aliasResolutionContext.resolveAssociationRhsTableAlias( association ),
+-						currentEntityAliases == null ? null : currentEntityAliases.getSuffix(),
+-						currentCollectionAliases == null ? null : currentCollectionAliases.getSuffix(),
+-						association.getJoinType()==JoinType.LEFT_OUTER_JOIN
+-				);
+-				if (selectFragment.trim().length() > 0) {
+-					// TODO: shouldn't the append of selectFragment be outside this if statement???
+-					buf.append(", ").append( selectFragment );
+-				}
+-			}
+-			return buf.toString();
+-		}
+-	}
+-
+-	private boolean shouldAddToSql(Fetch fetch) {
+-		return FetchStrategyHelper.isJoinFetched( fetch.getFetchStrategy() );
+-	}
+-
+-	private void addJoins(
+-			JoinFragment joinFragment,
+-			JoinableAssociation association,
+-			String rhsAlias,
+-			String[] aliasedLhsColumnNames,
+-			String[] rhsColumnNames,
+-			String on) throws MappingException {
+-		joinFragment.addJoin(
+-				association.getJoinable().getTableName(),
+-				rhsAlias,
+-				aliasedLhsColumnNames,
+-				rhsColumnNames,
+-				association.getJoinType(),
+-				on
+-		);
+-		joinFragment.addJoins(
+-				association.getJoinable().fromJoinFragment( rhsAlias, false, true ),
+-				association.getJoinable().whereJoinFragment( rhsAlias, false, true )
+-		);
+-	}
+-
+-	private String resolveOnCondition(
+-			SessionFactoryImplementor factory,
+-			JoinableAssociation joinableAssociation,
+-			AliasResolutionContext aliasResolutionContext) {
+-		final String withClause = StringHelper.isEmpty( joinableAssociation.getWithClause() ) ?
+-				"" :
+-				" and ( " + joinableAssociation.getWithClause() + " )";
+-		return joinableAssociation.getAssociationType().getOnCondition(
+-				aliasResolutionContext.resolveAssociationRhsTableAlias( joinableAssociation ),
+-				factory,
+-				joinableAssociation.getEnabledFilters()
+-		) + withClause;
+-	}
+-
+-	/*
+-	public void validateJoin(String path) throws MappingException {
+-		if ( rhsColumns==null || lhsColumns==null
+-				|| lhsColumns.length!=rhsColumns.length || lhsColumns.length==0 ) {
+-			throw new MappingException("invalid join columns for association: " + path);
+-		}
+-	}
+-	*/
+-
+-	private void addManyToManyJoin(
+-			JoinFragment outerjoin,
+-			JoinableAssociation association,
+-			QueryableCollection collection,
+-			String rhsAlias,
+-			String[] aliasedLhsColumnNames,
+-			String[] rhsColumnNames,
+-			String on) throws MappingException {
+-		final String manyToManyFilter = collection.getManyToManyFilterFragment(
+-				rhsAlias,
+-				association.getEnabledFilters()
+-		);
+-		String condition = "".equals( manyToManyFilter )
+-				? on
+-				: "".equals( on )
+-				? manyToManyFilter
+-				: on + " and " + manyToManyFilter;
+-		outerjoin.addJoin(
+-				association.getJoinable().getTableName(),
+-				rhsAlias,
+-				aliasedLhsColumnNames,
+-				rhsColumnNames,
+-				association.getJoinType(),
+-				condition
+-		);
+-		outerjoin.addJoins(
+-				association.getJoinable().fromJoinFragment( rhsAlias, false, true ),
+-				association.getJoinable().whereJoinFragment( rhsAlias, false, true )
+-		);
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/internal/CollectionJoinableAssociationImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/internal/CollectionJoinableAssociationImpl.java
+deleted file mode 100644
+index 9e516a4503..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/internal/CollectionJoinableAssociationImpl.java
++++ /dev/null
+@@ -1,93 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.internal;
+-
+-import java.util.Map;
+-
+-import org.hibernate.Filter;
+-import org.hibernate.MappingException;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.spi.JoinableAssociation;
+-import org.hibernate.persister.collection.QueryableCollection;
+-import org.hibernate.persister.entity.Joinable;
+-import org.hibernate.type.AssociationType;
+-
+-/**
+- * This class represents a joinable collection association.
+- *
+- * @author Gail Badner
+- */
+-
+-public class CollectionJoinableAssociationImpl extends AbstractJoinableAssociationImpl {
+-
+-	private final AssociationType joinableType;
+-	private final Joinable joinable;
+-
+-	public CollectionJoinableAssociationImpl(
+-			CollectionFetch collectionFetch,
+-			EntityReference currentEntityReference,
+-			String withClause,
+-			boolean hasRestriction,
+-			Map<String, Filter> enabledFilters) throws MappingException {
+-		super(
+-				collectionFetch,
+-				currentEntityReference,
+-				collectionFetch,
+-				withClause,
+-				hasRestriction,
+-				enabledFilters
+-		);
+-		this.joinableType = collectionFetch.getCollectionPersister().getCollectionType();
+-		this.joinable = (Joinable) collectionFetch.getCollectionPersister();
+-	}
+-
+-	@Override
+-	public AssociationType getAssociationType() {
+-		return joinableType;
+-	}
+-
+-	@Override
+-	public Joinable getJoinable() {
+-		return joinable;
+-	}
+-
+-	@Override
+-	public boolean isCollection() {
+-		return true;
+-	}
+-
+-	@Override
+-	public boolean isManyToManyWith(JoinableAssociation other) {
+-		QueryableCollection persister = ( QueryableCollection ) joinable;
+-		if ( persister.isManyToMany() ) {
+-			return persister.getElementType() == other.getAssociationType();
+-		}
+-		return false;
+-	}
+-
+-	protected boolean isOneToOne() {
+-		return false;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/internal/EntityJoinableAssociationImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/internal/EntityJoinableAssociationImpl.java
+deleted file mode 100644
+index 02b1c9cba4..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/internal/EntityJoinableAssociationImpl.java
++++ /dev/null
+@@ -1,89 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.internal;
+-
+-import java.util.Map;
+-
+-import org.hibernate.Filter;
+-import org.hibernate.MappingException;
+-import org.hibernate.loader.plan.spi.CollectionReference;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.spi.JoinableAssociation;
+-import org.hibernate.persister.entity.Joinable;
+-import org.hibernate.type.AssociationType;
+-import org.hibernate.type.EntityType;
+-
+-/**
+- * This class represents a joinable entity association.
+- *
+- * @author Gavin King
+- */
+-public class EntityJoinableAssociationImpl extends AbstractJoinableAssociationImpl {
+-
+-	private final AssociationType joinableType;
+-	private final Joinable joinable;
+-
+-	public EntityJoinableAssociationImpl(
+-			EntityFetch entityFetch,
+-			CollectionReference currentCollectionReference,
+-			String withClause,
+-			boolean hasRestriction,
+-			Map<String, Filter> enabledFilters) throws MappingException {
+-		super(
+-				entityFetch,
+-				entityFetch,
+-				currentCollectionReference,
+-				withClause,
+-				hasRestriction,
+-				enabledFilters
+-		);
+-		this.joinableType = entityFetch.getFetchedType();
+-		this.joinable = (Joinable) entityFetch.getEntityPersister();
+-	}
+-
+-	@Override
+-	public AssociationType getAssociationType() {
+-		return joinableType;
+-	}
+-
+-	@Override
+-	public Joinable getJoinable() {
+-		return joinable;
+-	}
+-
+-	@Override
+-	public boolean isCollection() {
+-		return false;
+-	}
+-
+-	@Override
+-	public boolean isManyToManyWith(JoinableAssociation other) {
+-		return false;
+-	}
+-
+-	protected boolean isOneToOne() {
+-		EntityType entityType = (EntityType) joinableType;
+-		return entityType.isOneToOne() /*&& entityType.isReferenceToPrimaryKey()*/;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/AliasResolutionContextImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/AliasResolutionContextImpl.java
+deleted file mode 100644
+index feb305a551..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/AliasResolutionContextImpl.java
++++ /dev/null
+@@ -1,372 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.internal;
+-
+-import java.io.ByteArrayOutputStream;
+-import java.io.PrintStream;
+-import java.io.PrintWriter;
+-import java.util.Collections;
+-import java.util.HashMap;
+-import java.util.Map;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.cfg.NotYetImplementedException;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.hql.internal.NameGenerator;
+-import org.hibernate.internal.CoreLogging;
+-import org.hibernate.internal.util.StringHelper;
+-import org.hibernate.loader.CollectionAliases;
+-import org.hibernate.loader.DefaultEntityAliases;
+-import org.hibernate.loader.EntityAliases;
+-import org.hibernate.loader.GeneratedCollectionAliases;
+-import org.hibernate.loader.plan.spi.BidirectionalEntityFetch;
+-import org.hibernate.loader.plan.exec.spi.AliasResolutionContext;
+-import org.hibernate.loader.plan.exec.spi.CollectionReferenceAliases;
+-import org.hibernate.loader.plan.exec.spi.EntityReferenceAliases;
+-import org.hibernate.loader.plan.spi.AnyFetch;
+-import org.hibernate.loader.plan.spi.CollectionReference;
+-import org.hibernate.loader.plan.spi.CompositeElementGraph;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.CompositeIndexGraph;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.ScalarReturn;
+-import org.hibernate.loader.plan.spi.SourceQualifiable;
+-import org.hibernate.loader.plan2.build.spi.TreePrinterHelper;
+-import org.hibernate.loader.plan2.spi.LoadPlan;
+-import org.hibernate.loader.plan2.spi.QuerySpace;
+-import org.hibernate.loader.spi.JoinableAssociation;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.entity.Loadable;
+-import org.hibernate.persister.walking.spi.WalkingException;
+-import org.hibernate.type.EntityType;
+-
+-/**
+- * Provides aliases that are used by load queries and ResultSet processors.
+- *
+- * @author Gail Badner
+- * @author Steve Ebersole
+- */
+-public class AliasResolutionContextImpl implements AliasResolutionContext {
+-	private static final Logger log = CoreLogging.logger( AliasResolutionContextImpl.class );
+-
+-	private final SessionFactoryImplementor sessionFactory;
+-
+-	private final Map<Return,String> sourceAliasByReturnMap;
+-	private final Map<SourceQualifiable,String> sourceQualifiersByReturnMap;
+-
+-	private final Map<EntityReference,EntityReferenceAliasesImpl> aliasesByEntityReference =
+-			new HashMap<EntityReference,EntityReferenceAliasesImpl>();
+-	private final Map<CollectionReference,LoadQueryCollectionAliasesImpl> aliasesByCollectionReference =
+-			new HashMap<CollectionReference,LoadQueryCollectionAliasesImpl>();
+-	private final Map<JoinableAssociation,JoinableAssociationAliasesImpl> aliasesByJoinableAssociation =
+-			new HashMap<JoinableAssociation, JoinableAssociationAliasesImpl>();
+-
+-	private int currentAliasSuffix;
+-	private int currentTableAliasUniqueness;
+-
+-	/**
+-	 * Constructs a AliasResolutionContextImpl without any source aliases.  This form is used in
+-	 * non-query (HQL, criteria, etc) contexts.
+-	 *
+-	 * @param sessionFactory The session factory
+-	 */
+-	public AliasResolutionContextImpl(SessionFactoryImplementor sessionFactory) {
+-		this( sessionFactory, 0 );
+-	}
+-
+-	/**
+-	 * Constructs a AliasResolutionContextImpl without any source aliases.  This form is used in
+-	 * non-query (HQL, criteria, etc) contexts.
+-	 *
+-	 * @param sessionFactory The session factory
+-	 * @param suffixSeed The seed value to use for generating the suffix used when generating SQL aliases.
+-	 */
+-	public AliasResolutionContextImpl(SessionFactoryImplementor sessionFactory, int suffixSeed) {
+-		this(
+-				sessionFactory,
+-				suffixSeed,
+-				Collections.<Return,String>emptyMap(),
+-				Collections.<SourceQualifiable,String>emptyMap()
+-		);
+-	}
+-
+-	/**
+-	 * Constructs a AliasResolutionContextImpl with source aliases.  See the notes on
+-	 * {@link org.hibernate.loader.plan.exec.spi.AliasResolutionContext#getSourceAlias(Return)} for discussion of "source aliases".
+-	 *
+-	 * @param sessionFactory The session factory
+-	 * @param suffixSeed The seed value to use for generating the suffix used when generating SQL aliases.
+-	 * @param sourceAliasByReturnMap Mapping of the source alias for each return (select-clause assigned alias).
+-	 * @param sourceQualifiersByReturnMap Mapping of source query qualifiers (from-clause assigned alias).
+-	 */
+-	public AliasResolutionContextImpl(
+-			SessionFactoryImplementor sessionFactory,
+-			int suffixSeed,
+-			Map<Return, String> sourceAliasByReturnMap,
+-			Map<SourceQualifiable, String> sourceQualifiersByReturnMap) {
+-		this.sessionFactory = sessionFactory;
+-		this.currentAliasSuffix = suffixSeed;
+-		this.sourceAliasByReturnMap = new HashMap<Return, String>( sourceAliasByReturnMap );
+-		this.sourceQualifiersByReturnMap = new HashMap<SourceQualifiable, String>( sourceQualifiersByReturnMap );
+-	}
+-
+-	@Override
+-	public String getSourceAlias(Return theReturn) {
+-		return sourceAliasByReturnMap.get( theReturn );
+-	}
+-
+-	@Override
+-	public String[] resolveScalarColumnAliases(ScalarReturn scalarReturn) {
+-		final int numberOfColumns = scalarReturn.getType().getColumnSpan( sessionFactory );
+-
+-		// if the scalar return was assigned an alias in the source query, use that as the basis for generating
+-		// the SQL aliases
+-		final String sourceAlias = getSourceAlias( scalarReturn );
+-		if ( sourceAlias != null ) {
+-			// generate one based on the source alias
+-			// todo : to do this properly requires dialect involvement ++
+-			// 		due to needing uniqueness even across identifier length based truncation; just truncating is
+-			//		*not* enough since truncated names might clash
+-			//
+-			// for now, don't even truncate...
+-			return NameGenerator.scalarNames( sourceAlias, numberOfColumns );
+-		}
+-		else {
+-			// generate one from scratch
+-			return NameGenerator.scalarNames( currentAliasSuffix++, numberOfColumns );
+-		}
+-	}
+-
+-	@Override
+-	public EntityReferenceAliases resolveAliases(EntityReference entityReference) {
+-		EntityReferenceAliasesImpl aliases = aliasesByEntityReference.get( entityReference );
+-		if ( aliases == null ) {
+-			if ( BidirectionalEntityFetch.class.isInstance( entityReference ) ) {
+-				return resolveAliases(
+-						( (BidirectionalEntityFetch) entityReference ).getTargetEntityReference()
+-				);
+-			}
+-			final EntityPersister entityPersister = entityReference.getEntityPersister();
+-			aliases = new EntityReferenceAliasesImpl(
+-					createTableAlias( entityPersister ),
+-					createEntityAliases( entityPersister )
+-			);
+-			aliasesByEntityReference.put( entityReference, aliases );
+-		}
+-		return aliases;
+-	}
+-
+-	@Override
+-	public CollectionReferenceAliases resolveAliases(CollectionReference collectionReference) {
+-		LoadQueryCollectionAliasesImpl aliases = aliasesByCollectionReference.get( collectionReference );
+-		if ( aliases == null ) {
+-			final CollectionPersister collectionPersister = collectionReference.getCollectionPersister();
+-			aliases = new LoadQueryCollectionAliasesImpl(
+-					createTableAlias( collectionPersister.getRole() ),
+-					collectionPersister.isManyToMany()
+-							? createTableAlias( collectionPersister.getRole() )
+-							: null,
+-					createCollectionAliases( collectionPersister ),
+-					createCollectionElementAliases( collectionPersister )
+-			);
+-			aliasesByCollectionReference.put( collectionReference, aliases );
+-		}
+-		return aliases;
+-	}
+-
+-
+-
+-
+-
+-
+-
+-	@Override
+-	public String resolveAssociationRhsTableAlias(JoinableAssociation joinableAssociation) {
+-		return getOrGenerateJoinAssocationAliases( joinableAssociation ).rhsAlias;
+-	}
+-
+-	@Override
+-	public String resolveAssociationLhsTableAlias(JoinableAssociation joinableAssociation) {
+-		return getOrGenerateJoinAssocationAliases( joinableAssociation ).lhsAlias;
+-	}
+-
+-	@Override
+-	public String[] resolveAssociationAliasedLhsColumnNames(JoinableAssociation joinableAssociation) {
+-		return getOrGenerateJoinAssocationAliases( joinableAssociation ).aliasedLhsColumnNames;
+-	}
+-
+-	protected SessionFactoryImplementor sessionFactory() {
+-		return sessionFactory;
+-	}
+-
+-	private String createSuffix() {
+-		return Integer.toString( currentAliasSuffix++ ) + '_';
+-	}
+-
+-	private JoinableAssociationAliasesImpl getOrGenerateJoinAssocationAliases(JoinableAssociation joinableAssociation) {
+-		JoinableAssociationAliasesImpl aliases = aliasesByJoinableAssociation.get( joinableAssociation );
+-		if ( aliases == null ) {
+-			final Fetch currentFetch = joinableAssociation.getCurrentFetch();
+-			final String lhsAlias;
+-			if ( AnyFetch.class.isInstance( currentFetch ) ) {
+-				throw new WalkingException( "Any type should never be joined!" );
+-			}
+-			else if ( EntityReference.class.isInstance( currentFetch.getOwner() ) ) {
+-				lhsAlias = resolveAliases( (EntityReference) currentFetch.getOwner() ).getTableAlias();
+-			}
+-			else if ( CompositeFetch.class.isInstance( currentFetch.getOwner() ) ) {
+-				lhsAlias = resolveAliases(
+-						locateCompositeFetchEntityReferenceSource( (CompositeFetch) currentFetch.getOwner() )
+-				).getTableAlias();
+-			}
+-			else if ( CompositeElementGraph.class.isInstance( currentFetch.getOwner() ) ) {
+-				CompositeElementGraph compositeElementGraph = (CompositeElementGraph) currentFetch.getOwner();
+-				lhsAlias = resolveAliases( compositeElementGraph.getCollectionReference() ).getElementTableAlias();
+-			}
+-			else if ( CompositeIndexGraph.class.isInstance( currentFetch.getOwner() ) ) {
+-				CompositeIndexGraph compositeIndexGraph = (CompositeIndexGraph) currentFetch.getOwner();
+-				lhsAlias = resolveAliases( compositeIndexGraph.getCollectionReference() ).getElementTableAlias();
+-			}
+-			else {
+-				throw new NotYetImplementedException( "Cannot determine LHS alias for FetchOwner." );
+-			}
+-
+-			final String[] aliasedLhsColumnNames = currentFetch.toSqlSelectFragments( lhsAlias );
+-			final String rhsAlias;
+-			if ( EntityReference.class.isInstance( currentFetch ) ) {
+-				rhsAlias = resolveAliases( (EntityReference) currentFetch ).getTableAlias();
+-			}
+-			else if ( CollectionReference.class.isInstance( joinableAssociation.getCurrentFetch() ) ) {
+-				rhsAlias = resolveAliases( (CollectionReference) currentFetch ).getCollectionTableAlias();
+-			}
+-			else {
+-				throw new NotYetImplementedException( "Cannot determine RHS alis for a fetch that is not an EntityReference or CollectionReference." );
+-			}
+-
+-			// TODO: can't this be found in CollectionAliases or EntityAliases? should be moved to AliasResolutionContextImpl
+-
+-			aliases = new JoinableAssociationAliasesImpl( lhsAlias, aliasedLhsColumnNames, rhsAlias );
+-			aliasesByJoinableAssociation.put( joinableAssociation, aliases );
+-		}
+-		return aliases;
+-	}
+-
+-	private EntityReference locateCompositeFetchEntityReferenceSource(CompositeFetch composite) {
+-		final FetchOwner owner = composite.getOwner();
+-		if ( EntityReference.class.isInstance( owner ) ) {
+-			return (EntityReference) owner;
+-		}
+-		if ( CompositeFetch.class.isInstance( owner ) ) {
+-			return locateCompositeFetchEntityReferenceSource( (CompositeFetch) owner );
+-		}
+-
+-		throw new WalkingException( "Cannot resolve entity source for a CompositeFetch" );
+-	}
+-
+-	private String createTableAlias(EntityPersister entityPersister) {
+-		return createTableAlias( StringHelper.unqualifyEntityName( entityPersister.getEntityName() ) );
+-	}
+-
+-	private String createTableAlias(String name) {
+-		return StringHelper.generateAlias( name, currentTableAliasUniqueness++ );
+-	}
+-
+-	private EntityAliases createEntityAliases(EntityPersister entityPersister) {
+-		return new DefaultEntityAliases( (Loadable) entityPersister, createSuffix() );
+-	}
+-
+-	private CollectionAliases createCollectionAliases(CollectionPersister collectionPersister) {
+-		return new GeneratedCollectionAliases( collectionPersister, createSuffix() );
+-	}
+-
+-	private EntityAliases createCollectionElementAliases(CollectionPersister collectionPersister) {
+-		if ( !collectionPersister.getElementType().isEntityType() ) {
+-			return null;
+-		}
+-		else {
+-			final EntityType entityElementType = (EntityType) collectionPersister.getElementType();
+-			return createEntityAliases( (EntityPersister) entityElementType.getAssociatedJoinable( sessionFactory() ) );
+-		}
+-	}
+-
+-	private static class LoadQueryCollectionAliasesImpl implements CollectionReferenceAliases {
+-		private final String tableAlias;
+-		private final String manyToManyAssociationTableAlias;
+-		private final CollectionAliases collectionAliases;
+-		private final EntityAliases entityElementAliases;
+-
+-		public LoadQueryCollectionAliasesImpl(
+-				String tableAlias,
+-				String manyToManyAssociationTableAlias,
+-				CollectionAliases collectionAliases,
+-				EntityAliases entityElementAliases) {
+-			this.tableAlias = tableAlias;
+-			this.manyToManyAssociationTableAlias = manyToManyAssociationTableAlias;
+-			this.collectionAliases = collectionAliases;
+-			this.entityElementAliases = entityElementAliases;
+-		}
+-
+-		@Override
+-		public String getCollectionTableAlias() {
+-			return StringHelper.isNotEmpty( manyToManyAssociationTableAlias )
+-					? manyToManyAssociationTableAlias
+-					: tableAlias;
+-		}
+-
+-		@Override
+-		public String getElementTableAlias() {
+-			return tableAlias;
+-		}
+-
+-		@Override
+-		public CollectionAliases getCollectionColumnAliases() {
+-			return collectionAliases;
+-		}
+-
+-		@Override
+-		public EntityAliases getEntityElementColumnAliases() {
+-			return entityElementAliases;
+-		}
+-	}
+-
+-	private static class JoinableAssociationAliasesImpl {
+-		private final String lhsAlias;
+-		private final String[] aliasedLhsColumnNames;
+-		private final String rhsAlias;
+-
+-		public JoinableAssociationAliasesImpl(
+-				String lhsAlias,
+-				String[] aliasedLhsColumnNames,
+-				String rhsAlias) {
+-			this.lhsAlias = lhsAlias;
+-			this.aliasedLhsColumnNames = aliasedLhsColumnNames;
+-			this.rhsAlias = rhsAlias;
+-		}
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/EntityReferenceAliasesImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/EntityReferenceAliasesImpl.java
+deleted file mode 100644
+index 985f6a2976..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/EntityReferenceAliasesImpl.java
++++ /dev/null
+@@ -1,51 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.internal;
+-
+-import org.hibernate.loader.EntityAliases;
+-import org.hibernate.loader.plan.exec.spi.EntityReferenceAliases;
+-
+-/**
+- * @author Gail Badner
+- * @author Steve Ebersole
+- */
+-class EntityReferenceAliasesImpl implements EntityReferenceAliases {
+-	private final String tableAlias;
+-	private final EntityAliases columnAliases;
+-
+-	public EntityReferenceAliasesImpl(String tableAlias, EntityAliases columnAliases) {
+-		this.tableAlias = tableAlias;
+-		this.columnAliases = columnAliases;
+-	}
+-
+-	@Override
+-	public String getTableAlias() {
+-		return tableAlias;
+-	}
+-
+-	@Override
+-	public EntityAliases getColumnAliases() {
+-		return columnAliases;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/Helper.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/Helper.java
+deleted file mode 100644
+index ee6a466615..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/Helper.java
++++ /dev/null
+@@ -1,79 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.internal;
+-
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.loader.plan.spi.Return;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class Helper {
+-	/**
+-	 * Singleton access
+-	 */
+-	public static final Helper INSTANCE = new Helper();
+-
+-	/**
+-	 * Disallow direct instantiation
+-	 */
+-	private Helper() {
+-	}
+-
+-
+-	/**
+-	 * Extract the root return of the LoadPlan, assuming there is just one.
+-	 *
+-	 * @param loadPlan The LoadPlan from which to extract the root return
+-	 * @param returnType The Return type expected, passed as an argument
+-	 * @param <T> The parameterized type of the specific Return type expected
+-	 *
+-	 * @return The root Return
+-	 *
+-	 * @throws IllegalStateException If there is no root, more than one root or the single root
+-	 * is not of the expected type.
+-	 */
+-	@SuppressWarnings("unchecked")
+-	public <T extends Return> T extractRootReturn(LoadPlan loadPlan, Class<T> returnType) {
+-		if ( loadPlan.getReturns().size() == 0 ) {
+-			throw new IllegalStateException( "LoadPlan contained no root returns" );
+-		}
+-		else if ( loadPlan.getReturns().size() > 1 ) {
+-			throw new IllegalStateException( "LoadPlan contained more than one root returns" );
+-		}
+-
+-		final Return rootReturn = loadPlan.getReturns().get( 0 );
+-		if ( !returnType.isInstance( rootReturn ) ) {
+-			throw new IllegalStateException(
+-					String.format(
+-							"Unexpected LoadPlan root return; expecting %s, but found %s",
+-							returnType.getName(),
+-							rootReturn.getClass().getName()
+-					)
+-			);
+-		}
+-
+-		return (T) rootReturn;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/LoadQueryBuilderHelper.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/LoadQueryBuilderHelper.java
+deleted file mode 100644
+index 25e4751371..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/internal/LoadQueryBuilderHelper.java
++++ /dev/null
+@@ -1,871 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.internal;
+-
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.List;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.cfg.NotYetImplementedException;
+-import org.hibernate.engine.FetchStyle;
+-import org.hibernate.engine.FetchTiming;
+-import org.hibernate.engine.internal.JoinHelper;
+-import org.hibernate.engine.spi.LoadQueryInfluencers;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.internal.CoreLogging;
+-import org.hibernate.internal.util.StringHelper;
+-import org.hibernate.loader.EntityAliases;
+-import org.hibernate.loader.plan.exec.process.internal.CollectionReferenceReader;
+-import org.hibernate.loader.plan.exec.process.internal.EntityIdentifierReader;
+-import org.hibernate.loader.plan.exec.process.internal.EntityIdentifierReaderImpl;
+-import org.hibernate.loader.plan.exec.process.internal.EntityReferenceReader;
+-import org.hibernate.loader.plan.exec.process.internal.OneToOneFetchReader;
+-import org.hibernate.loader.plan.exec.query.internal.SelectStatementBuilder;
+-import org.hibernate.loader.plan.exec.query.spi.QueryBuildingParameters;
+-import org.hibernate.loader.plan.exec.spi.AliasResolutionContext;
+-import org.hibernate.loader.plan.exec.spi.CollectionReferenceAliases;
+-import org.hibernate.loader.plan.exec.spi.EntityReferenceAliases;
+-import org.hibernate.loader.plan.exec.spi.ReaderCollector;
+-import org.hibernate.loader.plan.spi.AnyFetch;
+-import org.hibernate.loader.plan.spi.BidirectionalEntityFetch;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CompositeElementGraph;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.CompositeIndexGraph;
+-import org.hibernate.loader.plan.spi.EntityElementGraph;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.persister.collection.QueryableCollection;
+-import org.hibernate.persister.entity.Joinable;
+-import org.hibernate.persister.entity.OuterJoinLoadable;
+-import org.hibernate.persister.walking.internal.FetchStrategyHelper;
+-import org.hibernate.persister.walking.spi.WalkingException;
+-import org.hibernate.sql.JoinFragment;
+-import org.hibernate.sql.JoinType;
+-import org.hibernate.type.AssociationType;
+-import org.hibernate.type.Type;
+-
+-/**
+- * Helper for implementors of entity and collection based query building based on LoadPlans providing common
+- * functionality
+- *
+- * @author Steve Ebersole
+- */
+-public class LoadQueryBuilderHelper {
+-	private static final Logger log = CoreLogging.logger( LoadQueryBuilderHelper.class );
+-
+-	private LoadQueryBuilderHelper() {
+-	}
+-
+-	// used to collect information about fetches.  For now that is only whether there were subselect fetches
+-	public static interface FetchStats {
+-		public boolean hasSubselectFetches();
+-	}
+-
+-	private static class FetchStatsImpl implements FetchStats {
+-		private boolean hasSubselectFetch;
+-
+-		public void processingFetch(Fetch fetch) {
+-			if ( ! hasSubselectFetch ) {
+-				if ( fetch.getFetchStrategy().getStyle() == FetchStyle.SUBSELECT
+-						&& fetch.getFetchStrategy().getTiming() != FetchTiming.IMMEDIATE ) {
+-					hasSubselectFetch = true;
+-				}
+-			}
+-		}
+-
+-		@Override
+-		public boolean hasSubselectFetches() {
+-			return hasSubselectFetch;
+-		}
+-	}
+-
+-	public static void applyIdentifierJoinFetches(
+-			SelectStatementBuilder selectStatementBuilder,
+-			SessionFactoryImplementor factory,
+-			FetchOwner fetchOwner,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext,
+-			ReaderCollector readerCollector) {
+-
+-	}
+-
+-	public static FetchStats applyJoinFetches(
+-			SelectStatementBuilder selectStatementBuilder,
+-			SessionFactoryImplementor factory,
+-			FetchOwner fetchOwner,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext,
+-			ReaderCollector readerCollector) {
+-
+-		final JoinFragment joinFragment = factory.getDialect().createOuterJoinFragment();
+-		final FetchStatsImpl stats = new FetchStatsImpl();
+-
+-		// if the fetch owner is an entityReference, we should also walk its identifier fetches here...
+-		//
+-		// what if fetchOwner is a composite fetch (as it would be in the case of a key-many-to-one)?
+-		if ( EntityReference.class.isInstance( fetchOwner ) ) {
+-			final EntityReference fetchOwnerAsEntityReference = (EntityReference) fetchOwner;
+-			for ( Fetch fetch : fetchOwnerAsEntityReference.getIdentifierDescription().getFetches() ) {
+-				processFetch(
+-						selectStatementBuilder,
+-						factory,
+-						joinFragment,
+-						fetchOwner,
+-						fetch,
+-						buildingParameters,
+-						aliasResolutionContext,
+-						readerCollector,
+-						stats
+-				);
+-			}
+-		}
+-
+-		processJoinFetches(
+-				selectStatementBuilder,
+-				factory,
+-				joinFragment,
+-				fetchOwner,
+-				buildingParameters,
+-				aliasResolutionContext,
+-				readerCollector,
+-				stats
+-		);
+-
+-		selectStatementBuilder.setOuterJoins(
+-				joinFragment.toFromFragmentString(),
+-				joinFragment.toWhereFragmentString()
+-		);
+-
+-		return stats;
+-	}
+-
+-
+-	private static void processJoinFetches(
+-			SelectStatementBuilder selectStatementBuilder,
+-			SessionFactoryImplementor factory,
+-			JoinFragment joinFragment,
+-			FetchOwner fetchOwner,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext,
+-			ReaderCollector readerCollector,
+-			FetchStatsImpl stats) {
+-
+-		for ( Fetch fetch : fetchOwner.getFetches() ) {
+-			processFetch(
+-					selectStatementBuilder,
+-					factory,
+-					joinFragment,
+-					fetchOwner,
+-					fetch,
+-					buildingParameters,
+-					aliasResolutionContext,
+-					readerCollector,
+-					stats
+-			);
+-		}
+-	}
+-
+-	private static void processFetch(
+-			SelectStatementBuilder selectStatementBuilder,
+-			SessionFactoryImplementor factory,
+-			JoinFragment joinFragment,
+-			FetchOwner fetchOwner,
+-			Fetch fetch,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext,
+-			ReaderCollector readerCollector,
+-			FetchStatsImpl stats) {
+-		if ( ! FetchStrategyHelper.isJoinFetched( fetch.getFetchStrategy() ) ) {
+-			return;
+-		}
+-
+-		if ( EntityFetch.class.isInstance( fetch ) ) {
+-			final EntityFetch entityFetch = (EntityFetch) fetch;
+-			processEntityFetch(
+-					selectStatementBuilder,
+-					factory,
+-					joinFragment,
+-					fetchOwner,
+-					entityFetch,
+-					buildingParameters,
+-					aliasResolutionContext,
+-					readerCollector,
+-					stats
+-			);
+-		}
+-		else if ( CollectionFetch.class.isInstance( fetch ) ) {
+-			final CollectionFetch collectionFetch = (CollectionFetch) fetch;
+-			processCollectionFetch(
+-					selectStatementBuilder,
+-					factory,
+-					joinFragment,
+-					fetchOwner,
+-					collectionFetch,
+-					buildingParameters,
+-					aliasResolutionContext,
+-					readerCollector,
+-					stats
+-			);
+-			if ( collectionFetch.getIndexGraph() != null ) {
+-				processJoinFetches(
+-						selectStatementBuilder,
+-						factory,
+-						joinFragment,
+-						collectionFetch.getIndexGraph(),
+-						buildingParameters,
+-						aliasResolutionContext,
+-						readerCollector,
+-						stats
+-				);
+-			}
+-			if ( collectionFetch.getElementGraph() != null ) {
+-				processJoinFetches(
+-						selectStatementBuilder,
+-						factory,
+-						joinFragment,
+-						collectionFetch.getElementGraph(),
+-						buildingParameters,
+-						aliasResolutionContext,
+-						readerCollector,
+-						stats
+-				);
+-			}
+-		}
+-		else {
+-			// could also be a CompositeFetch, we ignore those here
+-			// but do still need to visit their fetches...
+-			if ( FetchOwner.class.isInstance( fetch ) ) {
+-				processJoinFetches(
+-						selectStatementBuilder,
+-						factory,
+-						joinFragment,
+-						(FetchOwner) fetch,
+-						buildingParameters,
+-						aliasResolutionContext,
+-						readerCollector,
+-						stats
+-				);
+-			}
+-		}
+-	}
+-
+-	private static void processEntityFetch(
+-			SelectStatementBuilder selectStatementBuilder,
+-			SessionFactoryImplementor factory,
+-			JoinFragment joinFragment,
+-			FetchOwner fetchOwner,
+-			EntityFetch fetch,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext,
+-			ReaderCollector readerCollector,
+-			FetchStatsImpl stats) {
+-		if ( BidirectionalEntityFetch.class.isInstance( fetch ) ) {
+-			log.tracef( "Skipping bi-directional entity fetch [%s]", fetch );
+-			return;
+-		}
+-
+-		stats.processingFetch( fetch );
+-
+-		// write the fragments for this fetch to the in-flight SQL builder
+-		final EntityReferenceAliases aliases = renderSqlFragments(
+-				selectStatementBuilder,
+-				factory,
+-				joinFragment,
+-				fetchOwner,
+-				fetch,
+-				buildingParameters,
+-				aliasResolutionContext
+-		);
+-
+-		// now we build readers as follows:
+-		//		1) readers for any fetches that are part of the identifier
+-		final EntityIdentifierReader identifierReader = buildIdentifierReader(
+-				selectStatementBuilder,
+-				factory,
+-				joinFragment,
+-				fetch,
+-				buildingParameters,
+-				aliasResolutionContext,
+-				readerCollector,
+-				aliases,
+-				stats
+-		);
+-
+-		//		2) a reader for this fetch itself
+-		// 			todo : not sure this distinction really matters aside form the whole "register nullable property" stuff,
+-		// 			but not sure we need a distinct class for just that
+-		if ( fetch.getFetchedType().isOneToOne() ) {
+-			readerCollector.addReader(
+-					new OneToOneFetchReader( fetch, aliases, identifierReader, (EntityReference) fetchOwner )
+-			);
+-		}
+-		else {
+-			readerCollector.addReader(
+-					new EntityReferenceReader( fetch, aliases, identifierReader )
+-			);
+-		}
+-
+-		//		3) and then readers for all fetches not part of the identifier
+-		processJoinFetches(
+-				selectStatementBuilder,
+-				factory,
+-				joinFragment,
+-				fetch,
+-				buildingParameters,
+-				aliasResolutionContext,
+-				readerCollector,
+-				stats
+-		);
+-	}
+-
+-	/**
+-	 * Renders the pieces indicated by the incoming EntityFetch reference into the in-flight SQL statement builder.
+-	 *
+-	 * @param selectStatementBuilder The builder containing the in-flight SQL query definition.
+-	 * @param factory The SessionFactory SPI
+-	 * @param joinFragment The in-flight SQL JOIN definition.
+-	 * @param fetchOwner The owner of {@code fetch}
+-	 * @param fetch The fetch which indicates the information to be rendered.
+-	 * @param buildingParameters The settings/options for SQL building
+-	 * @param aliasResolutionContext The reference cache for entity/collection aliases
+-	 *
+-	 * @return The used aliases
+-	 */
+-	private static EntityReferenceAliases renderSqlFragments(
+-			SelectStatementBuilder selectStatementBuilder,
+-			SessionFactoryImplementor factory,
+-			JoinFragment joinFragment,
+-			FetchOwner fetchOwner,
+-			EntityFetch fetch,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext) {
+-		final EntityReferenceAliases aliases = aliasResolutionContext.resolveAliases( fetch );
+-
+-		final String rhsAlias = aliases.getTableAlias();
+-		final String[] rhsColumnNames = JoinHelper.getRHSColumnNames( fetch.getFetchedType(), factory );
+-
+-		final String lhsTableAlias = resolveLhsTableAlias( fetchOwner, fetch, aliasResolutionContext );
+-		// todo : this is not exactly correct.  it assumes the join refers to the LHS PK
+-		final String[] aliasedLhsColumnNames = fetch.toSqlSelectFragments( lhsTableAlias );
+-
+-		final String additionalJoinConditions = resolveAdditionalJoinCondition(
+-				factory,
+-				rhsAlias,
+-				fetchOwner,
+-				fetch,
+-				buildingParameters.getQueryInfluencers(),
+-				aliasResolutionContext
+-		);
+-
+-		final Joinable joinable = (Joinable) fetch.getEntityPersister();
+-
+-		addJoins(
+-				joinFragment,
+-				joinable,
+-				fetch.isNullable() ? JoinType.LEFT_OUTER_JOIN : JoinType.INNER_JOIN,
+-				rhsAlias,
+-				rhsColumnNames,
+-				aliasedLhsColumnNames,
+-				additionalJoinConditions
+-		);
+-
+-		// the null arguments here relate to many-to-many fetches
+-		selectStatementBuilder.appendSelectClauseFragment(
+-				joinable.selectFragment(
+-						null,
+-						null,
+-						rhsAlias,
+-						aliases.getColumnAliases().getSuffix(),
+-						null,
+-						true
+-				)
+-		);
+-
+-		return aliases;
+-	}
+-
+-	private static EntityIdentifierReader buildIdentifierReader(
+-			SelectStatementBuilder selectStatementBuilder,
+-			SessionFactoryImplementor factory,
+-			JoinFragment joinFragment,
+-			EntityReference entityReference,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext,
+-			ReaderCollector readerCollector,
+-			EntityReferenceAliases aliases,
+-			FetchStatsImpl stats) {
+-		final List<EntityReferenceReader> identifierFetchReaders = new ArrayList<EntityReferenceReader>();
+-		final ReaderCollector identifierFetchReaderCollector = new ReaderCollector() {
+-			@Override
+-			public void addReader(CollectionReferenceReader collectionReferenceReader) {
+-				throw new IllegalStateException( "Identifier cannot contain collection fetches" );
+-			}
+-
+-			@Override
+-			public void addReader(EntityReferenceReader entityReferenceReader) {
+-				identifierFetchReaders.add( entityReferenceReader );
+-			}
+-		};
+-		for ( Fetch fetch : entityReference.getIdentifierDescription().getFetches() ) {
+-			processFetch(
+-					selectStatementBuilder,
+-					factory,
+-					joinFragment,
+-					(FetchOwner) entityReference,
+-					fetch,
+-					buildingParameters,
+-					aliasResolutionContext,
+-					identifierFetchReaderCollector,
+-					stats
+-			);
+-		}
+-		return new EntityIdentifierReaderImpl(
+-				entityReference,
+-				aliases,
+-				identifierFetchReaders
+-		);
+-	}
+-
+-	private static List<EntityReferenceReader> collectIdentifierFetchReaders(
+-			EntityReference entityReference,
+-			AliasResolutionContext aliasResolutionContext,
+-			ReaderCollector readerCollector) {
+-		final Type identifierType = entityReference.getEntityPersister().getIdentifierType();
+-		if ( ! identifierType.isComponentType() ) {
+-			return Collections.emptyList();
+-		}
+-
+-		final Fetch[] fetches = entityReference.getIdentifierDescription().getFetches();
+-		if ( fetches == null || fetches.length == 0 ) {
+-			return Collections.emptyList();
+-		}
+-
+-		final List<EntityReferenceReader> readers = new ArrayList<EntityReferenceReader>();
+-		for ( Fetch fetch : fetches ) {
+-			collectIdentifierFetchReaders( aliasResolutionContext, readers, entityReference, fetch, readerCollector );
+-		}
+-		return readers;
+-	}
+-
+-
+-	private static void collectIdentifierFetchReaders(
+-			AliasResolutionContext aliasResolutionContext,
+-			List<EntityReferenceReader> readers,
+-			EntityReference entityReference,
+-			Fetch fetch,
+-			ReaderCollector readerCollector) {
+-		if ( CompositeFetch.class.isInstance( fetch ) ) {
+-			for ( Fetch subFetch : ( (CompositeFetch) fetch).getFetches() ) {
+-				collectIdentifierFetchReaders( aliasResolutionContext, readers, entityReference, subFetch, readerCollector );
+-			}
+-		}
+-		else if ( ! EntityReference.class.isInstance( fetch ) ) {
+-			throw new IllegalStateException(
+-					String.format(
+-							"Non-entity (and non-composite) fetch [%s] was found as part of entity identifier : %s",
+-							fetch,
+-							entityReference.getEntityPersister().getEntityName()
+-					)
+-			);
+-		}
+-		else {
+-			// todo : add a mapping here from EntityReference -> EntityReferenceReader
+-			//
+-			// need to be careful here about bi-directionality, just not sure how to best check for bi-directionality here.
+-			//
+-			final EntityReference fetchedEntityReference = (EntityReference) fetch;
+-			final EntityReferenceAliases fetchedAliases = aliasResolutionContext.resolveAliases( fetchedEntityReference );
+-
+-			if ( BidirectionalEntityFetch.class.isInstance( fetchedEntityReference ) ) {
+-				return;
+-			}
+-
+-
+-			final EntityReferenceReader reader = new EntityReferenceReader(
+-					fetchedEntityReference,
+-					aliasResolutionContext.resolveAliases( fetchedEntityReference ),
+-					new EntityIdentifierReaderImpl(
+-							fetchedEntityReference,
+-							fetchedAliases,
+-							Collections.<EntityReferenceReader>emptyList()
+-					)
+-			);
+-
+-			readerCollector.addReader( reader );
+-//			readers.add( reader );
+-		}
+-	}
+-
+-	private static String[] resolveAliasedLhsJoinColumns(
+-			FetchOwner fetchOwner,
+-			Fetch fetch,
+-			AliasResolutionContext aliasResolutionContext) {
+-		// IMPL NOTE : the fetch-owner is the LHS; the fetch is the RHS
+-		final String lhsTableAlias = resolveLhsTableAlias( fetchOwner, fetch, aliasResolutionContext );
+-		return fetch.toSqlSelectFragments( lhsTableAlias );
+-	}
+-
+-	private static String resolveLhsTableAlias(
+-			FetchOwner fetchOwner,
+-			Fetch fetch,
+-			AliasResolutionContext aliasResolutionContext) {
+-		// IMPL NOTE : the fetch-owner is the LHS; the fetch is the RHS
+-
+-		if ( AnyFetch.class.isInstance( fetchOwner ) ) {
+-			throw new WalkingException( "Any type should never be joined!" );
+-		}
+-		else if ( EntityReference.class.isInstance( fetchOwner ) ) {
+-			return aliasResolutionContext.resolveAliases( (EntityReference) fetchOwner ).getTableAlias();
+-		}
+-		else if ( CompositeFetch.class.isInstance( fetchOwner ) ) {
+-			return aliasResolutionContext.resolveAliases(
+-					locateCompositeFetchEntityReferenceSource( (CompositeFetch) fetchOwner )
+-			).getTableAlias();
+-		}
+-		else if ( CompositeElementGraph.class.isInstance( fetchOwner ) ) {
+-			final CompositeElementGraph compositeElementGraph = (CompositeElementGraph) fetchOwner;
+-			return aliasResolutionContext.resolveAliases( compositeElementGraph.getCollectionReference() ).getCollectionTableAlias();
+-		}
+-		else if ( CompositeIndexGraph.class.isInstance( fetchOwner ) ) {
+-			final CompositeIndexGraph compositeIndexGraph = (CompositeIndexGraph) fetchOwner;
+-			return aliasResolutionContext.resolveAliases( compositeIndexGraph.getCollectionReference() ).getCollectionTableAlias();
+-		}
+-		else {
+-			throw new NotYetImplementedException( "Cannot determine LHS alias for FetchOwner." );
+-		}
+-	}
+-
+-	private static EntityReference locateCompositeFetchEntityReferenceSource(CompositeFetch composite) {
+-		final FetchOwner owner = composite.getOwner();
+-		if ( EntityReference.class.isInstance( owner ) ) {
+-			return (EntityReference) owner;
+-		}
+-		if ( CompositeFetch.class.isInstance( owner ) ) {
+-			return locateCompositeFetchEntityReferenceSource( (CompositeFetch) owner );
+-		}
+-
+-		throw new WalkingException( "Cannot resolve entity source for a CompositeFetch" );
+-	}
+-
+-	private static String resolveAdditionalJoinCondition(
+-			SessionFactoryImplementor factory,
+-			String rhsTableAlias,
+-			FetchOwner fetchOwner,
+-			Fetch fetch,
+-			LoadQueryInfluencers influencers,
+-			AliasResolutionContext aliasResolutionContext) {
+-		final String withClause = StringHelper.isEmpty( fetch.getAdditionalJoinConditions() )
+-				? ""
+-				: " and ( " + fetch.getAdditionalJoinConditions() + " )";
+-		return ( (AssociationType) fetch.getFetchedType() ).getOnCondition(
+-				rhsTableAlias,
+-				factory,
+-				influencers.getEnabledFilters()
+-		) + withClause;
+-	}
+-
+-	private static void addJoins(
+-			JoinFragment joinFragment,
+-			Joinable joinable,
+-			JoinType joinType,
+-			String rhsAlias,
+-			String[] rhsColumnNames,
+-			String[] aliasedLhsColumnNames,
+-			String additionalJoinConditions) {
+-		joinFragment.addJoin(
+-				joinable.getTableName(),
+-				rhsAlias,
+-				aliasedLhsColumnNames,
+-				rhsColumnNames,
+-				joinType,
+-				additionalJoinConditions
+-		);
+-		joinFragment.addJoins(
+-				joinable.fromJoinFragment( rhsAlias, false, true ),
+-				joinable.whereJoinFragment( rhsAlias, false, true )
+-		);
+-	}
+-
+-	private static void processCollectionFetch(
+-			SelectStatementBuilder selectStatementBuilder,
+-			SessionFactoryImplementor factory,
+-			JoinFragment joinFragment,
+-			FetchOwner fetchOwner,
+-			CollectionFetch fetch,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext,
+-			ReaderCollector readerCollector,
+-			FetchStatsImpl stats) {
+-		stats.processingFetch( fetch );
+-
+-		final CollectionReferenceAliases aliases = aliasResolutionContext.resolveAliases( fetch );
+-
+-		if ( fetch.getCollectionPersister().isManyToMany() ) {
+-			final QueryableCollection queryableCollection = (QueryableCollection) fetch.getCollectionPersister();
+-			final Joinable joinableCollection = (Joinable) fetch.getCollectionPersister();
+-
+-			// for many-to-many we have 3 table aliases.  By way of example, consider a normal m-n: User<->Role
+-			// where User is the FetchOwner and Role (User.roles) is the Fetch.  We'd have:
+-			//		1) the owner's table : user
+-			final String ownerTableAlias = resolveLhsTableAlias( fetchOwner, fetch, aliasResolutionContext );
+-			//		2) the m-n table : user_role
+-			final String collectionTableAlias = aliases.getCollectionTableAlias();
+-			//		3) the element table : role
+-			final String elementTableAlias = aliases.getElementTableAlias();
+-
+-			{
+-				// add join fragments from the owner table -> collection table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-				final String filterFragment = ( (Joinable) fetch.getCollectionPersister() ).filterFragment(
+-						collectionTableAlias,
+-						buildingParameters.getQueryInfluencers().getEnabledFilters()
+-				);
+-
+-				joinFragment.addJoin(
+-						joinableCollection.getTableName(),
+-						collectionTableAlias,
+-						StringHelper.qualify( ownerTableAlias, extractJoinable( fetchOwner ).getKeyColumnNames() ),
+-						queryableCollection.getKeyColumnNames(),
+-						fetch.isNullable() ? JoinType.LEFT_OUTER_JOIN : JoinType.INNER_JOIN,
+-						filterFragment
+-				);
+-				joinFragment.addJoins(
+-						joinableCollection.fromJoinFragment( collectionTableAlias, false, true ),
+-						joinableCollection.whereJoinFragment( collectionTableAlias, false, true )
+-				);
+-
+-				// add select fragments from the collection table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-				selectStatementBuilder.appendSelectClauseFragment(
+-						joinableCollection.selectFragment(
+-								(Joinable) queryableCollection.getElementPersister(),
+-								ownerTableAlias,
+-								collectionTableAlias,
+-								aliases.getEntityElementColumnAliases().getSuffix(),
+-								aliases.getCollectionColumnAliases().getSuffix(),
+-								true
+-						)
+-				);
+-			}
+-
+-			{
+-				// add join fragments from the collection table -> element entity table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-				final String additionalJoinConditions = resolveAdditionalJoinCondition(
+-						factory,
+-						elementTableAlias,
+-						fetchOwner,
+-						fetch,
+-						buildingParameters.getQueryInfluencers(),
+-						aliasResolutionContext
+-				);
+-
+-				final String manyToManyFilter = fetch.getCollectionPersister().getManyToManyFilterFragment(
+-						collectionTableAlias,
+-						buildingParameters.getQueryInfluencers().getEnabledFilters()
+-				);
+-
+-				final String condition;
+-				if ( "".equals( manyToManyFilter ) ) {
+-					condition = additionalJoinConditions;
+-				}
+-				else if ( "".equals( additionalJoinConditions ) ) {
+-					condition = manyToManyFilter;
+-				}
+-				else {
+-					condition = additionalJoinConditions + " and " + manyToManyFilter;
+-				}
+-
+-				final OuterJoinLoadable elementPersister = (OuterJoinLoadable) queryableCollection.getElementPersister();
+-
+-				addJoins(
+-						joinFragment,
+-						elementPersister,
+-//						JoinType.INNER_JOIN,
+-						JoinType.LEFT_OUTER_JOIN,
+-						elementTableAlias,
+-						elementPersister.getIdentifierColumnNames(),
+-						StringHelper.qualify( collectionTableAlias, queryableCollection.getElementColumnNames() ),
+-						condition
+-				);
+-
+-				// add select fragments from the element entity table ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-				selectStatementBuilder.appendSelectClauseFragment(
+-						elementPersister.selectFragment(
+-								aliases.getElementTableAlias(),
+-								aliases.getEntityElementColumnAliases().getSuffix()
+-						)
+-				);
+-			}
+-
+-			final String manyToManyOrdering = queryableCollection.getManyToManyOrderByString( collectionTableAlias );
+-			if ( StringHelper.isNotEmpty( manyToManyOrdering ) ) {
+-				selectStatementBuilder.appendOrderByFragment( manyToManyOrdering );
+-			}
+-
+-			final String ordering = queryableCollection.getSQLOrderByString( collectionTableAlias );
+-			if ( StringHelper.isNotEmpty( ordering ) ) {
+-				selectStatementBuilder.appendOrderByFragment( ordering );
+-			}
+-
+-
+-			final EntityReferenceAliases entityReferenceAliases = new EntityReferenceAliases() {
+-				@Override
+-				public String getTableAlias() {
+-					return aliases.getElementTableAlias();
+-				}
+-
+-				@Override
+-				public EntityAliases getColumnAliases() {
+-					return aliases.getEntityElementColumnAliases();
+-				}
+-			};
+-
+-			final EntityReference elementEntityReference = (EntityReference) fetch.getElementGraph();
+-			readerCollector.addReader(
+-					new EntityReferenceReader(
+-							elementEntityReference,
+-							entityReferenceAliases,
+-							buildIdentifierReader(
+-									selectStatementBuilder,
+-									factory,
+-									joinFragment,
+-									elementEntityReference,
+-									buildingParameters,
+-									aliasResolutionContext,
+-									readerCollector,
+-									entityReferenceAliases,
+-									stats
+-							)
+-					)
+-			);
+-		}
+-		else {
+-			final QueryableCollection queryableCollection = (QueryableCollection) fetch.getCollectionPersister();
+-			final Joinable joinableCollection = (Joinable) fetch.getCollectionPersister();
+-
+-			final String rhsTableAlias = aliases.getElementTableAlias();
+-			final String[] rhsColumnNames = JoinHelper.getRHSColumnNames( fetch.getFetchedType(), factory );
+-
+-			final String lhsTableAlias = resolveLhsTableAlias( fetchOwner, fetch, aliasResolutionContext );
+-			// todo : this is not exactly correct.  it assumes the join refers to the LHS PK
+-			final String[] aliasedLhsColumnNames = fetch.toSqlSelectFragments( lhsTableAlias );
+-
+-			final String on = resolveAdditionalJoinCondition(
+-					factory,
+-					rhsTableAlias,
+-					fetchOwner,
+-					fetch,
+-					buildingParameters.getQueryInfluencers(),
+-					aliasResolutionContext
+-			);
+-
+-			addJoins(
+-					joinFragment,
+-					joinableCollection,
+-					fetch.isNullable() ? JoinType.LEFT_OUTER_JOIN : JoinType.INNER_JOIN,
+-					rhsTableAlias,
+-					rhsColumnNames,
+-					aliasedLhsColumnNames,
+-					on
+-			);
+-
+-			// select the "collection columns"
+-			selectStatementBuilder.appendSelectClauseFragment(
+-					queryableCollection.selectFragment(
+-							rhsTableAlias,
+-							aliases.getCollectionColumnAliases().getSuffix()
+-					)
+-			);
+-
+-			if ( fetch.getCollectionPersister().isOneToMany() ) {
+-				// if the collection elements are entities, select the entity columns as well
+-				final OuterJoinLoadable elementPersister = (OuterJoinLoadable) queryableCollection.getElementPersister();
+-				selectStatementBuilder.appendSelectClauseFragment(
+-						elementPersister.selectFragment(
+-								aliases.getElementTableAlias(),
+-								aliases.getEntityElementColumnAliases().getSuffix()
+-						)
+-				);
+-
+-				final EntityReferenceAliases entityReferenceAliases = new EntityReferenceAliases() {
+-					@Override
+-					public String getTableAlias() {
+-						return aliases.getElementTableAlias();
+-					}
+-
+-					@Override
+-					public EntityAliases getColumnAliases() {
+-						return aliases.getEntityElementColumnAliases();
+-					}
+-				};
+-
+-				final EntityReference elementEntityReference = (EntityReference) fetch.getElementGraph();
+-				readerCollector.addReader(
+-						new EntityReferenceReader(
+-								elementEntityReference,
+-								entityReferenceAliases,
+-								buildIdentifierReader(
+-										selectStatementBuilder,
+-										factory,
+-										joinFragment,
+-										elementEntityReference,
+-										buildingParameters,
+-										aliasResolutionContext,
+-										readerCollector,
+-										entityReferenceAliases,
+-										stats
+-								)
+-						)
+-				);
+-			}
+-
+-			final String ordering = queryableCollection.getSQLOrderByString( rhsTableAlias );
+-			if ( StringHelper.isNotEmpty( ordering ) ) {
+-				selectStatementBuilder.appendOrderByFragment( ordering );
+-			}
+-		}
+-
+-		readerCollector.addReader( new CollectionReferenceReader( fetch, aliases ) );
+-	}
+-
+-	private static Joinable extractJoinable(FetchOwner fetchOwner) {
+-		// this is used for collection fetches.  At the end of the day, a fetched collection must be owned by
+-		// an entity.  Find that entity's persister and return it
+-		if ( EntityReference.class.isInstance( fetchOwner ) ) {
+-			return (Joinable) ( (EntityReference) fetchOwner ).getEntityPersister();
+-		}
+-		else if ( CompositeFetch.class.isInstance( fetchOwner ) ) {
+-			return (Joinable) locateCompositeFetchEntityReferenceSource( (CompositeFetch) fetchOwner ).getEntityPersister();
+-		}
+-		else if ( EntityElementGraph.class.isInstance( fetchOwner ) ) {
+-			return (Joinable) ( (EntityElementGraph) fetchOwner ).getEntityPersister();
+-		}
+-
+-		throw new IllegalStateException( "Uncertain how to extract Joinable from given FetchOwner : " + fetchOwner );
+-	}
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/package-info.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/package-info.java
+deleted file mode 100644
+index 57302dcd75..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/package-info.java
++++ /dev/null
+@@ -1,4 +0,0 @@
+-/**
+- * This package supports converting a LoadPlan to SQL and generating readers for the resulting ResultSet
+- */
+-package org.hibernate.loader.plan.exec;
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/CollectionReferenceReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/CollectionReferenceReader.java
+deleted file mode 100644
+index f838560805..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/CollectionReferenceReader.java
++++ /dev/null
+@@ -1,153 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.io.Serializable;
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.collection.spi.PersistentCollection;
+-import org.hibernate.engine.spi.PersistenceContext;
+-import org.hibernate.internal.CoreLogging;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.loader.plan.exec.spi.CollectionReferenceAliases;
+-import org.hibernate.loader.plan.spi.CollectionReference;
+-import org.hibernate.pretty.MessageHelper;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class CollectionReferenceReader {
+-	private static final Logger log = CoreLogging.logger( CollectionReferenceReader.class );
+-
+-	private final CollectionReference collectionReference;
+-	private final CollectionReferenceAliases aliases;
+-
+-	public CollectionReferenceReader(CollectionReference collectionReference, CollectionReferenceAliases aliases) {
+-		this.collectionReference = collectionReference;
+-		this.aliases = aliases;
+-	}
+-
+-	public void finishUpRow(ResultSet resultSet, ResultSetProcessingContextImpl context) {
+-		try {
+-			// read the collection key for this reference for the current row.
+-			final PersistenceContext persistenceContext = context.getSession().getPersistenceContext();
+-			final Serializable collectionRowKey = (Serializable) collectionReference.getCollectionPersister().readKey(
+-					resultSet,
+-					aliases.getCollectionColumnAliases().getSuffixedKeyAliases(),
+-					context.getSession()
+-			);
+-
+-			if ( collectionRowKey != null ) {
+-				// we found a collection element in the result set
+-
+-				if ( log.isDebugEnabled() ) {
+-					log.debugf(
+-							"Found row of collection: %s",
+-							MessageHelper.collectionInfoString(
+-									collectionReference.getCollectionPersister(),
+-									collectionRowKey,
+-									context.getSession().getFactory()
+-							)
+-					);
+-				}
+-
+-				Object collectionOwner = findCollectionOwner( collectionRowKey, resultSet, context );
+-
+-				PersistentCollection rowCollection = persistenceContext.getLoadContexts()
+-						.getCollectionLoadContext( resultSet )
+-						.getLoadingCollection( collectionReference.getCollectionPersister(), collectionRowKey );
+-
+-				if ( rowCollection != null ) {
+-					rowCollection.readFrom(
+-							resultSet,
+-							collectionReference.getCollectionPersister(),
+-							aliases.getCollectionColumnAliases(),
+-							collectionOwner
+-					);
+-				}
+-
+-			}
+-			else {
+-				final Serializable optionalKey = findCollectionOwnerKey( context );
+-				if ( optionalKey != null ) {
+-					// we did not find a collection element in the result set, so we
+-					// ensure that a collection is created with the owner's identifier,
+-					// since what we have is an empty collection
+-					if ( log.isDebugEnabled() ) {
+-						log.debugf(
+-								"Result set contains (possibly empty) collection: %s",
+-								MessageHelper.collectionInfoString(
+-										collectionReference.getCollectionPersister(),
+-										optionalKey,
+-										context.getSession().getFactory()
+-								)
+-						);
+-					}
+-					// handle empty collection
+-					persistenceContext.getLoadContexts()
+-							.getCollectionLoadContext( resultSet )
+-							.getLoadingCollection( collectionReference.getCollectionPersister(), optionalKey );
+-
+-				}
+-			}
+-			// else no collection element, but also no owner
+-		}
+-		catch ( SQLException sqle ) {
+-			// TODO: would be nice to have the SQL string that failed...
+-			throw context.getSession().getFactory().getSQLExceptionHelper().convert(
+-					sqle,
+-					"could not read next row of results"
+-			);
+-		}
+-
+-	}
+-
+-	protected Object findCollectionOwner(
+-			Serializable collectionRowKey,
+-			ResultSet resultSet,
+-			ResultSetProcessingContextImpl context) {
+-		final Object collectionOwner = context.getSession().getPersistenceContext().getCollectionOwner(
+-				collectionRowKey,
+-				collectionReference.getCollectionPersister()
+-		);
+-		// todo : try org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext.getOwnerProcessingState() ??
+-		//			-- specifically to return its ResultSetProcessingContext.EntityReferenceProcessingState#getEntityInstance()
+-		if ( collectionOwner == null ) {
+-			//TODO: This is assertion is disabled because there is a bug that means the
+-			//	  original owner of a transient, uninitialized collection is not known
+-			//	  if the collection is re-referenced by a different object associated
+-			//	  with the current Session
+-			//throw new AssertionFailure("bug loading unowned collection");
+-		}
+-		return collectionOwner;
+-	}
+-
+-	protected Serializable findCollectionOwnerKey(ResultSetProcessingContext context) {
+-		return null;
+-	}
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/CollectionReturnReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/CollectionReturnReader.java
+deleted file mode 100644
+index f78f38af5b..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/CollectionReturnReader.java
++++ /dev/null
+@@ -1,75 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.io.Serializable;
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.loader.plan.exec.process.spi.ReturnReader;
+-import org.hibernate.loader.plan.exec.spi.CollectionReferenceAliases;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class CollectionReturnReader extends CollectionReferenceReader implements ReturnReader {
+-	private final CollectionReturn collectionReturn;
+-
+-	public CollectionReturnReader(CollectionReturn collectionReturn, CollectionReferenceAliases aliases) {
+-		super( collectionReturn, aliases );
+-		this.collectionReturn = collectionReturn;
+-	}
+-
+-	@Override
+-	protected Object findCollectionOwner(
+-			Serializable collectionRowKey,
+-			ResultSet resultSet,
+-			ResultSetProcessingContextImpl context) {
+-		if ( context.shouldUseOptionalEntityInformation() ) {
+-			final Object optionalEntityInstance = context.getQueryParameters().getOptionalObject();
+-			if ( optionalEntityInstance != null ) {
+-				return optionalEntityInstance;
+-			}
+-		}
+-		return super.findCollectionOwner( collectionRowKey, resultSet, context );
+-	}
+-
+-	@Override
+-	protected Serializable findCollectionOwnerKey(ResultSetProcessingContext context) {
+-		final EntityKey entityKey = context.shouldUseOptionalEntityInformation()
+-				? ResultSetProcessorHelper.getOptionalObjectKey( context.getQueryParameters(), context.getSession() )
+-				: null;
+-		return entityKey == null
+-				? super.findCollectionOwnerKey( context )
+-				: entityKey;
+-	}
+-
+-	@Override
+-	public Object read(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-		return null;  //To change body of implemented methods use File | Settings | File Templates.
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityIdentifierReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityIdentifierReader.java
+deleted file mode 100644
+index 5000b10e34..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityIdentifierReader.java
++++ /dev/null
+@@ -1,88 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-
+-/**
+- * Identifiers are read from the ResultSet in 2 distinct phases:
+- * <ol>
+- *     <li>
+- *         First we hydrate the identifier values (see {@link #hydrate}).  During this "phase" 2 things happen:
+- *         <ol>
+- *             <li>
+- *                 Any "optional identifier" specified on QueryParameters is considered.  If the "optional identifier"
+- *                 is to be used for this identifier read, it is used to build an EntityKey which is associated with
+- *                 the {@link ResultSetProcessingContext.EntityReferenceProcessingState} for the EntityReference under
+- *                 {@link ResultSetProcessingContext.EntityReferenceProcessingState#registerEntityKey}
+- *             </li>
+- *             <li>
+- *                 All other id values are hydrated from the ResultSet.  Those hydrated values are then registered
+- *                 with the {@link ResultSetProcessingContext.EntityReferenceProcessingState} for the EntityReference
+- *                 under {@link ResultSetProcessingContext.EntityReferenceProcessingState#registerIdentifierHydratedForm}
+- *             </li>
+- *         </ol>
+- *     </li>
+- *     <li>
+- *         Then we resolve the identifier.  This is again a 2 step process:
+- *         <ol>
+- *             <li>
+- *                 For all fetches that "come from" an identifier (key-many-to-ones), we fully hydrate those entities
+- *             </li>
+- *             <li>
+- *                 We then call resolve on root identifier type, and use that to build an EntityKey,which is then
+- *                 registered with the {@link ResultSetProcessingContext.EntityReferenceProcessingState} for the
+- *                 EntityReference whose identifier we are reading under
+- *                 {@link ResultSetProcessingContext.EntityReferenceProcessingState#registerEntityKey}
+- *             </li>
+- *         </ol>
+- *     </li>
+- * </ol>
+- *
+- * @author Steve Ebersole
+- */
+-public interface EntityIdentifierReader {
+-	/**
+-	 * Hydrate the entity identifier.  Perform the first phase outlined above.
+-	 *
+-	 * @param resultSet The ResultSet
+-	 * @param context The processing context
+-	 *
+-	 * @throws java.sql.SQLException Problem accessing ResultSet
+-	 */
+-	public void hydrate(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException;
+-
+-	/**
+-	 * Resolve the entity identifier.  Perform the second phase outlined above.
+-	 *
+-	 * @param resultSet The ResultSet
+-	 * @param context The processing context
+-	 *
+-	 * @throws java.sql.SQLException Problem accessing ResultSet
+-	 */
+-	public void resolve(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException;
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityIdentifierReaderImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityIdentifierReaderImpl.java
+deleted file mode 100644
+index b757421ba7..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityIdentifierReaderImpl.java
++++ /dev/null
+@@ -1,283 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.io.Serializable;
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-import java.util.List;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.HibernateException;
+-import org.hibernate.cfg.NotYetImplementedException;
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.internal.CoreLogging;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.loader.plan.exec.spi.EntityReferenceAliases;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.persister.walking.internal.FetchStrategyHelper;
+-import org.hibernate.persister.walking.spi.WalkingException;
+-import org.hibernate.type.Type;
+-
+-import static org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext.EntityReferenceProcessingState;
+-
+-/**
+- * Encapsulates the logic for reading a single entity identifier from a JDBC ResultSet, including support for fetches
+- * that are part of the identifier.
+- *
+- * @author Steve Ebersole
+- */
+-public class EntityIdentifierReaderImpl implements EntityIdentifierReader {
+-	private static final Logger log = CoreLogging.logger( EntityIdentifierReaderImpl.class );
+-
+-	private final EntityReference entityReference;
+-	private final EntityReferenceAliases aliases;
+-	private final List<EntityReferenceReader> identifierFetchReaders;
+-
+-	private final boolean isReturn;
+-	private final Type identifierType;
+-
+-	/**
+-	 * Creates a delegate capable of performing the reading of an entity identifier
+-	 *
+-	 * @param entityReference The entity reference for which we will be reading the identifier.
+-	 */
+-	public EntityIdentifierReaderImpl(
+-			EntityReference entityReference,
+-			EntityReferenceAliases aliases,
+-			List<EntityReferenceReader> identifierFetchReaders) {
+-		this.entityReference = entityReference;
+-		this.aliases = aliases;
+-		this.isReturn = EntityReturn.class.isInstance( entityReference );
+-		this.identifierType = entityReference.getEntityPersister().getIdentifierType();
+-		this.identifierFetchReaders = identifierFetchReaders;
+-	}
+-
+-	@Override
+-	public void hydrate(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-		final EntityReferenceProcessingState processingState = context.getProcessingState( entityReference );
+-
+-		// if the entity reference we are hydrating is a Return, it is possible that its EntityKey is
+-		// supplied by the QueryParameter optional entity information
+-		if ( context.shouldUseOptionalEntityInformation() ) {
+-			if ( isReturn ) {
+-				final EntityKey entityKey = ResultSetProcessorHelper.getOptionalObjectKey(
+-						context.getQueryParameters(),
+-						context.getSession()
+-				);
+-
+-				if ( entityKey != null ) {
+-					processingState.registerEntityKey( entityKey );
+-					return;
+-				}
+-			}
+-		}
+-
+-		// get any previously registered identifier hydrated-state
+-		Object identifierHydratedForm = processingState.getIdentifierHydratedForm();
+-		if ( identifierHydratedForm == null ) {
+-			// if there is none, read it from the result set
+-			identifierHydratedForm = readIdentifierHydratedState( resultSet, context );
+-
+-			// broadcast the fact that a hydrated identifier value just became associated with
+-			// this entity reference
+-			processingState.registerIdentifierHydratedForm( identifierHydratedForm );
+-			for ( EntityReferenceReader reader : identifierFetchReaders ) {
+-				reader.hydrateIdentifier( resultSet, context );
+-			}
+-		}
+-	}
+-
+-	/**
+-	 * Read the identifier state for the entity reference for the currently processing row in the ResultSet
+-	 *
+-	 * @param resultSet The ResultSet being processed
+-	 * @param context The processing context
+-	 *
+-	 * @return The hydrated state
+-	 *
+-	 * @throws java.sql.SQLException Indicates a problem accessing the ResultSet
+-	 */
+-	private Object readIdentifierHydratedState(ResultSet resultSet, ResultSetProcessingContext context)
+-			throws SQLException {
+-//		if ( EntityReturn.class.isInstance( entityReference ) ) {
+-//			// if there is a "optional entity key" associated with the context it would pertain to this
+-//			// entity reference, because it is the root return.
+-//			final EntityKey suppliedEntityKey = context.getSuppliedOptionalEntityKey();
+-//			if ( suppliedEntityKey != null ) {
+-//				return suppliedEntityKey.getIdentifier();
+-//			}
+-//		}
+-
+-		// Otherwise, read it from the ResultSet
+-		final String[] columnNames;
+-		if ( EntityFetch.class.isInstance( entityReference )
+-				&& !FetchStrategyHelper.isJoinFetched( ((EntityFetch) entityReference).getFetchStrategy() ) ) {
+-			final EntityFetch fetch = (EntityFetch) entityReference;
+-			final FetchOwner fetchOwner = fetch.getOwner();
+-			if ( EntityReference.class.isInstance( fetchOwner ) ) {
+-				throw new NotYetImplementedException();
+-//					final EntityReference ownerEntityReference = (EntityReference) fetchOwner;
+-//					final EntityAliases ownerEntityAliases = context.getAliasResolutionContext()
+-//							.resolveEntityColumnAliases( ownerEntityReference );
+-//					final int propertyIndex = ownerEntityReference.getEntityPersister()
+-//							.getEntityMetamodel()
+-//							.getPropertyIndex( fetch.getOwnerPropertyName() );
+-//					columnNames = ownerEntityAliases.getSuffixedPropertyAliases()[ propertyIndex ];
+-			}
+-			else {
+-				// todo : better message here...
+-				throw new WalkingException( "Cannot locate association column names" );
+-			}
+-		}
+-		else {
+-			columnNames = aliases.getColumnAliases().getSuffixedKeyAliases();
+-		}
+-
+-		try {
+-			return entityReference.getEntityPersister().getIdentifierType().hydrate(
+-					resultSet,
+-					columnNames,
+-					context.getSession(),
+-					null
+-			);
+-		}
+-		catch (Exception e) {
+-			throw new HibernateException(
+-					"Encountered problem trying to hydrate identifier for entity ["
+-							+ entityReference.getEntityPersister() + "]",
+-					e
+-
+-			);
+-		}
+-	}
+-
+-//	/**
+-//	 * Hydrate the identifiers of all fetches that are part of this entity reference's identifier (key-many-to-one).
+-//	 *
+-//	 * @param resultSet The ResultSet
+-//	 * @param context The processing context
+-//	 * @param hydratedIdentifierState The hydrated identifier state of the entity reference.  We can extract the
+-//	 * fetch identifier's hydrated state from there if available, without having to read the Result (which can
+-//	 * be a performance problem on some drivers).
+-//	 */
+-//	private void hydrateIdentifierFetchIdentifiers(
+-//			ResultSet resultSet,
+-//			ResultSetProcessingContext context,
+-//			Object hydratedIdentifierState) throws SQLException {
+-//		// for all fetches that are part of our identifier...
+-//		for ( Fetch fetch : entityReference.getIdentifierDescription().getFetches() ) {
+-//			hydrateIdentifierFetchIdentifier( resultSet, context, fetch, hydratedIdentifierState );
+-//		}
+-//	}
+-//
+-//	private void hydrateIdentifierFetchIdentifier(
+-//			ResultSet resultSet,
+-//			ResultSetProcessingContext context,
+-//			Fetch fetch,
+-//			Object hydratedIdentifierState) throws SQLException {
+-//		if ( CompositeFetch.class.isInstance( fetch ) ) {
+-//			for ( Fetch subFetch : ( (CompositeFetch) fetch).getFetches() ) {
+-//				hydrateIdentifierFetchIdentifier( resultSet, context, subFetch, hydratedIdentifierState );
+-//			}
+-//		}
+-//		else if ( ! EntityFetch.class.isInstance( fetch ) ) {
+-//			throw new NotYetImplementedException( "Cannot hydrate identifier Fetch that is not an EntityFetch" );
+-//		}
+-//		else {
+-//			final EntityFetch entityFetch = (EntityFetch) fetch;
+-//			final EntityReferenceProcessingState fetchProcessingState = context.getProcessingState( entityFetch );
+-//
+-//			// if the identifier for the fetch was already hydrated, nothing to do
+-//			if ( fetchProcessingState.getIdentifierHydratedForm() != null ) {
+-//				return;
+-//			}
+-//
+-//			// we can either hydrate the fetch's identifier from the incoming 'hydratedIdentifierState' (by
+-//			// extracting the relevant portion using HydratedCompoundValueHandler) or we can
+-//			// read it from the ResultSet
+-//			if ( hydratedIdentifierState != null ) {
+-//				final HydratedCompoundValueHandler hydratedStateHandler = entityReference.getIdentifierDescription().getHydratedStateHandler( fetch );
+-//				if ( hydratedStateHandler != null ) {
+-//					final Serializable extracted = (Serializable) hydratedStateHandler.extract( hydratedIdentifierState );
+-//					fetchProcessingState.registerIdentifierHydratedForm( extracted );
+-//				}
+-//			}
+-//			else {
+-//				// Use a reader to hydrate the fetched entity.
+-//				//
+-//				// todo : Ideally these should be kept around
+-//				new EntityReferenceReader( entityFetch ).hydrateIdentifier( resultSet, context );
+-//			}
+-//		}
+-//	}
+-
+-
+-	public void resolve(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		// resolve fetched state from the identifier first
+-//		for ( EntityReferenceReader reader : identifierFetchReaders ) {
+-//			reader.resolveEntityKey( resultSet, context );
+-//		}
+-//		for ( EntityReferenceReader reader : identifierFetchReaders ) {
+-//			reader.hydrateEntityState( resultSet, context );
+-//		}
+-
+-		final EntityReferenceProcessingState processingState = context.getProcessingState( entityReference );
+-
+-		// see if we already have an EntityKey associated with this EntityReference in the processing state.
+-		// if we do, this should have come from the optional entity identifier...
+-		final EntityKey entityKey = processingState.getEntityKey();
+-		if ( entityKey != null ) {
+-			log.debugf(
+-					"On call to EntityIdentifierReaderImpl#resolve [for %s], EntityKey was already known; " +
+-							"should only happen on root returns with an optional identifier specified"
+-			);
+-			return;
+-		}
+-
+-		// Look for the hydrated form
+-		final Object identifierHydratedForm = processingState.getIdentifierHydratedForm();
+-		if ( identifierHydratedForm == null ) {
+-			// we need to register the missing identifier, but that happens later after all readers have had a chance
+-			// to resolve its EntityKey
+-			return;
+-		}
+-
+-		final Type identifierType = entityReference.getEntityPersister().getIdentifierType();
+-		final Serializable resolvedId = (Serializable) identifierType.resolve(
+-				identifierHydratedForm,
+-				context.getSession(),
+-				null
+-		);
+-		if ( resolvedId != null ) {
+-			processingState.registerEntityKey(
+-					context.getSession().generateEntityKey( resolvedId, entityReference.getEntityPersister() )
+-			);
+-		}
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityReferenceReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityReferenceReader.java
+deleted file mode 100644
+index fff80a7353..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityReferenceReader.java
++++ /dev/null
+@@ -1,436 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.io.Serializable;
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.StaleObjectStateException;
+-import org.hibernate.WrongClassException;
+-import org.hibernate.engine.internal.TwoPhaseLoad;
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.engine.spi.EntityUniqueKey;
+-import org.hibernate.engine.spi.SessionImplementor;
+-import org.hibernate.internal.CoreLogging;
+-import org.hibernate.loader.EntityAliases;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.loader.plan.exec.spi.EntityReferenceAliases;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.entity.Loadable;
+-import org.hibernate.persister.entity.UniqueKeyLoadable;
+-import org.hibernate.pretty.MessageHelper;
+-import org.hibernate.type.EntityType;
+-import org.hibernate.type.Type;
+-import org.hibernate.type.VersionType;
+-
+-import static org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext.EntityReferenceProcessingState;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class EntityReferenceReader {
+-	private static final Logger log = CoreLogging.logger( EntityReferenceReader.class );
+-
+-	private final EntityReference entityReference;
+-	private final EntityReferenceAliases entityReferenceAliases;
+-	private final EntityIdentifierReader identifierReader;
+-
+-	private final boolean isReturn;
+-
+-	public EntityReferenceReader(
+-			EntityReference entityReference,
+-			EntityReferenceAliases entityReferenceAliases,
+-			EntityIdentifierReader identifierReader) {
+-		this.entityReference = entityReference;
+-		this.entityReferenceAliases = entityReferenceAliases;
+-		this.identifierReader = identifierReader;
+-
+-		this.isReturn = EntityReturn.class.isInstance( entityReference );
+-	}
+-
+-	public EntityReference getEntityReference() {
+-		return entityReference;
+-	}
+-
+-	public void hydrateIdentifier(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-		identifierReader.hydrate( resultSet, context );
+-	}
+-
+-	public void resolveEntityKey(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-		identifierReader.resolve( resultSet, context );
+-	}
+-
+-	public void hydrateEntityState(ResultSet resultSet, ResultSetProcessingContext context) {
+-		// hydrate the entity reference.  at this point it is expected that
+-
+-		final EntityReferenceProcessingState processingState = context.getProcessingState( entityReference );
+-
+-		// If there is no identifier for this entity reference for this row, nothing to do
+-		if ( processingState.isMissingIdentifier() ) {
+-			handleMissingIdentifier( context );
+-			return;
+-		}
+-
+-		// make sure we have the EntityKey
+-		final EntityKey entityKey = processingState.getEntityKey();
+-		if ( entityKey == null ) {
+-			handleMissingIdentifier( context );
+-			return;
+-		}
+-
+-		// Have we already hydrated this entity's state?
+-		if ( processingState.getEntityInstance() != null ) {
+-			return;
+-		}
+-
+-
+-		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-		// In getting here, we know that:
+-		// 		1) We need to hydrate the entity state
+-		//		2) We have a valid EntityKey for the entity
+-
+-		// see if we have an existing entry in the session for this EntityKey
+-		final Object existing = context.getSession().getEntityUsingInterceptor( entityKey );
+-		if ( existing != null ) {
+-			// It is previously associated with the Session, perform some checks
+-			if ( ! entityReference.getEntityPersister().isInstance( existing ) ) {
+-				throw new WrongClassException(
+-						"loaded object was of wrong class " + existing.getClass(),
+-						entityKey.getIdentifier(),
+-						entityReference.getEntityPersister().getEntityName()
+-				);
+-			}
+-			checkVersion( resultSet, context, entityKey, existing );
+-
+-			// use the existing association as the hydrated state
+-			processingState.registerEntityInstance( existing );
+-			return;
+-		}
+-
+-		// Otherwise, we need to load it from the ResultSet...
+-
+-		// determine which entity instance to use.  Either the supplied one, or instantiate one
+-		Object optionalEntityInstance = null;
+-		if ( isReturn && context.shouldUseOptionalEntityInformation() ) {
+-			final EntityKey optionalEntityKey = ResultSetProcessorHelper.getOptionalObjectKey(
+-					context.getQueryParameters(),
+-					context.getSession()
+-			);
+-			if ( optionalEntityKey != null ) {
+-				if ( optionalEntityKey.equals( entityKey ) ) {
+-					optionalEntityInstance = context.getQueryParameters().getOptionalObject();
+-				}
+-			}
+-		}
+-
+-		final String concreteEntityTypeName = getConcreteEntityTypeName( resultSet, context, entityKey );
+-
+-		final Object entityInstance = optionalEntityInstance != null
+-				? optionalEntityInstance
+-				: context.getSession().instantiate( concreteEntityTypeName, entityKey.getIdentifier() );
+-
+-		processingState.registerEntityInstance( entityInstance );
+-
+-		// need to hydrate it.
+-		// grab its state from the ResultSet and keep it in the Session
+-		// (but don't yet initialize the object itself)
+-		// note that we acquire LockMode.READ even if it was not requested
+-		log.trace( "hydrating entity state" );
+-		final LockMode requestedLockMode = context.resolveLockMode( entityReference );
+-		final LockMode lockModeToAcquire = requestedLockMode == LockMode.NONE
+-				? LockMode.READ
+-				: requestedLockMode;
+-
+-		loadFromResultSet(
+-				resultSet,
+-				context,
+-				entityInstance,
+-				concreteEntityTypeName,
+-				entityKey,
+-				lockModeToAcquire
+-		);
+-	}
+-
+-	private void handleMissingIdentifier(ResultSetProcessingContext context) {
+-		if ( EntityFetch.class.isInstance( entityReference ) ) {
+-			final EntityFetch fetch = (EntityFetch) entityReference;
+-			final EntityType fetchedType = fetch.getFetchedType();
+-			if ( ! fetchedType.isOneToOne() ) {
+-				return;
+-			}
+-
+-			final EntityReferenceProcessingState fetchOwnerState = context.getOwnerProcessingState( fetch );
+-			if ( fetchOwnerState == null ) {
+-				throw new IllegalStateException( "Could not locate fetch owner state" );
+-			}
+-
+-			final EntityKey ownerEntityKey = fetchOwnerState.getEntityKey();
+-			if ( ownerEntityKey == null ) {
+-				throw new IllegalStateException( "Could not locate fetch owner EntityKey" );
+-			}
+-
+-			context.getSession().getPersistenceContext().addNullProperty(
+-					ownerEntityKey,
+-					fetchedType.getPropertyName()
+-			);
+-		}
+-	}
+-
+-	private void loadFromResultSet(
+-			ResultSet resultSet,
+-			ResultSetProcessingContext context,
+-			Object entityInstance,
+-			String concreteEntityTypeName,
+-			EntityKey entityKey,
+-			LockMode lockModeToAcquire) {
+-		final Serializable id = entityKey.getIdentifier();
+-
+-		// Get the persister for the _subclass_
+-		final Loadable concreteEntityPersister = (Loadable) context.getSession().getFactory().getEntityPersister( concreteEntityTypeName );
+-
+-		if ( log.isTraceEnabled() ) {
+-			log.tracev(
+-					"Initializing object from ResultSet: {0}",
+-					MessageHelper.infoString(
+-							concreteEntityPersister,
+-							id,
+-							context.getSession().getFactory()
+-					)
+-			);
+-		}
+-
+-		// add temp entry so that the next step is circular-reference
+-		// safe - only needed because some types don't take proper
+-		// advantage of two-phase-load (esp. components)
+-		TwoPhaseLoad.addUninitializedEntity(
+-				entityKey,
+-				entityInstance,
+-				concreteEntityPersister,
+-				lockModeToAcquire,
+-				!context.getLoadPlan().areLazyAttributesForceFetched(),
+-				context.getSession()
+-		);
+-
+-		final EntityPersister rootEntityPersister = context.getSession().getFactory().getEntityPersister(
+-				concreteEntityPersister.getRootEntityName()
+-		);
+-		final Object[] values;
+-		try {
+-			values = concreteEntityPersister.hydrate(
+-					resultSet,
+-					id,
+-					entityInstance,
+-					(Loadable) entityReference.getEntityPersister(),
+-					concreteEntityPersister == rootEntityPersister
+-							? entityReferenceAliases.getColumnAliases().getSuffixedPropertyAliases()
+-							: entityReferenceAliases.getColumnAliases().getSuffixedPropertyAliases( concreteEntityPersister ),
+-					context.getLoadPlan().areLazyAttributesForceFetched(),
+-					context.getSession()
+-			);
+-
+-			context.getProcessingState( entityReference ).registerHydratedState( values );
+-		}
+-		catch (SQLException e) {
+-			throw context.getSession().getFactory().getJdbcServices().getSqlExceptionHelper().convert(
+-					e,
+-					"Could not read entity state from ResultSet : " + entityKey
+-			);
+-		}
+-
+-		final Object rowId;
+-		try {
+-			rowId = concreteEntityPersister.hasRowId()
+-					? resultSet.getObject( entityReferenceAliases.getColumnAliases().getRowIdAlias() )
+-					: null;
+-		}
+-		catch (SQLException e) {
+-			throw context.getSession().getFactory().getJdbcServices().getSqlExceptionHelper().convert(
+-					e,
+-					"Could not read entity row-id from ResultSet : " + entityKey
+-			);
+-		}
+-
+-		final EntityType entityType = EntityFetch.class.isInstance( entityReference )
+-				? ( (EntityFetch) entityReference ).getFetchedType()
+-				: entityReference.getEntityPersister().getEntityMetamodel().getEntityType();
+-
+-		if ( entityType != null ) {
+-			String ukName = entityType.getRHSUniqueKeyPropertyName();
+-			if ( ukName != null ) {
+-				final int index = ( (UniqueKeyLoadable) concreteEntityPersister ).getPropertyIndex( ukName );
+-				final Type type = concreteEntityPersister.getPropertyTypes()[index];
+-
+-				// polymorphism not really handled completely correctly,
+-				// perhaps...well, actually its ok, assuming that the
+-				// entity name used in the lookup is the same as the
+-				// the one used here, which it will be
+-
+-				EntityUniqueKey euk = new EntityUniqueKey(
+-						entityReference.getEntityPersister().getEntityName(),
+-						ukName,
+-						type.semiResolve( values[index], context.getSession(), entityInstance ),
+-						type,
+-						concreteEntityPersister.getEntityMode(),
+-						context.getSession().getFactory()
+-				);
+-				context.getSession().getPersistenceContext().addEntity( euk, entityInstance );
+-			}
+-		}
+-
+-		TwoPhaseLoad.postHydrate(
+-				concreteEntityPersister,
+-				id,
+-				values,
+-				rowId,
+-				entityInstance,
+-				lockModeToAcquire,
+-				!context.getLoadPlan().areLazyAttributesForceFetched(),
+-				context.getSession()
+-		);
+-
+-		context.registerHydratedEntity( entityReference, entityKey, entityInstance );
+-	}
+-
+-	private String getConcreteEntityTypeName(
+-			ResultSet resultSet,
+-			ResultSetProcessingContext context,
+-			EntityKey entityKey) {
+-		final Loadable loadable = (Loadable) entityReference.getEntityPersister();
+-		if ( ! loadable.hasSubclasses() ) {
+-			return entityReference.getEntityPersister().getEntityName();
+-		}
+-
+-		final Object discriminatorValue;
+-		try {
+-			discriminatorValue = loadable.getDiscriminatorType().nullSafeGet(
+-					resultSet,
+-					entityReferenceAliases.getColumnAliases().getSuffixedDiscriminatorAlias(),
+-					context.getSession(),
+-					null
+-			);
+-		}
+-		catch (SQLException e) {
+-			throw context.getSession().getFactory().getJdbcServices().getSqlExceptionHelper().convert(
+-					e,
+-					"Could not read discriminator value from ResultSet"
+-			);
+-		}
+-
+-		final String result = loadable.getSubclassForDiscriminatorValue( discriminatorValue );
+-
+-		if ( result == null ) {
+-			// whoops! we got an instance of another class hierarchy branch
+-			throw new WrongClassException(
+-					"Discriminator: " + discriminatorValue,
+-					entityKey.getIdentifier(),
+-					entityReference.getEntityPersister().getEntityName()
+-			);
+-		}
+-
+-		return result;
+-	}
+-
+-	private void checkVersion(
+-			ResultSet resultSet,
+-			ResultSetProcessingContext context,
+-			EntityKey entityKey,
+-			Object existing) {
+-		final LockMode requestedLockMode = context.resolveLockMode( entityReference );
+-		if ( requestedLockMode != LockMode.NONE ) {
+-			final LockMode currentLockMode = context.getSession().getPersistenceContext().getEntry( existing ).getLockMode();
+-			final boolean isVersionCheckNeeded = entityReference.getEntityPersister().isVersioned()
+-					&& currentLockMode.lessThan( requestedLockMode );
+-
+-			// we don't need to worry about existing version being uninitialized because this block isn't called
+-			// by a re-entrant load (re-entrant loads *always* have lock mode NONE)
+-			if ( isVersionCheckNeeded ) {
+-				//we only check the version when *upgrading* lock modes
+-				checkVersion(
+-						context.getSession(),
+-						resultSet,
+-						entityReference.getEntityPersister(),
+-						entityReferenceAliases.getColumnAliases(),
+-						entityKey,
+-						existing
+-				);
+-				//we need to upgrade the lock mode to the mode requested
+-				context.getSession().getPersistenceContext().getEntry( existing ).setLockMode( requestedLockMode );
+-			}
+-		}
+-	}
+-
+-	private void checkVersion(
+-			SessionImplementor session,
+-			ResultSet resultSet,
+-			EntityPersister persister,
+-			EntityAliases entityAliases,
+-			EntityKey entityKey,
+-			Object entityInstance) {
+-		final Object version = session.getPersistenceContext().getEntry( entityInstance ).getVersion();
+-
+-		if ( version != null ) {
+-			//null version means the object is in the process of being loaded somewhere else in the ResultSet
+-			VersionType versionType = persister.getVersionType();
+-			final Object currentVersion;
+-			try {
+-				currentVersion = versionType.nullSafeGet(
+-						resultSet,
+-						entityAliases.getSuffixedVersionAliases(),
+-						session,
+-						null
+-				);
+-			}
+-			catch (SQLException e) {
+-				throw session.getFactory().getJdbcServices().getSqlExceptionHelper().convert(
+-						e,
+-						"Could not read version value from result set"
+-				);
+-			}
+-
+-			if ( !versionType.isEqual( version, currentVersion ) ) {
+-				if ( session.getFactory().getStatistics().isStatisticsEnabled() ) {
+-					session.getFactory().getStatisticsImplementor().optimisticFailure( persister.getEntityName() );
+-				}
+-				throw new StaleObjectStateException( persister.getEntityName(), entityKey.getIdentifier() );
+-			}
+-		}
+-	}
+-
+-	public void resolve(ResultSet resultSet, ResultSetProcessingContext context) {
+-		//To change body of created methods use File | Settings | File Templates.
+-	}
+-
+-	public void finishUpRow(ResultSet resultSet, ResultSetProcessingContextImpl context) {
+-		//To change body of created methods use File | Settings | File Templates.
+-	}
+-
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityReturnReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityReturnReader.java
+deleted file mode 100644
+index 4362af7248..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/EntityReturnReader.java
++++ /dev/null
+@@ -1,124 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.AssertionFailure;
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.loader.plan.exec.process.spi.ReturnReader;
+-import org.hibernate.loader.plan.exec.spi.EntityReferenceAliases;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.proxy.HibernateProxy;
+-
+-import static org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext.EntityReferenceProcessingState;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class EntityReturnReader extends EntityReferenceReader implements ReturnReader {
+-	private final EntityReturn entityReturn;
+-
+-	public EntityReturnReader(EntityReturn entityReturn, EntityReferenceAliases aliases, EntityIdentifierReader identifierReader) {
+-		super( entityReturn, aliases, identifierReader );
+-		this.entityReturn = entityReturn;
+-	}
+-
+-//	@Override
+-//	public void hydrate(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		final EntityKey entityKey = getEntityKeyFromContext( context );
+-//		if ( entityKey != null ) {
+-//			getIdentifierResolutionContext( context ).registerEntityKey( entityKey );
+-//			return;
+-//		}
+-//
+-//		entityReturn.getIdentifierDescription().hydrate( resultSet, context );
+-//
+-//		for ( Fetch fetch : entityReturn.getFetches() ) {
+-//			if ( FetchStrategyHelper.isJoinFetched( fetch.getFetchStrategy() ) ) {
+-//				fetch.hydrate( resultSet, context );
+-//			}
+-//		}
+-//	}
+-
+-	private EntityReferenceProcessingState getIdentifierResolutionContext(ResultSetProcessingContext context) {
+-		final ResultSetProcessingContext.EntityReferenceProcessingState entityReferenceProcessingState = context.getProcessingState(
+-				entityReturn
+-		);
+-
+-		if ( entityReferenceProcessingState == null ) {
+-			throw new AssertionFailure(
+-					String.format(
+-							"Could not locate EntityReferenceProcessingState for root entity return [%s (%s)]",
+-							entityReturn.getPropertyPath().getFullPath(),
+-							entityReturn.getEntityPersister().getEntityName()
+-					)
+-			);
+-		}
+-
+-		return entityReferenceProcessingState;
+-	}
+-
+-//	@Override
+-//	public void resolve(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		final EntityReferenceProcessingState entityReferenceProcessingState = getIdentifierResolutionContext( context );
+-//		EntityKey entityKey = entityReferenceProcessingState.getEntityKey();
+-//		if ( entityKey != null ) {
+-//			return;
+-//		}
+-//
+-//		entityKey = entityReturn.getIdentifierDescription().resolve( resultSet, context );
+-//		entityReferenceProcessingState.registerEntityKey( entityKey );
+-//
+-//		for ( Fetch fetch : entityReturn.getFetches() ) {
+-//			if ( FetchStrategyHelper.isJoinFetched( fetch.getFetchStrategy() ) ) {
+-//				fetch.resolve( resultSet, context );
+-//			}
+-//		}
+-//	}
+-
+-	@Override
+-	public Object read(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-		final EntityReferenceProcessingState processingState = getIdentifierResolutionContext( context );
+-
+-		final EntityKey entityKey = processingState.getEntityKey();
+-		final Object entityInstance = context.getProcessingState( entityReturn ).getEntityInstance();
+-
+-		if ( context.shouldReturnProxies() ) {
+-			final Object proxy = context.getSession().getPersistenceContext().proxyFor(
+-					entityReturn.getEntityPersister(),
+-					entityKey,
+-					entityInstance
+-			);
+-			if ( proxy != entityInstance ) {
+-				( (HibernateProxy) proxy ).getHibernateLazyInitializer().setImplementation( proxy );
+-				return proxy;
+-			}
+-		}
+-
+-		return entityInstance;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/Helper.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/Helper.java
+deleted file mode 100644
+index 84da32cadd..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/Helper.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.EntityElementGraph;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class Helper {
+-	/**
+-	 * Singleton access
+-	 */
+-	public static final Helper INSTANCE = new Helper();
+-
+-	private Helper() {
+-	}
+-
+-	public EntityReference findOwnerEntityReference(FetchOwner owner) {
+-		if ( EntityReference.class.isInstance( owner ) ) {
+-			return (EntityReference) owner;
+-		}
+-		else if ( CompositeFetch.class.isInstance( owner ) ) {
+-			return findOwnerEntityReference( ( (CompositeFetch) owner).getOwner() );
+-		}
+-		else if ( EntityElementGraph.class.isInstance( owner ) ) {
+-			return ( (EntityElementGraph) owner ).getEntityReference();
+-		}
+-
+-		throw new IllegalStateException(
+-				"Could not locate owner's EntityReference : " + owner.getPropertyPath().getFullPath()
+-		);
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/OneToOneFetchReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/OneToOneFetchReader.java
+deleted file mode 100644
+index beb4aad260..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/OneToOneFetchReader.java
++++ /dev/null
+@@ -1,44 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import org.hibernate.loader.plan.exec.spi.EntityReferenceAliases;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class OneToOneFetchReader extends EntityReferenceReader {
+-	private final EntityReference ownerEntityReference;
+-
+-	public OneToOneFetchReader(
+-			EntityFetch entityFetch,
+-			EntityReferenceAliases aliases,
+-			EntityIdentifierReader identifierReader,
+-			EntityReference ownerEntityReference) {
+-		super( entityFetch, aliases, identifierReader );
+-		this.ownerEntityReference = ownerEntityReference;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ResultSetProcessingContextImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ResultSetProcessingContextImpl.java
+deleted file mode 100644
+index 0381191073..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ResultSetProcessingContextImpl.java
++++ /dev/null
+@@ -1,938 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.io.Serializable;
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-import java.util.ArrayList;
+-import java.util.HashMap;
+-import java.util.HashSet;
+-import java.util.IdentityHashMap;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.StaleObjectStateException;
+-import org.hibernate.WrongClassException;
+-import org.hibernate.collection.spi.PersistentCollection;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.internal.TwoPhaseLoad;
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.engine.spi.EntityUniqueKey;
+-import org.hibernate.engine.spi.PersistenceContext;
+-import org.hibernate.engine.spi.QueryParameters;
+-import org.hibernate.engine.spi.SessionImplementor;
+-import org.hibernate.engine.spi.SubselectFetch;
+-import org.hibernate.event.spi.EventSource;
+-import org.hibernate.event.spi.PostLoadEvent;
+-import org.hibernate.event.spi.PreLoadEvent;
+-import org.hibernate.loader.CollectionAliases;
+-import org.hibernate.loader.EntityAliases;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.loader.plan.exec.query.spi.NamedParameterContext;
+-import org.hibernate.loader.plan.exec.spi.AliasResolutionContext;
+-import org.hibernate.loader.plan.exec.spi.LockModeResolver;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.loader.plan.spi.visit.LoadPlanVisitationStrategyAdapter;
+-import org.hibernate.loader.plan.spi.visit.LoadPlanVisitor;
+-import org.hibernate.loader.spi.AfterLoadAction;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.entity.Loadable;
+-import org.hibernate.persister.entity.UniqueKeyLoadable;
+-import org.hibernate.pretty.MessageHelper;
+-import org.hibernate.type.EntityType;
+-import org.hibernate.type.Type;
+-import org.hibernate.type.VersionType;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class ResultSetProcessingContextImpl implements ResultSetProcessingContext {
+-	private static final Logger LOG = Logger.getLogger( ResultSetProcessingContextImpl.class );
+-
+-	private final ResultSet resultSet;
+-	private final SessionImplementor session;
+-	private final LoadPlan loadPlan;
+-	private final boolean readOnly;
+-	private final boolean shouldUseOptionalEntityInformation;
+-	private final boolean forceFetchLazyAttributes;
+-	private final boolean shouldReturnProxies;
+-	private final QueryParameters queryParameters;
+-	private final NamedParameterContext namedParameterContext;
+-	private final boolean hadSubselectFetches;
+-
+-	private List<HydratedEntityRegistration> currentRowHydratedEntityRegistrationList;
+-
+-	private Map<EntityPersister,Set<EntityKey>> subselectLoadableEntityKeyMap;
+-	private List<HydratedEntityRegistration> hydratedEntityRegistrationList;
+-
+-	private LockModeResolver lockModeResolverDelegate = new LockModeResolver() {
+-		@Override
+-		public LockMode resolveLockMode(EntityReference entityReference) {
+-			return LockMode.NONE;
+-		}
+-	};
+-
+-	/**
+-	 * Builds a ResultSetProcessingContextImpl
+-	 *
+-	 * @param resultSet
+-	 * @param session
+-	 * @param loadPlan
+-	 * @param readOnly
+-	 * @param shouldUseOptionalEntityInformation There are times when the "optional entity information" on
+-	 * QueryParameters should be used and times when they should not.  Collection initializers, batch loaders, etc
+-	 * are times when it should NOT be used.
+-	 * @param forceFetchLazyAttributes
+-	 * @param shouldReturnProxies
+-	 * @param queryParameters
+-	 * @param namedParameterContext
+-	 * @param hadSubselectFetches
+-	 */
+-	public ResultSetProcessingContextImpl(
+-			ResultSet resultSet,
+-			SessionImplementor session,
+-			LoadPlan loadPlan,
+-			boolean readOnly,
+-			boolean shouldUseOptionalEntityInformation,
+-			boolean forceFetchLazyAttributes,
+-			boolean shouldReturnProxies,
+-			QueryParameters queryParameters,
+-			NamedParameterContext namedParameterContext,
+-			boolean hadSubselectFetches) {
+-		this.resultSet = resultSet;
+-		this.session = session;
+-		this.loadPlan = loadPlan;
+-		this.readOnly = readOnly;
+-		this.shouldUseOptionalEntityInformation = shouldUseOptionalEntityInformation;
+-		this.forceFetchLazyAttributes = forceFetchLazyAttributes;
+-		this.shouldReturnProxies = shouldReturnProxies;
+-		this.queryParameters = queryParameters;
+-		this.namedParameterContext = namedParameterContext;
+-		this.hadSubselectFetches = hadSubselectFetches;
+-
+-		if ( shouldUseOptionalEntityInformation ) {
+-			if ( queryParameters.getOptionalId() != null ) {
+-				// make sure we have only one return
+-				if ( loadPlan.getReturns().size() > 1 ) {
+-					throw new IllegalStateException( "Cannot specify 'optional entity' values with multi-return load plans" );
+-				}
+-			}
+-		}
+-	}
+-
+-	@Override
+-	public SessionImplementor getSession() {
+-		return session;
+-	}
+-
+-	@Override
+-	public boolean shouldUseOptionalEntityInformation() {
+-		return shouldUseOptionalEntityInformation;
+-	}
+-
+-	@Override
+-	public QueryParameters getQueryParameters() {
+-		return queryParameters;
+-	}
+-
+-	@Override
+-	public boolean shouldReturnProxies() {
+-		return shouldReturnProxies;
+-	}
+-
+-	@Override
+-	public LoadPlan getLoadPlan() {
+-		return loadPlan;
+-	}
+-
+-	@Override
+-	public LockMode resolveLockMode(EntityReference entityReference) {
+-		final LockMode lockMode = lockModeResolverDelegate.resolveLockMode( entityReference );
+-		return LockMode.NONE == lockMode ? LockMode.NONE : lockMode;
+-	}
+-
+-	private Map<EntityReference,EntityReferenceProcessingState> identifierResolutionContextMap;
+-
+-	@Override
+-	public EntityReferenceProcessingState getProcessingState(final EntityReference entityReference) {
+-		if ( identifierResolutionContextMap == null ) {
+-			identifierResolutionContextMap = new IdentityHashMap<EntityReference, EntityReferenceProcessingState>();
+-		}
+-
+-		EntityReferenceProcessingState context = identifierResolutionContextMap.get( entityReference );
+-		if ( context == null ) {
+-			context = new EntityReferenceProcessingState() {
+-				private boolean wasMissingIdentifier;
+-				private Object identifierHydratedForm;
+-				private EntityKey entityKey;
+-				private Object[] hydratedState;
+-				private Object entityInstance;
+-
+-				@Override
+-				public EntityReference getEntityReference() {
+-					return entityReference;
+-				}
+-
+-				@Override
+-				public void registerMissingIdentifier() {
+-					if ( !EntityFetch.class.isInstance( entityReference ) ) {
+-						throw new IllegalStateException( "Missing return row identifier" );
+-					}
+-					ResultSetProcessingContextImpl.this.registerNonExists( (EntityFetch) entityReference );
+-					wasMissingIdentifier = true;
+-				}
+-
+-				@Override
+-				public boolean isMissingIdentifier() {
+-					return wasMissingIdentifier;
+-				}
+-
+-				@Override
+-				public void registerIdentifierHydratedForm(Object identifierHydratedForm) {
+-					this.identifierHydratedForm = identifierHydratedForm;
+-				}
+-
+-				@Override
+-				public Object getIdentifierHydratedForm() {
+-					return identifierHydratedForm;
+-				}
+-
+-				@Override
+-				public void registerEntityKey(EntityKey entityKey) {
+-					this.entityKey = entityKey;
+-				}
+-
+-				@Override
+-				public EntityKey getEntityKey() {
+-					return entityKey;
+-				}
+-
+-				@Override
+-				public void registerHydratedState(Object[] hydratedState) {
+-					this.hydratedState = hydratedState;
+-				}
+-
+-				@Override
+-				public Object[] getHydratedState() {
+-					return hydratedState;
+-				}
+-
+-				@Override
+-				public void registerEntityInstance(Object entityInstance) {
+-					this.entityInstance = entityInstance;
+-				}
+-
+-				@Override
+-				public Object getEntityInstance() {
+-					return entityInstance;
+-				}
+-			};
+-			identifierResolutionContextMap.put( entityReference, context );
+-		}
+-
+-		return context;
+-	}
+-
+-	private void registerNonExists(EntityFetch fetch) {
+-		final EntityType fetchedType = fetch.getFetchedType();
+-		if ( ! fetchedType.isOneToOne() ) {
+-			return;
+-		}
+-
+-		final EntityReferenceProcessingState fetchOwnerState = getOwnerProcessingState( fetch );
+-		if ( fetchOwnerState == null ) {
+-			throw new IllegalStateException( "Could not locate fetch owner state" );
+-		}
+-
+-		final EntityKey ownerEntityKey = fetchOwnerState.getEntityKey();
+-		if ( ownerEntityKey == null ) {
+-			throw new IllegalStateException( "Could not locate fetch owner EntityKey" );
+-		}
+-
+-		session.getPersistenceContext().addNullProperty(
+-				ownerEntityKey,
+-				fetchedType.getPropertyName()
+-		);
+-	}
+-
+-	@Override
+-	public EntityReferenceProcessingState getOwnerProcessingState(Fetch fetch) {
+-		return getProcessingState( resolveFetchOwnerEntityReference( fetch ) );
+-	}
+-
+-	private EntityReference resolveFetchOwnerEntityReference(Fetch fetch) {
+-		final FetchOwner fetchOwner = fetch.getOwner();
+-
+-		if ( EntityReference.class.isInstance( fetchOwner ) ) {
+-			return (EntityReference) fetchOwner;
+-		}
+-		else if ( CompositeFetch.class.isInstance( fetchOwner ) ) {
+-			return resolveFetchOwnerEntityReference( (CompositeFetch) fetchOwner );
+-		}
+-
+-		throw new IllegalStateException(
+-				String.format(
+-						"Cannot resolve FetchOwner [%s] of Fetch [%s (%s)] to an EntityReference",
+-						fetchOwner,
+-						fetch,
+-						fetch.getPropertyPath()
+-				)
+-		);
+-	}
+-
+-//	@Override
+-//	public void checkVersion(
+-//			ResultSet resultSet,
+-//			EntityPersister persister,
+-//			EntityAliases entityAliases,
+-//			EntityKey entityKey,
+-//			Object entityInstance) {
+-//		final Object version = session.getPersistenceContext().getEntry( entityInstance ).getVersion();
+-//
+-//		if ( version != null ) {
+-//			//null version means the object is in the process of being loaded somewhere else in the ResultSet
+-//			VersionType versionType = persister.getVersionType();
+-//			final Object currentVersion;
+-//			try {
+-//				currentVersion = versionType.nullSafeGet(
+-//						resultSet,
+-//						entityAliases.getSuffixedVersionAliases(),
+-//						session,
+-//						null
+-//				);
+-//			}
+-//			catch (SQLException e) {
+-//				throw getSession().getFactory().getJdbcServices().getSqlExceptionHelper().convert(
+-//						e,
+-//						"Could not read version value from result set"
+-//				);
+-//			}
+-//
+-//			if ( !versionType.isEqual( version, currentVersion ) ) {
+-//				if ( session.getFactory().getStatistics().isStatisticsEnabled() ) {
+-//					session.getFactory().getStatisticsImplementor().optimisticFailure( persister.getEntityName() );
+-//				}
+-//				throw new StaleObjectStateException( persister.getEntityName(), entityKey.getIdentifier() );
+-//			}
+-//		}
+-//	}
+-//
+-//	@Override
+-//	public String getConcreteEntityTypeName(
+-//			final ResultSet rs,
+-//			final EntityPersister persister,
+-//			final EntityAliases entityAliases,
+-//			final EntityKey entityKey) {
+-//
+-//		final Loadable loadable = (Loadable) persister;
+-//		if ( ! loadable.hasSubclasses() ) {
+-//			return persister.getEntityName();
+-//		}
+-//
+-//		final Object discriminatorValue;
+-//		try {
+-//			discriminatorValue = loadable.getDiscriminatorType().nullSafeGet(
+-//					rs,
+-//					entityAliases.getSuffixedDiscriminatorAlias(),
+-//					session,
+-//					null
+-//			);
+-//		}
+-//		catch (SQLException e) {
+-//			throw getSession().getFactory().getJdbcServices().getSqlExceptionHelper().convert(
+-//					e,
+-//					"Could not read discriminator value from ResultSet"
+-//			);
+-//		}
+-//
+-//		final String result = loadable.getSubclassForDiscriminatorValue( discriminatorValue );
+-//
+-//		if ( result == null ) {
+-//			// whoops! we got an instance of another class hierarchy branch
+-//			throw new WrongClassException(
+-//					"Discriminator: " + discriminatorValue,
+-//					entityKey.getIdentifier(),
+-//					persister.getEntityName()
+-//			);
+-//		}
+-//
+-//		return result;
+-//	}
+-//
+-//	@Override
+-//	public Object resolveEntityKey(EntityKey entityKey, EntityKeyResolutionContext entityKeyContext) {
+-//		final Object existing = getSession().getEntityUsingInterceptor( entityKey );
+-//
+-//		if ( existing != null ) {
+-//			if ( !entityKeyContext.getEntityPersister().isInstance( existing ) ) {
+-//				throw new WrongClassException(
+-//						"loaded object was of wrong class " + existing.getClass(),
+-//						entityKey.getIdentifier(),
+-//						entityKeyContext.getEntityPersister().getEntityName()
+-//				);
+-//			}
+-//
+-//			final LockMode requestedLockMode = entityKeyContext.getLockMode() == null
+-//					? LockMode.NONE
+-//					: entityKeyContext.getLockMode();
+-//
+-//			if ( requestedLockMode != LockMode.NONE ) {
+-//				final LockMode currentLockMode = getSession().getPersistenceContext().getEntry( existing ).getLockMode();
+-//				final boolean isVersionCheckNeeded = entityKeyContext.getEntityPersister().isVersioned()
+-//						&& currentLockMode.lessThan( requestedLockMode );
+-//
+-//				// we don't need to worry about existing version being uninitialized because this block isn't called
+-//				// by a re-entrant load (re-entrant loads *always* have lock mode NONE)
+-//				if ( isVersionCheckNeeded ) {
+-//					//we only check the version when *upgrading* lock modes
+-//					checkVersion(
+-//							resultSet,
+-//							entityKeyContext.getEntityPersister(),
+-//							aliasResolutionContext.resolveAliases( entityKeyContext.getEntityReference() ).getColumnAliases(),
+-//							entityKey,
+-//							existing
+-//					);
+-//					//we need to upgrade the lock mode to the mode requested
+-//					getSession().getPersistenceContext().getEntry( existing ).setLockMode( requestedLockMode );
+-//				}
+-//			}
+-//
+-//			return existing;
+-//		}
+-//		else {
+-//			final String concreteEntityTypeName = getConcreteEntityTypeName(
+-//					resultSet,
+-//					entityKeyContext.getEntityPersister(),
+-//					aliasResolutionContext.resolveAliases( entityKeyContext.getEntityReference() ).getColumnAliases(),
+-//					entityKey
+-//			);
+-//
+-//			final Object entityInstance;
+-////			if ( suppliedOptionalEntityKey != null && entityKey.equals( suppliedOptionalEntityKey ) ) {
+-////				// its the given optional object
+-////				entityInstance = queryParameters.getOptionalObject();
+-////			}
+-////			else {
+-//				// instantiate a new instance
+-//				entityInstance = session.instantiate( concreteEntityTypeName, entityKey.getIdentifier() );
+-////			}
+-//
+-//			FetchStrategy fetchStrategy = null;
+-//			final EntityReference entityReference = entityKeyContext.getEntityReference();
+-//			if ( EntityFetch.class.isInstance( entityReference ) ) {
+-//				final EntityFetch fetch = (EntityFetch) entityReference;
+-//				fetchStrategy = fetch.getFetchStrategy();
+-//			}
+-//
+-//			//need to hydrate it.
+-//
+-//			// grab its state from the ResultSet and keep it in the Session
+-//			// (but don't yet initialize the object itself)
+-//			// note that we acquire LockMode.READ even if it was not requested
+-//			final LockMode requestedLockMode = entityKeyContext.getLockMode() == null
+-//					? LockMode.NONE
+-//					: entityKeyContext.getLockMode();
+-//			final LockMode acquiredLockMode = requestedLockMode == LockMode.NONE
+-//					? LockMode.READ
+-//					: requestedLockMode;
+-//
+-//			loadFromResultSet(
+-//					resultSet,
+-//					entityInstance,
+-//					concreteEntityTypeName,
+-//					entityKey,
+-//					aliasResolutionContext.resolveAliases( entityKeyContext.getEntityReference() ).getColumnAliases(),
+-//					acquiredLockMode,
+-//					entityKeyContext.getEntityPersister(),
+-//					fetchStrategy,
+-//					true,
+-//					entityKeyContext.getEntityPersister().getEntityMetamodel().getEntityType()
+-//			);
+-//
+-//			// materialize associations (and initialize the object) later
+-//			registerHydratedEntity( entityKeyContext.getEntityReference(), entityKey, entityInstance );
+-//
+-//			return entityInstance;
+-//		}
+-//	}
+-//
+-//	@Override
+-//	public void loadFromResultSet(
+-//			ResultSet resultSet,
+-//			Object entityInstance,
+-//			String concreteEntityTypeName,
+-//			EntityKey entityKey,
+-//			EntityAliases entityAliases,
+-//			LockMode acquiredLockMode,
+-//			EntityPersister rootPersister,
+-//			FetchStrategy fetchStrategy,
+-//			boolean eagerFetch,
+-//			EntityType associationType) {
+-//
+-//		final Serializable id = entityKey.getIdentifier();
+-//
+-//		// Get the persister for the _subclass_
+-//		final Loadable persister = (Loadable) getSession().getFactory().getEntityPersister( concreteEntityTypeName );
+-//
+-//		if ( LOG.isTraceEnabled() ) {
+-//			LOG.tracev(
+-//					"Initializing object from ResultSet: {0}",
+-//					MessageHelper.infoString(
+-//							persister,
+-//							id,
+-//							getSession().getFactory()
+-//					)
+-//			);
+-//		}
+-//
+-//		// add temp entry so that the next step is circular-reference
+-//		// safe - only needed because some types don't take proper
+-//		// advantage of two-phase-load (esp. components)
+-//		TwoPhaseLoad.addUninitializedEntity(
+-//				entityKey,
+-//				entityInstance,
+-//				persister,
+-//				acquiredLockMode,
+-//				!forceFetchLazyAttributes,
+-//				session
+-//		);
+-//
+-//		// This is not very nice (and quite slow):
+-//		final String[][] cols = persister == rootPersister ?
+-//				entityAliases.getSuffixedPropertyAliases() :
+-//				entityAliases.getSuffixedPropertyAliases(persister);
+-//
+-//		final Object[] values;
+-//		try {
+-//			values = persister.hydrate(
+-//					resultSet,
+-//					id,
+-//					entityInstance,
+-//					(Loadable) rootPersister,
+-//					cols,
+-//					loadPlan.areLazyAttributesForceFetched(),
+-//					session
+-//			);
+-//		}
+-//		catch (SQLException e) {
+-//			throw getSession().getFactory().getJdbcServices().getSqlExceptionHelper().convert(
+-//					e,
+-//					"Could not read entity state from ResultSet : " + entityKey
+-//			);
+-//		}
+-//
+-//		final Object rowId;
+-//		try {
+-//			rowId = persister.hasRowId() ? resultSet.getObject( entityAliases.getRowIdAlias() ) : null;
+-//		}
+-//		catch (SQLException e) {
+-//			throw getSession().getFactory().getJdbcServices().getSqlExceptionHelper().convert(
+-//					e,
+-//					"Could not read entity row-id from ResultSet : " + entityKey
+-//			);
+-//		}
+-//
+-//		if ( associationType != null ) {
+-//			String ukName = associationType.getRHSUniqueKeyPropertyName();
+-//			if ( ukName != null ) {
+-//				final int index = ( (UniqueKeyLoadable) persister ).getPropertyIndex( ukName );
+-//				final Type type = persister.getPropertyTypes()[index];
+-//
+-//				// polymorphism not really handled completely correctly,
+-//				// perhaps...well, actually its ok, assuming that the
+-//				// entity name used in the lookup is the same as the
+-//				// the one used here, which it will be
+-//
+-//				EntityUniqueKey euk = new EntityUniqueKey(
+-//						rootPersister.getEntityName(), //polymorphism comment above
+-//						ukName,
+-//						type.semiResolve( values[index], session, entityInstance ),
+-//						type,
+-//						persister.getEntityMode(),
+-//						session.getFactory()
+-//				);
+-//				session.getPersistenceContext().addEntity( euk, entityInstance );
+-//			}
+-//		}
+-//
+-//		TwoPhaseLoad.postHydrate(
+-//				persister,
+-//				id,
+-//				values,
+-//				rowId,
+-//				entityInstance,
+-//				acquiredLockMode,
+-//				!loadPlan.areLazyAttributesForceFetched(),
+-//				session
+-//		);
+-//
+-//	}
+-//
+-//	public void readCollectionElements(final Object[] row) {
+-//			LoadPlanVisitor.visit(
+-//					loadPlan,
+-//					new LoadPlanVisitationStrategyAdapter() {
+-//						@Override
+-//						public void handleCollectionReturn(CollectionReturn rootCollectionReturn) {
+-//							readCollectionElement(
+-//									null,
+-//									null,
+-//									rootCollectionReturn.getCollectionPersister(),
+-//									aliasResolutionContext.resolveAliases( rootCollectionReturn ).getCollectionColumnAliases(),
+-//									resultSet,
+-//									session
+-//							);
+-//						}
+-//
+-//						@Override
+-//						public void startingCollectionFetch(CollectionFetch collectionFetch) {
+-//							// TODO: determine which element is the owner.
+-//							final Object owner = row[ 0 ];
+-//							readCollectionElement(
+-//									owner,
+-//									collectionFetch.getCollectionPersister().getCollectionType().getKeyOfOwner( owner, session ),
+-//									collectionFetch.getCollectionPersister(),
+-//									aliasResolutionContext.resolveAliases( collectionFetch ).getCollectionColumnAliases(),
+-//									resultSet,
+-//									session
+-//							);
+-//						}
+-//
+-//						private void readCollectionElement(
+-//								final Object optionalOwner,
+-//								final Serializable optionalKey,
+-//								final CollectionPersister persister,
+-//								final CollectionAliases descriptor,
+-//								final ResultSet rs,
+-//								final SessionImplementor session) {
+-//
+-//							try {
+-//								final PersistenceContext persistenceContext = session.getPersistenceContext();
+-//
+-//								final Serializable collectionRowKey = (Serializable) persister.readKey(
+-//										rs,
+-//										descriptor.getSuffixedKeyAliases(),
+-//										session
+-//								);
+-//
+-//								if ( collectionRowKey != null ) {
+-//									// we found a collection element in the result set
+-//
+-//									if ( LOG.isDebugEnabled() ) {
+-//										LOG.debugf( "Found row of collection: %s",
+-//												MessageHelper.collectionInfoString( persister, collectionRowKey, session.getFactory() ) );
+-//									}
+-//
+-//									Object owner = optionalOwner;
+-//									if ( owner == null ) {
+-//										owner = persistenceContext.getCollectionOwner( collectionRowKey, persister );
+-//										if ( owner == null ) {
+-//											//TODO: This is assertion is disabled because there is a bug that means the
+-//											//	  original owner of a transient, uninitialized collection is not known
+-//											//	  if the collection is re-referenced by a different object associated
+-//											//	  with the current Session
+-//											//throw new AssertionFailure("bug loading unowned collection");
+-//										}
+-//									}
+-//
+-//									PersistentCollection rowCollection = persistenceContext.getLoadContexts()
+-//											.getCollectionLoadContext( rs )
+-//											.getLoadingCollection( persister, collectionRowKey );
+-//
+-//									if ( rowCollection != null ) {
+-//										rowCollection.readFrom( rs, persister, descriptor, owner );
+-//									}
+-//
+-//								}
+-//								else if ( optionalKey != null ) {
+-//									// we did not find a collection element in the result set, so we
+-//									// ensure that a collection is created with the owner's identifier,
+-//									// since what we have is an empty collection
+-//
+-//									if ( LOG.isDebugEnabled() ) {
+-//										LOG.debugf( "Result set contains (possibly empty) collection: %s",
+-//												MessageHelper.collectionInfoString( persister, optionalKey, session.getFactory() ) );
+-//									}
+-//
+-//									persistenceContext.getLoadContexts()
+-//											.getCollectionLoadContext( rs )
+-//											.getLoadingCollection( persister, optionalKey ); // handle empty collection
+-//
+-//								}
+-//
+-//								// else no collection element, but also no owner
+-//							}
+-//							catch ( SQLException sqle ) {
+-//								// TODO: would be nice to have the SQL string that failed...
+-//								throw session.getFactory().getSQLExceptionHelper().convert(
+-//										sqle,
+-//										"could not read next row of results"
+-//								);
+-//							}
+-//						}
+-//
+-//					}
+-//			);
+-//	}
+-
+-	@Override
+-	public void registerHydratedEntity(EntityReference entityReference, EntityKey entityKey, Object entityInstance) {
+-		if ( currentRowHydratedEntityRegistrationList == null ) {
+-			currentRowHydratedEntityRegistrationList = new ArrayList<HydratedEntityRegistration>();
+-		}
+-		currentRowHydratedEntityRegistrationList.add(
+-				new HydratedEntityRegistration(
+-						entityReference,
+-						entityKey,
+-						entityInstance
+-				)
+-		);
+-	}
+-
+-	/**
+-	 * Package-protected
+-	 */
+-	void finishUpRow() {
+-		if ( currentRowHydratedEntityRegistrationList == null ) {
+-			return;
+-		}
+-
+-
+-		// managing the running list of registrations ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-		if ( hydratedEntityRegistrationList == null ) {
+-			hydratedEntityRegistrationList = new ArrayList<HydratedEntityRegistration>();
+-		}
+-		hydratedEntityRegistrationList.addAll( currentRowHydratedEntityRegistrationList );
+-
+-
+-		// managing the map forms needed for subselect fetch generation ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-		if ( hadSubselectFetches ) {
+-			if ( subselectLoadableEntityKeyMap == null ) {
+-				subselectLoadableEntityKeyMap = new HashMap<EntityPersister, Set<EntityKey>>();
+-			}
+-			for ( HydratedEntityRegistration registration : currentRowHydratedEntityRegistrationList ) {
+-				Set<EntityKey> entityKeys = subselectLoadableEntityKeyMap.get( registration.entityReference.getEntityPersister() );
+-				if ( entityKeys == null ) {
+-					entityKeys = new HashSet<EntityKey>();
+-					subselectLoadableEntityKeyMap.put( registration.entityReference.getEntityPersister(), entityKeys );
+-				}
+-				entityKeys.add( registration.key );
+-			}
+-		}
+-
+-		// release the currentRowHydratedEntityRegistrationList entries
+-		currentRowHydratedEntityRegistrationList.clear();
+-
+-		identifierResolutionContextMap.clear();
+-	}
+-
+-	/**
+-	 * Package-protected
+-	 *
+-	 * @param afterLoadActionList List of after-load actions to perform
+-	 */
+-	void finishUp(List<AfterLoadAction> afterLoadActionList) {
+-		initializeEntitiesAndCollections( afterLoadActionList );
+-		createSubselects();
+-
+-		if ( hydratedEntityRegistrationList != null ) {
+-			hydratedEntityRegistrationList.clear();
+-			hydratedEntityRegistrationList = null;
+-		}
+-
+-		if ( subselectLoadableEntityKeyMap != null ) {
+-			subselectLoadableEntityKeyMap.clear();
+-			subselectLoadableEntityKeyMap = null;
+-		}
+-	}
+-
+-	private void initializeEntitiesAndCollections(List<AfterLoadAction> afterLoadActionList) {
+-		// for arrays, we should end the collection load before resolving the entities, since the
+-		// actual array instances are not instantiated during loading
+-		finishLoadingArrays();
+-
+-
+-		// IMPORTANT: reuse the same event instances for performance!
+-		final PreLoadEvent preLoadEvent;
+-		final PostLoadEvent postLoadEvent;
+-		if ( session.isEventSource() ) {
+-			preLoadEvent = new PreLoadEvent( (EventSource) session );
+-			postLoadEvent = new PostLoadEvent( (EventSource) session );
+-		}
+-		else {
+-			preLoadEvent = null;
+-			postLoadEvent = null;
+-		}
+-
+-		// now finish loading the entities (2-phase load)
+-		performTwoPhaseLoad( preLoadEvent );
+-
+-		// now we can finalize loading collections
+-		finishLoadingCollections();
+-
+-		// finally, perform post-load operations
+-		postLoad( postLoadEvent, afterLoadActionList );
+-	}
+-
+-	private void finishLoadingArrays() {
+-		LoadPlanVisitor.visit(
+-				loadPlan,
+-				new LoadPlanVisitationStrategyAdapter() {
+-					@Override
+-					public void handleCollectionReturn(CollectionReturn rootCollectionReturn) {
+-						endLoadingArray( rootCollectionReturn.getCollectionPersister() );
+-					}
+-
+-					@Override
+-					public void startingCollectionFetch(CollectionFetch collectionFetch) {
+-						endLoadingArray( collectionFetch.getCollectionPersister() );
+-					}
+-
+-					private void endLoadingArray(CollectionPersister persister) {
+-						if ( persister.isArray() ) {
+-							session.getPersistenceContext()
+-									.getLoadContexts()
+-									.getCollectionLoadContext( resultSet )
+-									.endLoadingCollections( persister );
+-						}
+-					}
+-				}
+-		);
+-	}
+-
+-	private void performTwoPhaseLoad(PreLoadEvent preLoadEvent) {
+-		final int numberOfHydratedObjects = hydratedEntityRegistrationList == null
+-				? 0
+-				: hydratedEntityRegistrationList.size();
+-		LOG.tracev( "Total objects hydrated: {0}", numberOfHydratedObjects );
+-
+-		if ( hydratedEntityRegistrationList == null ) {
+-			return;
+-		}
+-
+-		for ( HydratedEntityRegistration registration : hydratedEntityRegistrationList ) {
+-			TwoPhaseLoad.initializeEntity( registration.instance, readOnly, session, preLoadEvent );
+-		}
+-	}
+-
+-	private void finishLoadingCollections() {
+-		LoadPlanVisitor.visit(
+-				loadPlan,
+-				new LoadPlanVisitationStrategyAdapter() {
+-					@Override
+-					public void handleCollectionReturn(CollectionReturn rootCollectionReturn) {
+-						endLoadingCollection( rootCollectionReturn.getCollectionPersister() );
+-					}
+-
+-					@Override
+-					public void startingCollectionFetch(CollectionFetch collectionFetch) {
+-						endLoadingCollection( collectionFetch.getCollectionPersister() );
+-					}
+-
+-					private void endLoadingCollection(CollectionPersister persister) {
+-						if ( ! persister.isArray() ) {
+-							session.getPersistenceContext()
+-									.getLoadContexts()
+-									.getCollectionLoadContext( resultSet )
+-									.endLoadingCollections( persister );
+-						}
+-					}
+-				}
+-		);
+-	}
+-
+-	private void postLoad(PostLoadEvent postLoadEvent, List<AfterLoadAction> afterLoadActionList) {
+-		// Until this entire method is refactored w/ polymorphism, postLoad was
+-		// split off from initializeEntity.  It *must* occur after
+-		// endCollectionLoad to ensure the collection is in the
+-		// persistence context.
+-		if ( hydratedEntityRegistrationList == null ) {
+-			return;
+-		}
+-
+-		for ( HydratedEntityRegistration registration : hydratedEntityRegistrationList ) {
+-			TwoPhaseLoad.postLoad( registration.instance, session, postLoadEvent );
+-			if ( afterLoadActionList != null ) {
+-				for ( AfterLoadAction afterLoadAction : afterLoadActionList ) {
+-					afterLoadAction.afterLoad( session, registration.instance, (Loadable) registration.entityReference.getEntityPersister() );
+-				}
+-			}
+-		}
+-	}
+-
+-	private void createSubselects() {
+-		if ( subselectLoadableEntityKeyMap == null || subselectLoadableEntityKeyMap.size() <= 1 ) {
+-			// if we only returned one entity, query by key is more efficient; so do nothing here
+-			return;
+-		}
+-
+-		final Map<String, int[]> namedParameterLocMap =
+-				ResultSetProcessorHelper.buildNamedParameterLocMap( queryParameters, namedParameterContext );
+-
+-		for ( Map.Entry<EntityPersister, Set<EntityKey>> entry : subselectLoadableEntityKeyMap.entrySet() ) {
+-			if ( ! entry.getKey().hasSubselectLoadableCollections() ) {
+-				continue;
+-			}
+-
+-			SubselectFetch subselectFetch = new SubselectFetch(
+-					//getSQLString(),
+-					null, // aliases[i],
+-					(Loadable) entry.getKey(),
+-					queryParameters,
+-					entry.getValue(),
+-					namedParameterLocMap
+-			);
+-
+-			for ( EntityKey key : entry.getValue() ) {
+-				session.getPersistenceContext().getBatchFetchQueue().addSubselect( key, subselectFetch );
+-			}
+-
+-		}
+-	}
+-
+-	private static class HydratedEntityRegistration {
+-		private final EntityReference entityReference;
+-		private final EntityKey key;
+-		private Object instance;
+-
+-		private HydratedEntityRegistration(EntityReference entityReference, EntityKey key, Object instance) {
+-			this.entityReference = entityReference;
+-			this.key = key;
+-			this.instance = instance;
+-		}
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ResultSetProcessorHelper.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ResultSetProcessorHelper.java
+deleted file mode 100644
+index 06f5a003ff..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ResultSetProcessorHelper.java
++++ /dev/null
+@@ -1,98 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.io.Serializable;
+-import java.util.HashMap;
+-import java.util.Map;
+-
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.engine.spi.QueryParameters;
+-import org.hibernate.engine.spi.SessionImplementor;
+-import org.hibernate.loader.plan.exec.query.spi.NamedParameterContext;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.type.CompositeType;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class ResultSetProcessorHelper {
+-	/**
+-	 * Singleton access
+-	 */
+-	public static final ResultSetProcessorHelper INSTANCE = new ResultSetProcessorHelper();
+-
+-	public static EntityKey getOptionalObjectKey(QueryParameters queryParameters, SessionImplementor session) {
+-		final Object optionalObject = queryParameters.getOptionalObject();
+-		final Serializable optionalId = queryParameters.getOptionalId();
+-		final String optionalEntityName = queryParameters.getOptionalEntityName();
+-
+-		return INSTANCE.interpretEntityKey( session, optionalEntityName, optionalId, optionalObject );
+-	}
+-
+-	public EntityKey interpretEntityKey(
+-			SessionImplementor session,
+-			String optionalEntityName,
+-			Serializable optionalId,
+-			Object optionalObject) {
+-		if ( optionalEntityName != null ) {
+-			final EntityPersister entityPersister;
+-			if ( optionalObject != null ) {
+-				entityPersister = session.getEntityPersister( optionalEntityName, optionalObject );
+-			}
+-			else {
+-				entityPersister = session.getFactory().getEntityPersister( optionalEntityName );
+-			}
+-			if ( entityPersister.isInstance( optionalId ) ) {
+-				// embedded (non-encapsulated) composite identifier
+-				final Serializable identifierState = ( (CompositeType) entityPersister.getIdentifierType() ).getPropertyValues( optionalId, session );
+-				return session.generateEntityKey( identifierState, entityPersister );
+-			}
+-			else {
+-				return session.generateEntityKey( optionalId, entityPersister );
+-			}
+-		}
+-		else {
+-			return null;
+-		}
+-	}
+-
+-	public static Map<String, int[]> buildNamedParameterLocMap(
+-			QueryParameters queryParameters,
+-			NamedParameterContext namedParameterContext) {
+-		if ( queryParameters.getNamedParameters() == null || queryParameters.getNamedParameters().isEmpty() ) {
+-			return null;
+-		}
+-
+-		final Map<String, int[]> namedParameterLocMap = new HashMap<String, int[]>();
+-		for ( String name : queryParameters.getNamedParameters().keySet() ) {
+-			namedParameterLocMap.put(
+-					name,
+-					namedParameterContext.getNamedParameterLocations( name )
+-			);
+-		}
+-		return namedParameterLocMap;
+-	}
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ResultSetProcessorImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ResultSetProcessorImpl.java
+deleted file mode 100644
+index cbe2f66855..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ResultSetProcessorImpl.java
++++ /dev/null
+@@ -1,301 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.io.Serializable;
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-import java.util.ArrayList;
+-import java.util.List;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.cfg.NotYetImplementedException;
+-import org.hibernate.dialect.pagination.LimitHelper;
+-import org.hibernate.engine.spi.QueryParameters;
+-import org.hibernate.engine.spi.RowSelection;
+-import org.hibernate.engine.spi.SessionImplementor;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessor;
+-import org.hibernate.loader.plan.exec.process.spi.ScrollableResultSetProcessor;
+-import org.hibernate.loader.plan.exec.query.spi.NamedParameterContext;
+-import org.hibernate.loader.plan.exec.spi.RowReader;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.loader.spi.AfterLoadAction;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.pretty.MessageHelper;
+-import org.hibernate.transform.ResultTransformer;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class ResultSetProcessorImpl implements ResultSetProcessor {
+-	private static final Logger LOG = Logger.getLogger( ResultSetProcessorImpl.class );
+-
+-	private final LoadPlan loadPlan;
+-	private final RowReader rowReader;
+-
+-	private final boolean hadSubselectFetches;
+-
+-	public ResultSetProcessorImpl(LoadPlan loadPlan, RowReader rowReader, boolean hadSubselectFetches) {
+-		this.loadPlan = loadPlan;
+-		this.rowReader = rowReader;
+-		this.hadSubselectFetches = hadSubselectFetches;
+-	}
+-
+-	public RowReader getRowReader() {
+-		return rowReader;
+-	}
+-
+-	@Override
+-	public ScrollableResultSetProcessor toOnDemandForm() {
+-		// todo : implement
+-		throw new NotYetImplementedException();
+-	}
+-
+-	@Override
+-	public List extractResults(
+-			ResultSet resultSet,
+-			final SessionImplementor session,
+-			QueryParameters queryParameters,
+-			NamedParameterContext namedParameterContext,
+-			boolean returnProxies,
+-			boolean readOnly,
+-			ResultTransformer forcedResultTransformer,
+-			List<AfterLoadAction> afterLoadActionList) throws SQLException {
+-
+-		handlePotentiallyEmptyCollectionRootReturns( loadPlan, queryParameters.getCollectionKeys(), resultSet, session );
+-
+-		final int maxRows;
+-		final RowSelection selection = queryParameters.getRowSelection();
+-		if ( LimitHelper.hasMaxRows( selection ) ) {
+-			maxRows = selection.getMaxRows();
+-			LOG.tracef( "Limiting ResultSet processing to just %s rows", maxRows );
+-		}
+-		else {
+-			maxRows = Integer.MAX_VALUE;
+-		}
+-
+-		// There are times when the "optional entity information" on QueryParameters should be used and
+-		// times when they should be ignored.  Loader uses its isSingleRowLoader method to allow
+-		// subclasses to override that.  Collection initializers, batch loaders, e.g. override that
+-		// it to be false.  The 'shouldUseOptionalEntityInstance' setting is meant to fill that same role.
+-		final boolean shouldUseOptionalEntityInstance = true;
+-
+-		// Handles the "FETCH ALL PROPERTIES" directive in HQL
+-		final boolean forceFetchLazyAttributes = false;
+-
+-		final ResultSetProcessingContextImpl context = new ResultSetProcessingContextImpl(
+-				resultSet,
+-				session,
+-				loadPlan,
+-				readOnly,
+-				shouldUseOptionalEntityInstance,
+-				forceFetchLazyAttributes,
+-				returnProxies,
+-				queryParameters,
+-				namedParameterContext,
+-				hadSubselectFetches
+-		);
+-
+-		final List loadResults = new ArrayList();
+-
+-		LOG.trace( "Processing result set" );
+-		int count;
+-		for ( count = 0; count < maxRows && resultSet.next(); count++ ) {
+-			LOG.debugf( "Starting ResultSet row #%s", count );
+-
+-			Object logicalRow = rowReader.readRow( resultSet, context );
+-
+-			// todo : apply transformers here?
+-
+-			loadResults.add( logicalRow );
+-
+-			context.finishUpRow();
+-		}
+-
+-		LOG.tracev( "Done processing result set ({0} rows)", count );
+-
+-		context.finishUp( afterLoadActionList );
+-
+-		session.getPersistenceContext().initializeNonLazyCollections();
+-
+-		return loadResults;
+-	}
+-
+-
+-	private void handlePotentiallyEmptyCollectionRootReturns(
+-			LoadPlan loadPlan,
+-			Serializable[] collectionKeys,
+-			ResultSet resultSet,
+-			SessionImplementor session) {
+-		if ( collectionKeys == null ) {
+-			// this is not a collection initializer (and empty collections will be detected by looking for
+-			// the owner's identifier in the result set)
+-			return;
+-		}
+-
+-		// this is a collection initializer, so we must create a collection
+-		// for each of the passed-in keys, to account for the possibility
+-		// that the collection is empty and has no rows in the result set
+-		//
+-		// todo : move this inside CollectionReturn ?
+-		CollectionPersister persister = ( (CollectionReturn) loadPlan.getReturns().get( 0 ) ).getCollectionPersister();
+-		for ( Serializable key : collectionKeys ) {
+-			if ( LOG.isDebugEnabled() ) {
+-				LOG.debugf(
+-						"Preparing collection intializer : %s",
+-							MessageHelper.collectionInfoString( persister, key, session.getFactory() )
+-				);
+-				session.getPersistenceContext()
+-						.getLoadContexts()
+-						.getCollectionLoadContext( resultSet )
+-						.getLoadingCollection( persister, key );
+-			}
+-		}
+-	}
+-
+-
+-//	private class LocalVisitationStrategy extends LoadPlanVisitationStrategyAdapter {
+-//		private boolean hadSubselectFetches = false;
+-//
+-//		@Override
+-//		public void startingEntityFetch(EntityFetch entityFetch) {
+-//		// only collections are currently supported for subselect fetching.
+-//		//			hadSubselectFetches = hadSubselectFetches
+-//		//					|| entityFetch.getFetchStrategy().getStyle() == FetchStyle.SUBSELECT;
+-//		}
+-//
+-//		@Override
+-//		public void startingCollectionFetch(CollectionFetch collectionFetch) {
+-//			hadSubselectFetches = hadSubselectFetches
+-//					|| collectionFetch.getFetchStrategy().getStyle() == FetchStyle.SUBSELECT;
+-//		}
+-//	}
+-//
+-//	private class MixedReturnRowReader extends AbstractRowReader implements RowReader {
+-//		private final List<ReturnReader> returnReaders;
+-//		private List<EntityReferenceReader> entityReferenceReaders = new ArrayList<EntityReferenceReader>();
+-//		private List<CollectionReferenceReader> collectionReferenceReaders = new ArrayList<CollectionReferenceReader>();
+-//
+-//		private final int numberOfReturns;
+-//
+-//		public MixedReturnRowReader(LoadPlan loadPlan) {
+-//			LoadPlanVisitor.visit(
+-//					loadPlan,
+-//					new LoadPlanVisitationStrategyAdapter() {
+-//						@Override
+-//						public void startingEntityFetch(EntityFetch entityFetch) {
+-//							entityReferenceReaders.add( new EntityReferenceReader( entityFetch ) );
+-//						}
+-//
+-//						@Override
+-//						public void startingCollectionFetch(CollectionFetch collectionFetch) {
+-//							collectionReferenceReaders.add( new CollectionReferenceReader( collectionFetch ) );
+-//						}
+-//					}
+-//			);
+-//
+-//			final List<ReturnReader> readers = new ArrayList<ReturnReader>();
+-//
+-//			for ( Return rtn : loadPlan.getReturns() ) {
+-//				final ReturnReader returnReader = buildReturnReader( rtn );
+-//				if ( EntityReferenceReader.class.isInstance( returnReader ) ) {
+-//					entityReferenceReaders.add( (EntityReferenceReader) returnReader );
+-//				}
+-//				readers.add( returnReader );
+-//			}
+-//
+-//			this.returnReaders = readers;
+-//			this.numberOfReturns = readers.size();
+-//		}
+-//
+-//		@Override
+-//		protected List<EntityReferenceReader> getEntityReferenceReaders() {
+-//			return entityReferenceReaders;
+-//		}
+-//
+-//		@Override
+-//		protected List<CollectionReferenceReader> getCollectionReferenceReaders() {
+-//			return collectionReferenceReaders;
+-//		}
+-//
+-//		@Override
+-//		protected Object readLogicalRow(ResultSet resultSet, ResultSetProcessingContextImpl context) throws SQLException {
+-//			Object[] logicalRow = new Object[ numberOfReturns ];
+-//			int pos = 0;
+-//			for ( ReturnReader reader : returnReaders ) {
+-//				logicalRow[pos] = reader.read( resultSet, context );
+-//				pos++;
+-//			}
+-//			return logicalRow;
+-//		}
+-//	}
+-//
+-//	private class CollectionInitializerRowReader extends AbstractRowReader implements RowReader {
+-//		private final CollectionReturnReader returnReader;
+-//
+-//		private List<EntityReferenceReader> entityReferenceReaders = null;
+-//		private final List<CollectionReferenceReader> collectionReferenceReaders = new ArrayList<CollectionReferenceReader>();
+-//
+-//		public CollectionInitializerRowReader(LoadPlan loadPlan) {
+-//			returnReader = (CollectionReturnReader) buildReturnReader( loadPlan.getReturns().get( 0 ) );
+-//
+-//			LoadPlanVisitor.visit(
+-//					loadPlan,
+-//					new LoadPlanVisitationStrategyAdapter() {
+-//						@Override
+-//						public void startingEntityFetch(EntityFetch entityFetch) {
+-//							if ( entityReferenceReaders == null ) {
+-//								entityReferenceReaders = new ArrayList<EntityReferenceReader>();
+-//							}
+-//							entityReferenceReaders.add( new EntityReferenceReader( entityFetch ) );
+-//						}
+-//
+-//						@Override
+-//						public void startingCollectionFetch(CollectionFetch collectionFetch) {
+-//							collectionReferenceReaders.add( new CollectionReferenceReader( collectionFetch ) );
+-//						}
+-//					}
+-//			);
+-//
+-//			collectionReferenceReaders.add( returnReader );
+-//		}
+-//
+-//		@Override
+-//		protected List<EntityReferenceReader> getEntityReferenceReaders() {
+-//			return entityReferenceReaders;
+-//		}
+-//
+-//		@Override
+-//		protected List<CollectionReferenceReader> getCollectionReferenceReaders() {
+-//			return collectionReferenceReaders;
+-//		}
+-//
+-//		@Override
+-//		protected Object readLogicalRow(ResultSet resultSet, ResultSetProcessingContextImpl context) throws SQLException {
+-//			return returnReader.read( resultSet, context );
+-//		}
+-//	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ScalarReturnReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ScalarReturnReader.java
+deleted file mode 100644
+index 0ddc12ffe6..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ScalarReturnReader.java
++++ /dev/null
+@@ -1,54 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.loader.plan.exec.process.spi.ReturnReader;
+-import org.hibernate.loader.plan.spi.ScalarReturn;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class ScalarReturnReader implements ReturnReader {
+-	private final ScalarReturn scalarReturn;
+-	private final String[] aliases;
+-
+-	public ScalarReturnReader(ScalarReturn scalarReturn, String[] aliases) {
+-		this.scalarReturn = scalarReturn;
+-		this.aliases = aliases;
+-	}
+-
+-	@Override
+-	public Object read(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-		return scalarReturn.getType().nullSafeGet(
+-				resultSet,
+-				aliases,
+-				context.getSession(),
+-				null
+-		);
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ScrollableResultSetProcessorImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ScrollableResultSetProcessorImpl.java
+deleted file mode 100644
+index 309d8cde04..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/internal/ScrollableResultSetProcessorImpl.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.internal;
+-
+-import java.sql.ResultSet;
+-
+-import org.hibernate.engine.spi.QueryParameters;
+-import org.hibernate.engine.spi.SessionImplementor;
+-import org.hibernate.loader.plan.exec.process.spi.ScrollableResultSetProcessor;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class ScrollableResultSetProcessorImpl implements ScrollableResultSetProcessor {
+-	@Override
+-	public Object extractSingleRow(
+-			ResultSet resultSet,
+-			SessionImplementor session,
+-			QueryParameters queryParameters) {
+-		return null;
+-	}
+-
+-	@Override
+-	public Object extractLogicalRowForward(
+-			ResultSet resultSet, SessionImplementor session, QueryParameters queryParameters) {
+-		return null;  //To change body of implemented methods use File | Settings | File Templates.
+-	}
+-
+-	@Override
+-	public Object extractLogicalRowReverse(
+-			ResultSet resultSet,
+-			SessionImplementor session,
+-			QueryParameters queryParameters,
+-			boolean isLogicallyAfterLast) {
+-		return null;  //To change body of implemented methods use File | Settings | File Templates.
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/package-info.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/package-info.java
+deleted file mode 100644
+index 028443e4af..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/package-info.java
++++ /dev/null
+@@ -1,4 +0,0 @@
+-/**
+- * Defines support for processing ResultSet values as defined by a LoadPlan
+- */
+-package org.hibernate.loader.plan.exec.process;
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/AbstractRowReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/AbstractRowReader.java
+deleted file mode 100644
+index 0bf98b8c89..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/AbstractRowReader.java
++++ /dev/null
+@@ -1,91 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-import java.util.List;
+-
+-import org.hibernate.loader.plan.exec.process.internal.CollectionReferenceReader;
+-import org.hibernate.loader.plan.exec.process.internal.EntityReferenceReader;
+-import org.hibernate.loader.plan.exec.process.internal.ResultSetProcessingContextImpl;
+-import org.hibernate.loader.plan.exec.spi.RowReader;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public abstract class AbstractRowReader implements RowReader {
+-
+-	@Override
+-	public Object readRow(ResultSet resultSet, ResultSetProcessingContextImpl context) throws SQLException {
+-		final List<EntityReferenceReader> entityReferenceReaders = getEntityReferenceReaders();
+-		final List<CollectionReferenceReader> collectionReferenceReaders = getCollectionReferenceReaders();
+-
+-		final boolean hasEntityReferenceReaders = entityReferenceReaders != null && entityReferenceReaders.size() > 0;
+-		final boolean hasCollectionReferenceReaders = collectionReferenceReaders != null && collectionReferenceReaders.size() > 0;
+-
+-		if ( hasEntityReferenceReaders ) {
+-			// 	1) allow entity references to resolve identifiers (in 2 steps)
+-			for ( EntityReferenceReader entityReferenceReader : entityReferenceReaders ) {
+-				entityReferenceReader.hydrateIdentifier( resultSet, context );
+-			}
+-			for ( EntityReferenceReader entityReferenceReader : entityReferenceReaders ) {
+-				entityReferenceReader.resolveEntityKey( resultSet, context );
+-			}
+-
+-
+-			// 2) allow entity references to resolve their hydrated state and entity instance
+-			for ( EntityReferenceReader entityReferenceReader : entityReferenceReaders ) {
+-				entityReferenceReader.hydrateEntityState( resultSet, context );
+-			}
+-		}
+-
+-
+-		// 3) read the logical row
+-
+-		Object logicalRow = readLogicalRow( resultSet, context );
+-
+-
+-		// 4) allow entities and collection to read their elements
+-		if ( hasEntityReferenceReaders ) {
+-			for ( EntityReferenceReader entityReferenceReader : entityReferenceReaders ) {
+-				entityReferenceReader.finishUpRow( resultSet, context );
+-			}
+-		}
+-		if ( hasCollectionReferenceReaders ) {
+-			for ( CollectionReferenceReader collectionReferenceReader : collectionReferenceReaders ) {
+-				collectionReferenceReader.finishUpRow( resultSet, context );
+-			}
+-		}
+-
+-		return logicalRow;
+-	}
+-
+-	protected abstract List<EntityReferenceReader> getEntityReferenceReaders();
+-	protected abstract List<CollectionReferenceReader> getCollectionReferenceReaders();
+-
+-	protected abstract Object readLogicalRow(ResultSet resultSet, ResultSetProcessingContextImpl context)
+-			throws SQLException;
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ResultSetProcessingContext.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ResultSetProcessingContext.java
+deleted file mode 100644
+index fb55263317..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ResultSetProcessingContext.java
++++ /dev/null
+@@ -1,169 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.engine.spi.QueryParameters;
+-import org.hibernate.engine.spi.SessionImplementor;
+-import org.hibernate.loader.EntityAliases;
+-import org.hibernate.loader.plan.exec.spi.AliasResolutionContext;
+-import org.hibernate.loader.plan.exec.spi.LockModeResolver;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.type.EntityType;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface ResultSetProcessingContext extends LockModeResolver {
+-	public SessionImplementor getSession();
+-
+-	public QueryParameters getQueryParameters();
+-
+-	public boolean shouldUseOptionalEntityInformation();
+-
+-	public boolean shouldReturnProxies();
+-
+-	public LoadPlan getLoadPlan();
+-
+-	/**
+-	 * Holds all pieces of information known about an entity reference in relation to each row as we process the
+-	 * result set.  Caches these values and makes it easy for access while processing Fetches.
+-	 */
+-	public static interface EntityReferenceProcessingState {
+-		/**
+-		 * The EntityReference for which this is collecting process state
+-		 *
+-		 * @return The EntityReference
+-		 */
+-		public EntityReference getEntityReference();
+-
+-		/**
+-		 * Register the fact that no identifier was found on attempt to hydrate it from ResultSet
+-		 */
+-		public void registerMissingIdentifier();
+-
+-		/**
+-		 *
+-		 * @return
+-		 */
+-		public boolean isMissingIdentifier();
+-
+-		/**
+-		 * Register the hydrated form (raw Type-read ResultSet values) of the entity's identifier for the row
+-		 * currently being processed.
+-		 *
+-		 * @param hydratedForm The entity identifier hydrated state
+-		 */
+-		public void registerIdentifierHydratedForm(Object hydratedForm);
+-
+-		/**
+-		 * Obtain the hydrated form (the raw Type-read ResultSet values) of the entity's identifier
+-		 *
+-		 * @return The entity identifier hydrated state
+-		 */
+-		public Object getIdentifierHydratedForm();
+-
+-		/**
+-		 * Register the processed EntityKey for this Entity for the row currently being processed.
+-		 *
+-		 * @param entityKey The processed EntityKey for this EntityReference
+-		 */
+-		public void registerEntityKey(EntityKey entityKey);
+-
+-		/**
+-		 * Obtain the registered EntityKey for this EntityReference for the row currently being processed.
+-		 *
+-		 * @return The registered EntityKey for this EntityReference
+-		 */
+-		public EntityKey getEntityKey();
+-
+-		public void registerHydratedState(Object[] hydratedState);
+-		public Object[] getHydratedState();
+-
+-		// usually uninitialized at this point
+-		public void registerEntityInstance(Object instance);
+-
+-		// may be uninitialized
+-		public Object getEntityInstance();
+-
+-	}
+-
+-	public EntityReferenceProcessingState getProcessingState(EntityReference entityReference);
+-
+-	/**
+-	 * Find the EntityReferenceProcessingState for the FetchOwner of the given Fetch.
+-	 *
+-	 * @param fetch The Fetch for which to find the EntityReferenceProcessingState of its FetchOwner.
+-	 *
+-	 * @return The FetchOwner's EntityReferenceProcessingState
+-	 */
+-	public EntityReferenceProcessingState getOwnerProcessingState(Fetch fetch);
+-
+-
+-	public void registerHydratedEntity(EntityReference entityReference, EntityKey entityKey, Object entityInstance);
+-
+-	public static interface EntityKeyResolutionContext {
+-		public EntityPersister getEntityPersister();
+-		public LockMode getLockMode();
+-		public EntityReference getEntityReference();
+-	}
+-
+-//	public Object resolveEntityKey(EntityKey entityKey, EntityKeyResolutionContext entityKeyContext);
+-
+-
+-	// should be able to get rid of the methods below here from the interface ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-
+-//	public void checkVersion(
+-//			ResultSet resultSet,
+-//			EntityPersister persister,
+-//			EntityAliases entityAliases,
+-//			EntityKey entityKey,
+-//			Object entityInstance) throws SQLException;
+-//
+-//	public String getConcreteEntityTypeName(
+-//			ResultSet resultSet,
+-//			EntityPersister persister,
+-//			EntityAliases entityAliases,
+-//			EntityKey entityKey) throws SQLException;
+-//
+-//	public void loadFromResultSet(
+-//			ResultSet resultSet,
+-//			Object entityInstance,
+-//			String concreteEntityTypeName,
+-//			EntityKey entityKey,
+-//			EntityAliases entityAliases,
+-//			LockMode acquiredLockMode,
+-//			EntityPersister persister,
+-//			FetchStrategy fetchStrategy,
+-//			boolean eagerFetch,
+-//			EntityType associationType) throws SQLException;
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ResultSetProcessor.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ResultSetProcessor.java
+deleted file mode 100644
+index bd965aedc2..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ResultSetProcessor.java
++++ /dev/null
+@@ -1,74 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-import java.util.List;
+-
+-import org.hibernate.engine.spi.QueryParameters;
+-import org.hibernate.engine.spi.SessionImplementor;
+-import org.hibernate.loader.plan.exec.query.spi.NamedParameterContext;
+-import org.hibernate.loader.spi.AfterLoadAction;
+-import org.hibernate.loader.spi.LoadPlanAdvisor;
+-import org.hibernate.transform.ResultTransformer;
+-
+-/**
+- * Contract for processing JDBC ResultSets.  Separated because ResultSets can be chained and we'd really like to
+- * reuse this logic across all result sets.
+- * <p/>
+- * todo : investigate having this work with non-JDBC results; maybe just typed as Object? or a special Result contract?
+- *
+- * @author Steve Ebersole
+- */
+-public interface ResultSetProcessor {
+-
+-	public ScrollableResultSetProcessor toOnDemandForm();
+-
+-	/**
+-	 * Process an entire ResultSet, performing all extractions.
+-	 *
+-	 * Semi-copy of {@link org.hibernate.loader.Loader#doQuery}, with focus on just the ResultSet processing bit.
+-	 *
+-	 * @param resultSet The result set being processed.
+-	 * @param session The originating session
+-	 * @param queryParameters The "parameters" used to build the query
+-	 * @param returnProxies Can proxies be returned (not the same as can they be created!)
+-	 * @param forcedResultTransformer My old "friend" ResultTransformer...
+-	 * @param afterLoadActions Actions to be performed after loading an entity.
+-	 *
+-	 * @return The extracted results list.
+-	 *
+-	 * @throws java.sql.SQLException Indicates a problem access the JDBC ResultSet
+-	 */
+-	public List extractResults(
+-			ResultSet resultSet,
+-			SessionImplementor session,
+-			QueryParameters queryParameters,
+-			NamedParameterContext namedParameterContext,
+-			boolean returnProxies,
+-			boolean readOnly,
+-			ResultTransformer forcedResultTransformer,
+-			List<AfterLoadAction> afterLoadActions) throws SQLException;
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ReturnReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ReturnReader.java
+deleted file mode 100644
+index bbf487f339..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ReturnReader.java
++++ /dev/null
+@@ -1,46 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-/**
+- * Handles reading a single root Return object
+- *
+- * @author Steve Ebersole
+- */
+-public interface ReturnReader {
+-	/**
+-	 * Essentially performs the second phase of two-phase loading.
+-	 *
+-	 * @param resultSet The result set being processed
+-	 * @param context The context for the processing
+-	 *
+-	 * @return The read object
+-	 *
+-	 * @throws SQLException Indicates a problem access the JDBC result set
+-	 */
+-	public Object read(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException;
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ScrollableResultSetProcessor.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ScrollableResultSetProcessor.java
+deleted file mode 100644
+index 1d425e62ab..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/process/spi/ScrollableResultSetProcessor.java
++++ /dev/null
+@@ -1,107 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.process.spi;
+-
+-import java.sql.ResultSet;
+-
+-import org.hibernate.engine.spi.QueryParameters;
+-import org.hibernate.engine.spi.SessionImplementor;
+-
+-/**
+- * Contract for processing JDBC ResultSets a single logical row at a time.  These are intended for use by
+- * {@link org.hibernate.ScrollableResults} implementations.
+- *
+- * NOTE : these methods initially taken directly from {@link org.hibernate.loader.Loader} counterparts in an effort
+- * to break Loader into manageable pieces, especially in regards to the processing of result sets.
+- *
+- * @author Steve Ebersole
+- */
+-public interface ScrollableResultSetProcessor {
+-
+-	/**
+-	 * Give a ResultSet, extract just a single result row.
+-	 *
+-	 * Copy of {@link org.hibernate.loader.Loader#loadSingleRow(ResultSet, SessionImplementor, QueryParameters, boolean)}
+-	 * but dropping the 'returnProxies' (that method has only one use in the entire codebase and it always passes in
+-	 * false...)
+-	 *
+-	 * @param resultSet The result set being processed.
+-	 * @param session The originating session
+-	 * @param queryParameters The "parameters" used to build the query
+-	 *
+-	 * @return The extracted result row
+-	 *
+-	 * @throws org.hibernate.HibernateException Indicates a problem extracting values from the result set.
+-	 */
+-	public Object extractSingleRow(
+-			ResultSet resultSet,
+-			SessionImplementor session,
+-			QueryParameters queryParameters);
+-
+-	/**
+-	 * Given a scrollable ResultSet, extract a logical row.  The assumption here is that the ResultSet is already
+-	 * properly ordered to account for any to-many fetches.  Multiple ResultSet rows are read into a single query
+-	 * result "row".
+-	 *
+-	 * Copy of {@link org.hibernate.loader.Loader#loadSequentialRowsForward(ResultSet, SessionImplementor, QueryParameters, boolean)}
+-	 * but dropping the 'returnProxies' (that method has only one use in the entire codebase and it always passes in
+-	 * false...)
+-	 *
+-	 * @param resultSet The result set being processed.
+-	 * @param session The originating session
+-	 * @param queryParameters The "parameters" used to build the query
+-	 *
+-	 * @return The extracted result row
+-	 *
+-	 * @throws org.hibernate.HibernateException Indicates a problem extracting values from the result set.
+-	 */
+-	public Object extractLogicalRowForward(
+-			final ResultSet resultSet,
+-			final SessionImplementor session,
+-			final QueryParameters queryParameters);
+-
+-	/**
+-	 * Like {@link #extractLogicalRowForward} but here moving through the ResultSet in reverse.
+-	 *
+-	 * Copy of {@link org.hibernate.loader.Loader#loadSequentialRowsReverse(ResultSet, SessionImplementor, QueryParameters, boolean, boolean)}
+-	 * but dropping the 'returnProxies' (that method has only one use in the entire codebase and it always passes in
+-	 * false...).
+-	 *
+-	 * todo : is 'logicallyAfterLastRow really needed?  Can't that be deduced?  In fact pretty positive it is not needed.
+-	 *
+-	 * @param resultSet The result set being processed.
+-	 * @param session The originating session
+-	 * @param queryParameters The "parameters" used to build the query
+-	 * @param isLogicallyAfterLast Is the result set currently positioned after the last row; again, is this really needed?  How is it any diff
+-	 *
+-	 * @return The extracted result row
+-	 *
+-	 * @throws org.hibernate.HibernateException Indicates a problem extracting values from the result set.
+-	 */
+-	public Object extractLogicalRowReverse(
+-			ResultSet resultSet,
+-			SessionImplementor session,
+-			QueryParameters queryParameters,
+-			boolean isLogicallyAfterLast);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/internal/EntityLoadQueryBuilderImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/internal/EntityLoadQueryBuilderImpl.java
+deleted file mode 100644
+index b874b870f8..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/internal/EntityLoadQueryBuilderImpl.java
++++ /dev/null
+@@ -1,215 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.query.internal;
+-
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.plan.exec.internal.Helper;
+-import org.hibernate.loader.plan.exec.internal.LoadQueryBuilderHelper;
+-import org.hibernate.loader.plan.exec.process.internal.CollectionReferenceReader;
+-import org.hibernate.loader.plan.exec.process.internal.EntityReferenceReader;
+-import org.hibernate.loader.plan.exec.query.spi.EntityLoadQueryBuilder;
+-import org.hibernate.loader.plan.exec.query.spi.QueryBuildingParameters;
+-import org.hibernate.loader.plan.exec.spi.AliasResolutionContext;
+-import org.hibernate.loader.plan.exec.spi.ReaderCollector;
+-import org.hibernate.loader.plan.exec.spi.RowReader;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.persister.entity.OuterJoinLoadable;
+-import org.hibernate.persister.entity.Queryable;
+-import org.hibernate.sql.ConditionFragment;
+-import org.hibernate.sql.DisjunctionFragment;
+-import org.hibernate.sql.InFragment;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class EntityLoadQueryBuilderImpl implements EntityLoadQueryBuilder {
+-	/**
+-	 * Singleton access
+-	 */
+-	public static final EntityLoadQueryBuilderImpl INSTANCE = new EntityLoadQueryBuilderImpl();
+-
+-	@Override
+-	public String generateSql(
+-			LoadPlan loadPlan,
+-			SessionFactoryImplementor factory,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext) {
+-		final EntityReturn rootReturn = Helper.INSTANCE.extractRootReturn( loadPlan, EntityReturn.class );
+-
+-		return generateSql(
+-				( (Queryable) rootReturn.getEntityPersister() ).getKeyColumnNames(),
+-				rootReturn,
+-				factory,
+-				buildingParameters,
+-				aliasResolutionContext
+-		);
+-	}
+-
+-	@Override
+-	public String generateSql(
+-			String[] keyColumnNames,
+-			LoadPlan loadPlan,
+-			SessionFactoryImplementor factory,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext) {
+-		final EntityReturn rootReturn = Helper.INSTANCE.extractRootReturn( loadPlan, EntityReturn.class );
+-
+-		final String[] keyColumnNamesToUse = keyColumnNames != null
+-				? keyColumnNames
+-				: ( (Queryable) rootReturn.getEntityPersister() ).getIdentifierColumnNames();
+-
+-		return generateSql(
+-				keyColumnNamesToUse,
+-				rootReturn,
+-				factory,
+-				buildingParameters,
+-				aliasResolutionContext
+-		);
+-	}
+-
+-	protected String generateSql(
+-			String[] keyColumnNames,
+-			EntityReturn rootReturn,
+-			SessionFactoryImplementor factory,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext) {
+-		final SelectStatementBuilder select = new SelectStatementBuilder( factory.getDialect() );
+-
+-		// apply root entity return specifics
+-		applyRootReturnSpecifics(
+-				select,
+-				keyColumnNames,
+-				rootReturn,
+-				factory,
+-				buildingParameters,
+-				aliasResolutionContext
+-		);
+-
+-		LoadQueryBuilderHelper.applyJoinFetches(
+-				select,
+-				factory,
+-				rootReturn,
+-				buildingParameters,
+-				aliasResolutionContext,
+-				new ReaderCollector() {
+-
+-					@Override
+-					public void addReader(CollectionReferenceReader collectionReferenceReader) {
+-					}
+-
+-					@Override
+-					public void addReader(EntityReferenceReader entityReferenceReader) {
+-					}
+-				}
+-		);
+-
+-		return select.toStatementString();
+-	}
+-
+-	protected void applyRootReturnSpecifics(
+-			SelectStatementBuilder select,
+-			String[] keyColumnNames,
+-			EntityReturn rootReturn,
+-			SessionFactoryImplementor factory,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext) {
+-		final String rootAlias = aliasResolutionContext.resolveAliases( rootReturn ).getTableAlias();
+-		final OuterJoinLoadable rootLoadable = (OuterJoinLoadable) rootReturn.getEntityPersister();
+-		final Queryable rootQueryable = (Queryable) rootReturn.getEntityPersister();
+-
+-		applyKeyRestriction( select, rootAlias, keyColumnNames, buildingParameters.getBatchSize() );
+-		select.appendRestrictions(
+-				rootQueryable.filterFragment(
+-						rootAlias,
+-						buildingParameters.getQueryInfluencers().getEnabledFilters()
+-				)
+-		);
+-		select.appendRestrictions( rootLoadable.whereJoinFragment( rootAlias, true, true ) );
+-		select.appendSelectClauseFragment(
+-				rootLoadable.selectFragment(
+-						rootAlias,
+-						aliasResolutionContext.resolveAliases( rootReturn ).getColumnAliases().getSuffix()
+-				)
+-		);
+-
+-		final String fromTableFragment;
+-		if ( buildingParameters.getLockOptions() != null ) {
+-			fromTableFragment = factory.getDialect().appendLockHint(
+-					buildingParameters.getLockOptions(),
+-					rootLoadable.fromTableFragment( rootAlias )
+-			);
+-			select.setLockOptions( buildingParameters.getLockOptions() );
+-		}
+-		else if ( buildingParameters.getLockMode() != null ) {
+-			fromTableFragment = factory.getDialect().appendLockHint(
+-					buildingParameters.getLockMode(),
+-					rootLoadable.fromTableFragment( rootAlias )
+-			);
+-			select.setLockMode( buildingParameters.getLockMode() );
+-		}
+-		else {
+-			fromTableFragment = rootLoadable.fromTableFragment( rootAlias );
+-		}
+-		select.appendFromClauseFragment( fromTableFragment + rootLoadable.fromJoinFragment( rootAlias, true, true ) );
+-	}
+-
+-	private void applyKeyRestriction(SelectStatementBuilder select, String alias, String[] keyColumnNames, int batchSize) {
+-		if ( keyColumnNames.length==1 ) {
+-			// NOT A COMPOSITE KEY
+-			// 		for batching, use "foo in (?, ?, ?)" for batching
+-			//		for no batching, use "foo = ?"
+-			// (that distinction is handled inside InFragment)
+-			final InFragment in = new InFragment().setColumn( alias, keyColumnNames[0] );
+-			for ( int i = 0; i < batchSize; i++ ) {
+-				in.addValue( "?" );
+-			}
+-			select.appendRestrictions( in.toFragmentString() );
+-		}
+-		else {
+-			// A COMPOSITE KEY...
+-			final ConditionFragment keyRestrictionBuilder = new ConditionFragment()
+-					.setTableAlias( alias )
+-					.setCondition( keyColumnNames, "?" );
+-			final String keyRestrictionFragment = keyRestrictionBuilder.toFragmentString();
+-
+-			StringBuilder restrictions = new StringBuilder();
+-			if ( batchSize==1 ) {
+-				// for no batching, use "foo = ? and bar = ?"
+-				restrictions.append( keyRestrictionFragment );
+-			}
+-			else {
+-				// for batching, use "( (foo = ? and bar = ?) or (foo = ? and bar = ?) )"
+-				restrictions.append( '(' );
+-				DisjunctionFragment df = new DisjunctionFragment();
+-				for ( int i=0; i<batchSize; i++ ) {
+-					df.addCondition( keyRestrictionFragment );
+-				}
+-				restrictions.append( df.toFragmentString() );
+-				restrictions.append( ')' );
+-			}
+-			select.appendRestrictions( restrictions.toString() );
+-		}
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/internal/SelectStatementBuilder.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/internal/SelectStatementBuilder.java
+deleted file mode 100644
+index de3c5aa8dc..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/internal/SelectStatementBuilder.java
++++ /dev/null
+@@ -1,232 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.query.internal;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.LockOptions;
+-import org.hibernate.dialect.Dialect;
+-import org.hibernate.internal.util.StringHelper;
+-import org.hibernate.sql.SelectFragment;
+-
+-/**
+- * Largely a copy of the {@link org.hibernate.sql.Select} class, but changed up slightly to better meet needs
+- * of building a SQL SELECT statement from a LoadPlan
+- *
+- * @author Steve Ebersole
+- * @author Gavin King
+- */
+-public class SelectStatementBuilder {
+-	public final Dialect dialect;
+-
+-	private StringBuilder selectClause = new StringBuilder();
+-	private StringBuilder fromClause = new StringBuilder();
+-//	private StringBuilder outerJoinsAfterFrom;
+-	private String outerJoinsAfterFrom;
+-	private StringBuilder whereClause;
+-//	private StringBuilder outerJoinsAfterWhere;
+-	private String outerJoinsAfterWhere;
+-	private StringBuilder orderByClause;
+-	private String comment;
+-	private LockOptions lockOptions = new LockOptions();
+-
+-	private int guesstimatedBufferSize = 20;
+-
+-	public SelectStatementBuilder(Dialect dialect) {
+-		this.dialect = dialect;
+-	}
+-
+-	/**
+-	 * Appends a select clause fragment
+-	 *
+-	 * @param selection The selection fragment
+-	 */
+-	public void appendSelectClauseFragment(String selection) {
+-		if ( this.selectClause.length() > 0 ) {
+-			this.selectClause.append( ", " );
+-			this.guesstimatedBufferSize += 2;
+-		}
+-		this.selectClause.append( selection );
+-		this.guesstimatedBufferSize += selection.length();
+-	}
+-
+-	public void appendSelectClauseFragment(SelectFragment selectFragment) {
+-		appendSelectClauseFragment( selectFragment.toFragmentString().substring( 2 ) );
+-	}
+-
+-	public void appendFromClauseFragment(String fragment) {
+-		if ( this.fromClause.length() > 0 ) {
+-			this.fromClause.append( ", " );
+-			this.guesstimatedBufferSize += 2;
+-		}
+-		this.fromClause.append( fragment );
+-		this.guesstimatedBufferSize += fragment.length();
+-	}
+-
+-	public void appendFromClauseFragment(String tableName, String alias) {
+-		appendFromClauseFragment( tableName + ' ' + alias );
+-	}
+-
+-	public void appendRestrictions(String restrictions) {
+-		final String cleaned = cleanRestrictions( restrictions );
+-		if ( StringHelper.isEmpty( cleaned ) ) {
+-			return;
+-		}
+-
+-		this.guesstimatedBufferSize += cleaned.length();
+-
+-		if ( whereClause == null ) {
+-			whereClause = new StringBuilder( cleaned );
+-		}
+-		else {
+-			whereClause.append( " and " ).append( cleaned );
+-			this.guesstimatedBufferSize += 5;
+-		}
+-	}
+-
+-	private String cleanRestrictions(String restrictions) {
+-		restrictions = restrictions.trim();
+-		if ( restrictions.startsWith( "and" ) ) {
+-			restrictions = restrictions.substring( 4 );
+-		}
+-		if ( restrictions.endsWith( "and" ) ) {
+-			restrictions = restrictions.substring( 0, restrictions.length()-4 );
+-		}
+-
+-		return restrictions;
+-	}
+-
+-//	public void appendOuterJoins(String outerJoinsAfterFrom, String outerJoinsAfterWhere) {
+-//		appendOuterJoinsAfterFrom( outerJoinsAfterFrom );
+-//		appendOuterJoinsAfterWhere( outerJoinsAfterWhere );
+-//	}
+-//
+-//	private void appendOuterJoinsAfterFrom(String outerJoinsAfterFrom) {
+-//		if ( this.outerJoinsAfterFrom == null ) {
+-//			this.outerJoinsAfterFrom = new StringBuilder( outerJoinsAfterFrom );
+-//		}
+-//		else {
+-//			this.outerJoinsAfterFrom.append( ' ' ).append( outerJoinsAfterFrom );
+-//		}
+-//	}
+-//
+-//	private void appendOuterJoinsAfterWhere(String outerJoinsAfterWhere) {
+-//		final String cleaned = cleanRestrictions( outerJoinsAfterWhere );
+-//
+-//		if ( this.outerJoinsAfterWhere == null ) {
+-//			this.outerJoinsAfterWhere = new StringBuilder( cleaned );
+-//		}
+-//		else {
+-//			this.outerJoinsAfterWhere.append( " and " ).append( cleaned );
+-//			this.guesstimatedBufferSize += 5;
+-//		}
+-//
+-//		this.guesstimatedBufferSize += cleaned.length();
+-//	}
+-
+-	public void setOuterJoins(String outerJoinsAfterFrom, String outerJoinsAfterWhere) {
+-		this.outerJoinsAfterFrom = outerJoinsAfterFrom;
+-
+-		final String cleanRestrictions = cleanRestrictions( outerJoinsAfterWhere );
+-		this.outerJoinsAfterWhere = cleanRestrictions;
+-
+-		this.guesstimatedBufferSize += outerJoinsAfterFrom.length() + cleanRestrictions.length();
+-	}
+-
+-	public void appendOrderByFragment(String ordering) {
+-		if ( this.orderByClause == null ) {
+-			this.orderByClause = new StringBuilder();
+-		}
+-		else {
+-			this.orderByClause.append( ", " );
+-			this.guesstimatedBufferSize += 2;
+-		}
+-		this.orderByClause.append( ordering );
+-	}
+-
+-	public void setComment(String comment) {
+-		this.comment = comment;
+-		this.guesstimatedBufferSize += comment.length();
+-	}
+-
+-	public void setLockMode(LockMode lockMode) {
+-		this.lockOptions.setLockMode( lockMode );
+-	}
+-
+-	public void setLockOptions(LockOptions lockOptions) {
+-		LockOptions.copy( lockOptions, this.lockOptions );
+-	}
+-
+-	/**
+-	 * Construct an SQL <tt>SELECT</tt> statement from the given clauses
+-	 */
+-	public String toStatementString() {
+-		final StringBuilder buf = new StringBuilder( guesstimatedBufferSize );
+-
+-		if ( StringHelper.isNotEmpty( comment ) ) {
+-			buf.append( "/* " ).append( comment ).append( " */ " );
+-		}
+-
+-		buf.append( "select " )
+-				.append( selectClause )
+-				.append( " from " )
+-				.append( fromClause );
+-
+-		if ( StringHelper.isNotEmpty( outerJoinsAfterFrom ) ) {
+-			buf.append( outerJoinsAfterFrom );
+-		}
+-
+-		if ( isNotEmpty( whereClause ) || isNotEmpty( outerJoinsAfterWhere ) ) {
+-			buf.append( " where " );
+-			// the outerJoinsAfterWhere needs to come before where clause to properly
+-			// handle dynamic filters
+-			if ( StringHelper.isNotEmpty( outerJoinsAfterWhere ) ) {
+-				buf.append( outerJoinsAfterWhere );
+-				if ( isNotEmpty( whereClause ) ) {
+-					buf.append( " and " );
+-				}
+-			}
+-			if ( isNotEmpty( whereClause ) ) {
+-				buf.append( whereClause );
+-			}
+-		}
+-
+-		if ( orderByClause != null ) {
+-			buf.append( " order by " ).append( orderByClause );
+-		}
+-
+-		if ( lockOptions.getLockMode() != LockMode.NONE ) {
+-			buf.append( dialect.getForUpdateString( lockOptions ) );
+-		}
+-
+-		return dialect.transformSelectString( buf.toString() );
+-	}
+-
+-	private boolean isNotEmpty(String string) {
+-		return StringHelper.isNotEmpty( string );
+-	}
+-
+-	private boolean isNotEmpty(StringBuilder builder) {
+-		return builder != null && builder.length() > 0;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/package-info.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/package-info.java
+deleted file mode 100644
+index 732ccb6070..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/package-info.java
++++ /dev/null
+@@ -1,4 +0,0 @@
+-/**
+- * Defines support for build a query (SQL string specifically for now) based on a LoadPlan.
+- */
+-package org.hibernate.loader.plan.exec.query;
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/spi/EntityLoadQueryBuilder.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/spi/EntityLoadQueryBuilder.java
+deleted file mode 100644
+index a777454a4a..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/spi/EntityLoadQueryBuilder.java
++++ /dev/null
+@@ -1,71 +0,0 @@
+-/*
+- * jDocBook, processing of DocBook sources
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.query.spi;
+-
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.plan.exec.spi.AliasResolutionContext;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-
+-/**
+- * Contract for generating the query (currently the SQL string specifically) based on a LoadPlan with a
+- * single root EntityReturn
+- *
+- * @author Steve Ebersole
+- * @author Gail Badner
+- */
+-public interface EntityLoadQueryBuilder {
+-	/**
+-	 * Generates the query for the performing load.
+-	 *
+-	 * @param loadPlan The load
+-	 * @param factory The session factory.
+-	 * @param buildingParameters Parameters influencing the building of the query
+-	 * @param aliasResolutionContext The alias resolution context.
+-	 *
+-	 * @return the SQL string for performing the load
+-	 */
+-	String generateSql(
+-			LoadPlan loadPlan,
+-			SessionFactoryImplementor factory,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext);
+-
+-	/**
+-	 * Generates the query for the performing load, based on the specified key column(s).
+-	 *
+-	 * @param keyColumnNames The names of the key columns to use
+-	 * @param loadPlan The load
+-	 * @param factory The session factory.
+-	 * @param buildingParameters Parameters influencing the building of the query
+-	 * @param aliasResolutionContext The alias resolution context.
+-	 *
+-	 * @return the SQL string for performing the load
+-	 */
+-	String generateSql(
+-			String[] keyColumnNames,
+-			LoadPlan loadPlan,
+-			SessionFactoryImplementor factory,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/spi/NamedParameterContext.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/spi/NamedParameterContext.java
+deleted file mode 100644
+index 0054a35141..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/spi/NamedParameterContext.java
++++ /dev/null
+@@ -1,36 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.query.spi;
+-
+-/**
+- * The context for named parameters.
+- * <p/>
+- * NOTE : the hope with the SQL-redesign stuff is that this whole concept goes away, the idea being that
+- * the parameters are encoded into the query tree and "bind themselves"; see {@link org.hibernate.param.ParameterSpecification}.
+- *
+- * @author Steve Ebersole
+- */
+-public interface NamedParameterContext {
+-	public int[] getNamedParameterLocations(String name);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/spi/QueryBuildingParameters.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/spi/QueryBuildingParameters.java
+deleted file mode 100644
+index 4ad8f88cd2..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/query/spi/QueryBuildingParameters.java
++++ /dev/null
+@@ -1,40 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.query.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.LockOptions;
+-import org.hibernate.engine.spi.LoadQueryInfluencers;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface QueryBuildingParameters {
+-	public LoadQueryInfluencers getQueryInfluencers();
+-	public int getBatchSize();
+-
+-	// ultimately it would be better to have a way to resolve the LockMode for a given Return/Fetch...
+-	public LockMode getLockMode();
+-	public LockOptions getLockOptions();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/AliasResolutionContext.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/AliasResolutionContext.java
+deleted file mode 100644
+index 175e46e8dd..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/AliasResolutionContext.java
++++ /dev/null
+@@ -1,114 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.spi;
+-
+-import org.hibernate.loader.CollectionAliases;
+-import org.hibernate.loader.EntityAliases;
+-import org.hibernate.loader.plan.spi.CollectionReference;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.ScalarReturn;
+-import org.hibernate.loader.spi.JoinableAssociation;
+-
+-/**
+- * Provides aliases that are used by load queries and ResultSet processors.
+- *
+- * @author Gail Badner
+- * @author Steve Ebersole
+- */
+-public interface AliasResolutionContext {
+-	/**
+-	 * Resolve the source alias (select-clause assigned alias) associated with the specified Return.  The source
+-	 * alias is the alias associated with the Return in the source query.
+-	 * <p/>
+-	 * The concept of a source alias only has meaning in the case of queries (HQL, Criteria, etc).  Not sure we
+-	 * really need to keep these here.  One argument for keeping them is that I always thought it would be nice to
+-	 * base the SQL aliases on the source aliases.  Keeping the source aliases here would allow us to do that as
+-	 * we are generating those SQL aliases internally.
+-	 * <p/>
+-	 * Should also consider pushing the source "from clause aliases" here if we keep pushing the select aliases
+-	 *
+-	 * @param theReturn The Return to locate
+-	 *
+-	 * @return the alias associated with the specified {@link EntityReturn}.
+-	 */
+-	public String getSourceAlias(Return theReturn);
+-
+-	/**
+-	 * Resolve the SQL column aliases associated with the specified {@link ScalarReturn}.
+-	 *
+-	 * @param scalarReturn The {@link ScalarReturn} for which we want SQL column aliases
+-	 *
+-	 * @return The SQL column aliases associated with {@link ScalarReturn}.
+-	 */
+-	public String[] resolveScalarColumnAliases(ScalarReturn scalarReturn);
+-
+-	/**
+-	 * Resolve the alias information related to the given entity reference.
+-	 *
+-	 * @param entityReference The entity reference for which to obtain alias info
+-	 *
+-	 * @return The resolved alias info,
+-	 */
+-	public EntityReferenceAliases resolveAliases(EntityReference entityReference);
+-
+-	/**
+-	 * Resolve the alias information related to the given collection reference.
+-	 *
+-	 * @param collectionReference The collection reference for which to obtain alias info
+-	 *
+-	 * @return The resolved alias info,
+-	 */
+-	public CollectionReferenceAliases resolveAliases(CollectionReference collectionReference);
+-
+-
+-
+-
+-
+-	/**
+-	 * Resolve the table alias on the right-hand-side of the specified association.
+-	 *
+-	 * @param association - the joinable association.
+-	 *
+-	 * @return the table alias on the right-hand-side of the specified association.
+-	 */
+-	String resolveAssociationRhsTableAlias(JoinableAssociation association);
+-
+-	/**
+-	 * Resolve the table alias on the left-hand-side of the specified association.
+-	 *
+-	 * @param association - the joinable association.
+-	 *
+-	 * @return the table alias on the left-hand-side of the specified association.
+-	 */
+-	String resolveAssociationLhsTableAlias(JoinableAssociation association);
+-
+-	/**
+-	 * Resolve the column aliases on the left-hand-side of the specified association.
+-	 * @param association - the joinable association
+-	 * @return the column aliases on the left-hand-side of the specified association.
+-	 */
+-	String[] resolveAssociationAliasedLhsColumnNames(JoinableAssociation association);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/CollectionReferenceAliases.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/CollectionReferenceAliases.java
+deleted file mode 100644
+index 611c7e45ad..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/CollectionReferenceAliases.java
++++ /dev/null
+@@ -1,69 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.spi;
+-
+-import org.hibernate.loader.CollectionAliases;
+-import org.hibernate.loader.EntityAliases;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface CollectionReferenceAliases {
+-	/**
+-	 * Obtain the table alias used for the collection table of the CollectionReference.
+-	 *
+-	 * @return The collection table alias.
+-	 */
+-	public String getCollectionTableAlias();
+-
+-	/**
+-	 * Obtain the alias of the table that contains the collection element values.
+-	 * <p/>
+-	 * Unlike in the legacy Loader case, CollectionReferences in the LoadPlan code refer to both the
+-	 * collection and the elements *always*.  In Loader the elements were handled by EntityPersister associations
+-	 * entries for one-to-many and many-to-many.  In LoadPlan we need to describe the collection table/columns
+-	 * as well as the entity element table/columns.  For "basic collections" and one-to-many collections, the
+-	 * "element table" and the "collection table" are actually the same.  For the many-to-many case this will be
+-	 * different and we need to track it separately.
+-	 *
+-	 * @return The element table alias.  Only different from {@link #getCollectionTableAlias()} in the case of
+-	 * many-to-many.
+-	 */
+-	public String getElementTableAlias();
+-
+-	/**
+-	 * Obtain the aliases for the columns related to the collection structure such as the FK, index/key, or identifier
+-	 * (idbag).
+-	 *
+-	 * @return The collection column aliases.
+-	 */
+-	public CollectionAliases getCollectionColumnAliases();
+-
+-	/**
+-	 * Obtain the column aliases for the element values when the element of the collection is an entity.
+-	 *
+-	 * @return The column aliases for the entity element; {@code null} if the collection element is not an entity.
+-	 */
+-	public EntityAliases getEntityElementColumnAliases();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/EntityLoadQueryDetails.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/EntityLoadQueryDetails.java
+deleted file mode 100644
+index 234d56006a..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/EntityLoadQueryDetails.java
++++ /dev/null
+@@ -1,315 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.List;
+-
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.plan.exec.internal.AliasResolutionContextImpl;
+-import org.hibernate.loader.plan.exec.internal.Helper;
+-import org.hibernate.loader.plan.exec.internal.LoadQueryBuilderHelper;
+-import org.hibernate.loader.plan.exec.process.internal.CollectionReferenceReader;
+-import org.hibernate.loader.plan.exec.process.internal.EntityIdentifierReaderImpl;
+-import org.hibernate.loader.plan.exec.process.internal.EntityReferenceReader;
+-import org.hibernate.loader.plan.exec.process.internal.EntityReturnReader;
+-import org.hibernate.loader.plan.exec.process.internal.ResultSetProcessingContextImpl;
+-import org.hibernate.loader.plan.exec.process.internal.ResultSetProcessorImpl;
+-import org.hibernate.loader.plan.exec.process.spi.AbstractRowReader;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessor;
+-import org.hibernate.loader.plan.exec.query.internal.SelectStatementBuilder;
+-import org.hibernate.loader.plan.exec.query.spi.QueryBuildingParameters;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.persister.entity.OuterJoinLoadable;
+-import org.hibernate.persister.entity.Queryable;
+-import org.hibernate.sql.ConditionFragment;
+-import org.hibernate.sql.DisjunctionFragment;
+-import org.hibernate.sql.InFragment;
+-
+-import static org.hibernate.loader.plan.exec.internal.LoadQueryBuilderHelper.FetchStats;
+-
+-/**
+- * Handles interpreting a LoadPlan (for loading of an entity) by:<ul>
+- *     <li>generating the SQL query to perform</li>
+- *     <li>creating the readers needed to read the results from the SQL's ResultSet</li>
+- * </ul>
+- *
+- * @author Steve Ebersole
+- */
+-public class EntityLoadQueryDetails implements LoadQueryDetails {
+-	// todo : keep around the LoadPlan?  Any benefit?
+-	private final LoadPlan loadPlan;
+-
+-	private final String sqlStatement;
+-	private final ResultSetProcessor resultSetProcessor;
+-
+-	/**
+-	 * Constructs a EntityLoadQueryDetails object from the given inputs.
+-	 *
+-	 * @param loadPlan The load plan
+-	 * @param keyColumnNames The columns to load the entity by (the PK columns or some other unique set of columns)
+-	 * @param buildingParameters And influencers that would affect the generated SQL (mostly we are concerned with those
+-	 * that add additional joins here)
+-	 * @param factory The SessionFactory
+-	 *
+-	 * @return The EntityLoadQueryDetails
+-	 */
+-	public static EntityLoadQueryDetails makeForBatching(
+-			LoadPlan loadPlan,
+-			String[] keyColumnNames,
+-			QueryBuildingParameters buildingParameters,
+-			SessionFactoryImplementor factory) {
+-		final int batchSize = buildingParameters.getBatchSize();
+-		final boolean shouldUseOptionalEntityInformation = batchSize == 1;
+-
+-		return new EntityLoadQueryDetails(
+-				loadPlan,
+-				keyColumnNames,
+-				shouldUseOptionalEntityInformation,
+-				buildingParameters,
+-				factory
+-		);
+-	}
+-
+-	protected EntityLoadQueryDetails(
+-			LoadPlan loadPlan,
+-			String[] keyColumnNames,
+-			boolean shouldUseOptionalEntityInformation,
+-			QueryBuildingParameters buildingParameters,
+-			SessionFactoryImplementor factory) {
+-		this.loadPlan = loadPlan;
+-
+-		final SelectStatementBuilder select = new SelectStatementBuilder( factory.getDialect() );
+-		final EntityReturn rootReturn = Helper.INSTANCE.extractRootReturn( loadPlan, EntityReturn.class );
+-		final AliasResolutionContext aliasResolutionContext = new AliasResolutionContextImpl( factory );
+-		final ReaderCollectorImpl readerCollector = new ReaderCollectorImpl();
+-
+-		final String[] keyColumnNamesToUse = keyColumnNames != null
+-				? keyColumnNames
+-				: ( (Queryable) rootReturn.getEntityPersister() ).getIdentifierColumnNames();
+-
+-		// apply root entity return specifics
+-		applyRootReturnSpecifics(
+-				select,
+-				keyColumnNamesToUse,
+-				rootReturn,
+-				factory,
+-				buildingParameters,
+-				aliasResolutionContext
+-		);
+-		readerCollector.addReader(
+-				new EntityReturnReader(
+-						rootReturn,
+-						aliasResolutionContext.resolveAliases( rootReturn ),
+-						new EntityIdentifierReaderImpl(
+-								rootReturn,
+-								aliasResolutionContext.resolveAliases( rootReturn ),
+-								Collections.<EntityReferenceReader>emptyList()
+-						)
+-				)
+-		);
+-
+-		FetchStats fetchStats = LoadQueryBuilderHelper.applyJoinFetches(
+-				select,
+-				factory,
+-				rootReturn,
+-				buildingParameters,
+-				aliasResolutionContext,
+-				readerCollector
+-		);
+-
+-		this.sqlStatement = select.toStatementString();
+-		this.resultSetProcessor = new ResultSetProcessorImpl(
+-				loadPlan,
+-				readerCollector.buildRowReader(),
+-				fetchStats.hasSubselectFetches()
+-		);
+-	}
+-
+-	protected void applyRootReturnSpecifics(
+-			SelectStatementBuilder select,
+-			String[] keyColumnNames,
+-			EntityReturn rootReturn,
+-			SessionFactoryImplementor factory,
+-			QueryBuildingParameters buildingParameters,
+-			AliasResolutionContext aliasResolutionContext) {
+-		final String rootAlias = aliasResolutionContext.resolveAliases( rootReturn ).getTableAlias();
+-		final OuterJoinLoadable rootLoadable = (OuterJoinLoadable) rootReturn.getEntityPersister();
+-		final Queryable rootQueryable = (Queryable) rootReturn.getEntityPersister();
+-
+-		applyKeyRestriction( select, rootAlias, keyColumnNames, buildingParameters.getBatchSize() );
+-		select.appendRestrictions(
+-				rootQueryable.filterFragment(
+-						rootAlias,
+-						buildingParameters.getQueryInfluencers().getEnabledFilters()
+-				)
+-		);
+-		select.appendRestrictions( rootLoadable.whereJoinFragment( rootAlias, true, true ) );
+-		select.appendSelectClauseFragment(
+-				rootLoadable.selectFragment(
+-						rootAlias,
+-						aliasResolutionContext.resolveAliases( rootReturn ).getColumnAliases().getSuffix()
+-				)
+-		);
+-
+-		final String fromTableFragment;
+-		if ( buildingParameters.getLockOptions() != null ) {
+-			fromTableFragment = factory.getDialect().appendLockHint(
+-					buildingParameters.getLockOptions(),
+-					rootLoadable.fromTableFragment( rootAlias )
+-			);
+-			select.setLockOptions( buildingParameters.getLockOptions() );
+-		}
+-		else if ( buildingParameters.getLockMode() != null ) {
+-			fromTableFragment = factory.getDialect().appendLockHint(
+-					buildingParameters.getLockMode(),
+-					rootLoadable.fromTableFragment( rootAlias )
+-			);
+-			select.setLockMode( buildingParameters.getLockMode() );
+-		}
+-		else {
+-			fromTableFragment = rootLoadable.fromTableFragment( rootAlias );
+-		}
+-		select.appendFromClauseFragment( fromTableFragment + rootLoadable.fromJoinFragment( rootAlias, true, true ) );
+-	}
+-
+-	private void applyKeyRestriction(SelectStatementBuilder select, String alias, String[] keyColumnNames, int batchSize) {
+-		if ( keyColumnNames.length==1 ) {
+-			// NOT A COMPOSITE KEY
+-			// 		for batching, use "foo in (?, ?, ?)" for batching
+-			//		for no batching, use "foo = ?"
+-			// (that distinction is handled inside InFragment)
+-			final InFragment in = new InFragment().setColumn( alias, keyColumnNames[0] );
+-			for ( int i = 0; i < batchSize; i++ ) {
+-				in.addValue( "?" );
+-			}
+-			select.appendRestrictions( in.toFragmentString() );
+-		}
+-		else {
+-			// A COMPOSITE KEY...
+-			final ConditionFragment keyRestrictionBuilder = new ConditionFragment()
+-					.setTableAlias( alias )
+-					.setCondition( keyColumnNames, "?" );
+-			final String keyRestrictionFragment = keyRestrictionBuilder.toFragmentString();
+-
+-			StringBuilder restrictions = new StringBuilder();
+-			if ( batchSize==1 ) {
+-				// for no batching, use "foo = ? and bar = ?"
+-				restrictions.append( keyRestrictionFragment );
+-			}
+-			else {
+-				// for batching, use "( (foo = ? and bar = ?) or (foo = ? and bar = ?) )"
+-				restrictions.append( '(' );
+-				DisjunctionFragment df = new DisjunctionFragment();
+-				for ( int i=0; i<batchSize; i++ ) {
+-					df.addCondition( keyRestrictionFragment );
+-				}
+-				restrictions.append( df.toFragmentString() );
+-				restrictions.append( ')' );
+-			}
+-			select.appendRestrictions( restrictions.toString() );
+-		}
+-	}
+-
+-	@Override
+-	public String getSqlStatement() {
+-		return sqlStatement;
+-	}
+-
+-	@Override
+-	public ResultSetProcessor getResultSetProcessor() {
+-		return resultSetProcessor;
+-	}
+-
+-	private static class ReaderCollectorImpl implements ReaderCollector {
+-		private EntityReturnReader rootReturnReader;
+-		private List<EntityReferenceReader> entityReferenceReaders;
+-		private List<CollectionReferenceReader> collectionReferenceReaders;
+-
+-		@Override
+-		public void addReader(CollectionReferenceReader collectionReferenceReader) {
+-			if ( collectionReferenceReaders == null ) {
+-				collectionReferenceReaders = new ArrayList<CollectionReferenceReader>();
+-			}
+-			collectionReferenceReaders.add( collectionReferenceReader );
+-		}
+-
+-		@Override
+-		public void addReader(EntityReferenceReader entityReferenceReader) {
+-			if ( EntityReturnReader.class.isInstance( entityReferenceReader ) ) {
+-				if ( rootReturnReader != null ) {
+-					throw new IllegalStateException( "Root return reader already set" );
+-				}
+-				rootReturnReader = (EntityReturnReader) entityReferenceReader;
+-			}
+-
+-			if ( entityReferenceReaders == null ) {
+-				entityReferenceReaders = new ArrayList<EntityReferenceReader>();
+-			}
+-			entityReferenceReaders.add( entityReferenceReader );
+-		}
+-
+-		public RowReader buildRowReader() {
+-			return new EntityLoaderRowReader( rootReturnReader, entityReferenceReaders, collectionReferenceReaders );
+-		}
+-	}
+-
+-	public static class EntityLoaderRowReader extends AbstractRowReader implements RowReader {
+-		private final EntityReturnReader rootReturnReader;
+-		private final List<EntityReferenceReader> entityReferenceReaders;
+-		private final List<CollectionReferenceReader> collectionReferenceReaders;
+-
+-		public EntityLoaderRowReader(
+-				EntityReturnReader rootReturnReader,
+-				List<EntityReferenceReader> entityReferenceReaders,
+-				List<CollectionReferenceReader> collectionReferenceReaders) {
+-			this.rootReturnReader = rootReturnReader;
+-			this.entityReferenceReaders = entityReferenceReaders != null
+-					? entityReferenceReaders
+-					: Collections.<EntityReferenceReader>emptyList();
+-			this.collectionReferenceReaders = collectionReferenceReaders != null
+-					? collectionReferenceReaders
+-					: Collections.<CollectionReferenceReader>emptyList();
+-		}
+-
+-		@Override
+-		protected List<EntityReferenceReader> getEntityReferenceReaders() {
+-			return entityReferenceReaders;
+-		}
+-
+-		@Override
+-		protected List<CollectionReferenceReader> getCollectionReferenceReaders() {
+-			return collectionReferenceReaders;
+-		}
+-
+-		@Override
+-		protected Object readLogicalRow(ResultSet resultSet, ResultSetProcessingContextImpl context) throws SQLException {
+-			return rootReturnReader.read( resultSet, context );
+-		}
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/EntityReferenceAliases.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/EntityReferenceAliases.java
+deleted file mode 100644
+index e5828f9e78..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/EntityReferenceAliases.java
++++ /dev/null
+@@ -1,54 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.spi;
+-
+-import org.hibernate.loader.EntityAliases;
+-
+-/**
+- * Aggregates the alias/suffix information in relation to an {@link org.hibernate.loader.plan.spi.EntityReference}
+- *
+- * todo : add a contract (interface) that can be shared by entity and collection alias info objects as lhs/rhs of a join ?
+- *
+- * @author Steve Ebersole
+- */
+-public interface EntityReferenceAliases {
+-	/**
+-	 * Obtain the table alias used for referencing the table of the EntityReference.
+-	 * <p/>
+-	 * Note that this currently just returns the "root alias" whereas sometimes an entity reference covers
+-	 * multiple tables.  todo : to help manage this, consider a solution like TableAliasRoot from the initial ANTLR re-work
+-	 * see http://anonsvn.jboss.org/repos/hibernate/core/branches/antlr3/src/main/java/org/hibernate/sql/ast/alias/TableAliasGenerator.java
+-	 *
+-	 * @return The (root) table alias for the described entity reference.
+-	 */
+-	public String getTableAlias();
+-
+-	/**
+-	 * Obtain the column aliases for the select fragment columns associated with the described entity reference.  These
+-	 * are the column renames by which the values can be extracted from the SQL result set.
+-	 *
+-	 * @return The column aliases associated with the described entity reference.
+-	 */
+-	public EntityAliases getColumnAliases();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/LoadQueryDetails.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/LoadQueryDetails.java
+deleted file mode 100644
+index 70f702c47e..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/LoadQueryDetails.java
++++ /dev/null
+@@ -1,36 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.spi;
+-
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessor;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface LoadQueryDetails {
+-	public String getSqlStatement();
+-
+-	public ResultSetProcessor getResultSetProcessor();
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/LockModeResolver.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/LockModeResolver.java
+deleted file mode 100644
+index 55397a2a16..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/LockModeResolver.java
++++ /dev/null
+@@ -1,34 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface LockModeResolver {
+-	public LockMode resolveLockMode(EntityReference entityReference);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/ReaderCollector.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/ReaderCollector.java
+deleted file mode 100644
+index 1981f27250..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/ReaderCollector.java
++++ /dev/null
+@@ -1,38 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.spi;
+-
+-import org.hibernate.loader.plan.exec.process.internal.CollectionReferenceReader;
+-import org.hibernate.loader.plan.exec.process.internal.EntityReferenceReader;
+-
+-/**
+- * Used as a callback mechanism while building the SQL statement to collect the needed ResultSet readers
+- *
+- * @author Steve Ebersole
+- */
+-public interface ReaderCollector {
+-	public void addReader(CollectionReferenceReader collectionReferenceReader);
+-
+-	public void addReader(EntityReferenceReader entityReferenceReader);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/RowReader.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/RowReader.java
+deleted file mode 100644
+index 4a56afc277..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/exec/spi/RowReader.java
++++ /dev/null
+@@ -1,36 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.exec.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.loader.plan.exec.process.internal.ResultSetProcessingContextImpl;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface RowReader {
+-	Object readRow(ResultSet resultSet, ResultSetProcessingContextImpl context) throws SQLException;
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/CascadeLoadPlanBuilderStrategy.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/CascadeLoadPlanBuilderStrategy.java
+deleted file mode 100644
+index 3f65720837..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/CascadeLoadPlanBuilderStrategy.java
++++ /dev/null
+@@ -1,58 +0,0 @@
+-/*
+- * jDocBook, processing of DocBook sources
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.internal;
+-
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.FetchStyle;
+-import org.hibernate.engine.FetchTiming;
+-import org.hibernate.engine.spi.CascadingAction;
+-import org.hibernate.engine.spi.LoadQueryInfluencers;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-
+-/**
+- * A LoadPlan building strategy for cascade processing; meaning, it builds the LoadPlan for loading related to
+- * cascading a particular action across associations
+- *
+- * @author Steve Ebersole
+- */
+-public class CascadeLoadPlanBuilderStrategy extends SingleRootReturnLoadPlanBuilderStrategy {
+-	private static final FetchStrategy EAGER = new FetchStrategy( FetchTiming.IMMEDIATE, FetchStyle.JOIN );
+-	private static final FetchStrategy DELAYED = new FetchStrategy( FetchTiming.DELAYED, FetchStyle.SELECT );
+-
+-	private final CascadingAction cascadeActionToMatch;
+-
+-	public CascadeLoadPlanBuilderStrategy(
+-			CascadingAction cascadeActionToMatch,
+-			SessionFactoryImplementor sessionFactory,
+-			LoadQueryInfluencers loadQueryInfluencers) {
+-		super( sessionFactory, loadQueryInfluencers );
+-		this.cascadeActionToMatch = cascadeActionToMatch;
+-	}
+-
+-	@Override
+-	protected FetchStrategy determineFetchPlan(AssociationAttributeDefinition attributeDefinition) {
+-		return attributeDefinition.determineCascadeStyle().doCascade( cascadeActionToMatch ) ? EAGER : DELAYED;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/EntityReturnImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/EntityReturnImpl.java
+deleted file mode 100644
+index ed8c731871..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/EntityReturnImpl.java
++++ /dev/null
+@@ -1,64 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.internal;
+-
+-import org.hibernate.loader.plan.spi.EntityReturn2;
+-import org.hibernate.loader.plan.spi.IdentifierDescription;
+-import org.hibernate.loader.plan.spi.build.IdentifierDescriptionInjectable;
+-import org.hibernate.persister.entity.EntityPersister;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class EntityReturnImpl implements EntityReturn2, IdentifierDescriptionInjectable {
+-	private final String entityQuerySpaceUid;
+-	private final EntityPersister entityPersister;
+-
+-	private IdentifierDescription identifierDescription;
+-
+-	public EntityReturnImpl(String entityQuerySpaceUid, EntityPersister entityPersister) {
+-		this.entityQuerySpaceUid = entityQuerySpaceUid;
+-		this.entityPersister = entityPersister;
+-	}
+-
+-	@Override
+-	public String getQuerySpaceUid() {
+-		return entityQuerySpaceUid;
+-	}
+-
+-	@Override
+-	public EntityPersister getEntityPersister() {
+-		return entityPersister;
+-	}
+-
+-	@Override
+-	public IdentifierDescription getIdentifierDescription() {
+-		return identifierDescription;
+-	}
+-
+-	@Override
+-	public void injectIdentifierDescription(IdentifierDescription identifierDescription) {
+-		this.identifierDescription = identifierDescription;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/LoadPlanBuildingHelper.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/LoadPlanBuildingHelper.java
+deleted file mode 100644
+index 05f1318c2a..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/LoadPlanBuildingHelper.java
++++ /dev/null
+@@ -1,96 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.internal;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.loader.plan.spi.AbstractFetchOwner;
+-import org.hibernate.loader.plan.spi.AnyFetch;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.build.LoadPlanBuildingContext;
+-import org.hibernate.persister.walking.spi.AnyMappingDefinition;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.persister.walking.spi.CompositionDefinition;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class LoadPlanBuildingHelper {
+-	public static CollectionFetch buildStandardCollectionFetch(
+-			FetchOwner fetchOwner,
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		return new CollectionFetch(
+-				loadPlanBuildingContext.getSessionFactory(),
+-				LockMode.NONE, // todo : for now
+-				fetchOwner,
+-				fetchStrategy,
+-				attributeDefinition
+-		);
+-	}
+-
+-	public static EntityFetch buildStandardEntityFetch(
+-			FetchOwner fetchOwner,
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		return new EntityFetch(
+-				loadPlanBuildingContext.getSessionFactory(),
+-				LockMode.NONE, // todo : for now
+-				fetchOwner,
+-				attributeDefinition,
+-				fetchStrategy
+-		);
+-	}
+-
+-	public static CompositeFetch buildStandardCompositeFetch(
+-			FetchOwner fetchOwner,
+-			CompositionDefinition attributeDefinition,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		return new CompositeFetch(
+-				loadPlanBuildingContext.getSessionFactory(),
+-				fetchOwner,
+-				attributeDefinition
+-		);
+-	}
+-
+-	public static AnyFetch buildAnyFetch(
+-			FetchOwner fetchOwner,
+-			AttributeDefinition attribute,
+-			AnyMappingDefinition anyDefinition,
+-			FetchStrategy fetchStrategy, LoadPlanBuildingContext loadPlanBuildingContext) {
+-		return new AnyFetch(
+-				loadPlanBuildingContext.getSessionFactory(),
+-				fetchOwner,
+-				attribute,
+-				anyDefinition,
+-				fetchStrategy
+-		);
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/LoadPlanImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/LoadPlanImpl.java
+deleted file mode 100644
+index 2fc265837e..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/LoadPlanImpl.java
++++ /dev/null
+@@ -1,102 +0,0 @@
+-/*
+- * jDocBook, processing of DocBook sources
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.internal;
+-
+-import java.util.Collections;
+-import java.util.List;
+-
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.loader.plan.spi.Return;
+-
+-/**
+- * Implementation of LoadPlan.
+- *
+- * @author Steve Ebersole
+- */
+-public class LoadPlanImpl implements LoadPlan {
+-	private final List<? extends Return> returns;
+-	private final Disposition disposition;
+-	private final boolean areLazyAttributesForceFetched;
+-
+-	protected LoadPlanImpl(List<? extends Return> returns, Disposition disposition, boolean areLazyAttributesForceFetched) {
+-		this.returns = returns;
+-		this.disposition = disposition;
+-		this.areLazyAttributesForceFetched = areLazyAttributesForceFetched;
+-	}
+-
+-	/**
+-	 * Creates a {@link Disposition#ENTITY_LOADER} LoadPlan.
+-	 *
+-	 * @param rootReturn The EntityReturn representation of the entity being loaded.
+-	 */
+-	public LoadPlanImpl(EntityReturn rootReturn) {
+-		this( Collections.singletonList( rootReturn ), Disposition.ENTITY_LOADER, false );
+-	}
+-
+-	/**
+-	 * Creates a {@link Disposition#COLLECTION_INITIALIZER} LoadPlan.
+-	 *
+-	 * @param rootReturn The CollectionReturn representation of the collection being initialized.
+-	 */
+-	public LoadPlanImpl(CollectionReturn rootReturn) {
+-		this( Collections.singletonList( rootReturn ), Disposition.COLLECTION_INITIALIZER, false );
+-	}
+-
+-	/**
+-	 * Creates a {@link Disposition#MIXED} LoadPlan.
+-	 *
+-	 * @param returns The mixed Return references
+-	 * @param areLazyAttributesForceFetched Should lazy attributes (bytecode enhanced laziness) be fetched also?  This
+-	 * effects the eventual SQL SELECT-clause which is why we have it here.  Currently this is "all-or-none"; you
+-	 * can request that all lazy properties across all entities in the loadplan be force fetched or none.  There is
+-	 * no entity-by-entity option.  {@code FETCH ALL PROPERTIES} is the way this is requested in HQL.  Would be nice to
+-	 * consider this entity-by-entity, as opposed to all-or-none.  For example, "fetch the LOB value for the Item.image
+-	 * attribute, but no others (leave them lazy)".  Not too concerned about having it at the attribute level.
+-	 */
+-	public LoadPlanImpl(List<? extends Return> returns, boolean areLazyAttributesForceFetched) {
+-		this( returns, Disposition.MIXED, areLazyAttributesForceFetched );
+-	}
+-
+-	@Override
+-	public List<? extends Return> getReturns() {
+-		return returns;
+-	}
+-
+-	@Override
+-	public Disposition getDisposition() {
+-		return disposition;
+-	}
+-
+-	@Override
+-	public boolean areLazyAttributesForceFetched() {
+-		return areLazyAttributesForceFetched;
+-	}
+-
+-	@Override
+-	public boolean hasAnyScalarReturns() {
+-		return disposition == Disposition.MIXED;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/ScalarReturnImpl.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/ScalarReturnImpl.java
+deleted file mode 100644
+index 9c455f0c2a..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/ScalarReturnImpl.java
++++ /dev/null
+@@ -1,30 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.internal;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class ScalarReturnImpl {
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/SingleRootReturnLoadPlanBuilderStrategy.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/SingleRootReturnLoadPlanBuilderStrategy.java
+deleted file mode 100644
+index 7935855c6c..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/internal/SingleRootReturnLoadPlanBuilderStrategy.java
++++ /dev/null
+@@ -1,161 +0,0 @@
+-/*
+- * jDocBook, processing of DocBook sources
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.internal;
+-
+-import org.hibernate.HibernateException;
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.FetchStyle;
+-import org.hibernate.engine.FetchTiming;
+-import org.hibernate.engine.spi.LoadQueryInfluencers;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.internal.util.StringHelper;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.spi.build.AbstractLoadPlanBuilderStrategy;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan2.spi.FetchSource;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-import org.hibernate.persister.walking.spi.AssociationKey;
+-import org.hibernate.persister.walking.spi.CollectionDefinition;
+-import org.hibernate.persister.walking.spi.EntityDefinition;
+-
+-/**
+- * LoadPlanBuilderStrategy implementation used for building LoadPlans with a single processing RootEntity LoadPlan building.
+- *
+- * Really this is a single-root LoadPlan building strategy for building LoadPlans for:<ul>
+- *     <li>entity load plans</li>
+- *     <li>cascade load plans</li>
+- *     <li>collection initializer plans</li>
+- * </ul>
+- *
+- * @author Steve Ebersole
+- */
+-public class SingleRootReturnLoadPlanBuilderStrategy
+-		extends AbstractLoadPlanBuilderStrategy {
+-
+-	private final LoadQueryInfluencers loadQueryInfluencers;
+-
+-	private Return rootReturn;
+-
+-	private PropertyPath propertyPath = new PropertyPath( "" );
+-
+-	public SingleRootReturnLoadPlanBuilderStrategy(
+-			SessionFactoryImplementor sessionFactory,
+-			LoadQueryInfluencers loadQueryInfluencers) {
+-		super( sessionFactory );
+-		this.loadQueryInfluencers = loadQueryInfluencers;
+-	}
+-
+-	@Override
+-	protected boolean supportsRootEntityReturns() {
+-		return true;
+-	}
+-
+-	@Override
+-	protected boolean supportsRootCollectionReturns() {
+-		return true;
+-	}
+-
+-	@Override
+-	protected void addRootReturn(Return rootReturn) {
+-		if ( this.rootReturn != null ) {
+-			throw new HibernateException( "Root return already identified" );
+-		}
+-		this.rootReturn = rootReturn;
+-	}
+-
+-	@Override
+-	public LoadPlan buildLoadPlan() {
+-		if ( EntityReturn.class.isInstance( rootReturn ) ) {
+-			return new LoadPlanImpl( (EntityReturn) rootReturn );
+-		}
+-		else if ( CollectionReturn.class.isInstance( rootReturn ) ) {
+-			return new LoadPlanImpl( (CollectionReturn) rootReturn );
+-		}
+-		else {
+-			throw new IllegalStateException( "Unexpected root Return type : " + rootReturn );
+-		}
+-	}
+-
+-	@Override
+-	protected FetchStrategy determineFetchPlan(AssociationAttributeDefinition attributeDefinition) {
+-		FetchStrategy fetchStrategy = attributeDefinition.determineFetchPlan( loadQueryInfluencers, propertyPath );
+-		if ( fetchStrategy.getTiming() == FetchTiming.IMMEDIATE && fetchStrategy.getStyle() == FetchStyle.JOIN ) {
+-			// see if we need to alter the join fetch to another form for any reason
+-			fetchStrategy = adjustJoinFetchIfNeeded( attributeDefinition, fetchStrategy );
+-		}
+-		return fetchStrategy;
+-	}
+-
+-	protected FetchStrategy adjustJoinFetchIfNeeded(
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy) {
+-		if ( currentDepth() > sessionFactory().getSettings().getMaximumFetchDepth() ) {
+-			return new FetchStrategy( fetchStrategy.getTiming(), FetchStyle.SELECT );
+-		}
+-
+-		if ( attributeDefinition.getType().isCollectionType() && isTooManyCollections() ) {
+-			// todo : have this revert to batch or subselect fetching once "sql gen redesign" is in place
+-			return new FetchStrategy( fetchStrategy.getTiming(), FetchStyle.SELECT );
+-		}
+-
+-		return fetchStrategy;
+-	}
+-
+-	@Override
+-	protected boolean isTooManyCollections() {
+-		return false;
+-	}
+-
+-	@Override
+-	protected EntityReturn buildRootEntityReturn(EntityDefinition entityDefinition) {
+-		final String entityName = entityDefinition.getEntityPersister().getEntityName();
+-		return new EntityReturn(
+-				sessionFactory(),
+-				LockMode.NONE, // todo : for now
+-				entityName
+-		);
+-	}
+-
+-	@Override
+-	protected CollectionReturn buildRootCollectionReturn(CollectionDefinition collectionDefinition) {
+-		final CollectionPersister persister = collectionDefinition.getCollectionPersister();
+-		final String collectionRole = persister.getRole();
+-		return new CollectionReturn(
+-				sessionFactory(),
+-				LockMode.NONE, // todo : for now
+-				persister.getOwnerEntityPersister().getEntityName(),
+-				StringHelper.unqualify( collectionRole )
+-		);
+-	}
+-
+-	@Override
+-	public FetchSource registeredFetchSource(AssociationKey associationKey) {
+-		return null;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractCollectionReference.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractCollectionReference.java
+deleted file mode 100644
+index 3cf0665646..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractCollectionReference.java
++++ /dev/null
+@@ -1,162 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.type.EntityType;
+-import org.hibernate.type.Type;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public abstract class AbstractCollectionReference extends AbstractPlanNode implements CollectionReference {
+-	private final LockMode lockMode;
+-	private final CollectionPersister collectionPersister;
+-	private final PropertyPath propertyPath;
+-
+-	private final FetchableCollectionIndex indexGraph;
+-	private final FetchableCollectionElement elementGraph;
+-
+-	protected AbstractCollectionReference(
+-			SessionFactoryImplementor sessionFactory,
+-			LockMode lockMode,
+-			CollectionPersister collectionPersister,
+-			PropertyPath propertyPath,
+-			EntityReference ownerEntityReference) {
+-		super( sessionFactory );
+-		this.lockMode = lockMode;
+-		this.collectionPersister = collectionPersister;
+-		this.propertyPath = propertyPath;
+-
+-		this.indexGraph = buildIndexGraph( getCollectionPersister() );
+-		this.elementGraph = buildElementGraph( getCollectionPersister(), ownerEntityReference );
+-	}
+-
+-	private FetchableCollectionIndex buildIndexGraph(CollectionPersister persister) {
+-		if ( persister.hasIndex() ) {
+-			final Type type = persister.getIndexType();
+-			if ( type.isAssociationType() ) {
+-				if ( type.isEntityType() ) {
+-					return new EntityIndexGraph( sessionFactory(), this, getPropertyPath() );
+-				}
+-			}
+-			else if ( type.isComponentType() ) {
+-				return new CompositeIndexGraph( sessionFactory(), this, getPropertyPath() );
+-			}
+-		}
+-
+-		return null;
+-	}
+-
+-	private FetchableCollectionElement buildElementGraph(
+-			CollectionPersister persister,
+-			EntityReference ownerEntityReference) {
+-		final Type type = persister.getElementType();
+-		if ( type.isAssociationType() ) {
+-			if ( type.isEntityType() ) {
+-				final EntityType elementEntityType = (EntityType) type;
+-
+-				if ( ownerEntityReference != null ) {
+-					// check for bi-directionality
+-					final boolean sameType = elementEntityType.getAssociatedEntityName().equals(
+-							ownerEntityReference.getEntityPersister().getEntityName()
+-					);
+-					if ( sameType ) {
+-						// todo : check for columns too...
+-
+-						return new BidirectionalEntityElementGraph(
+-								sessionFactory(),
+-								this,
+-								getPropertyPath(),
+-								ownerEntityReference
+-						);
+-					}
+-				}
+-				return new EntityElementGraph( sessionFactory(), this, getPropertyPath() );
+-			}
+-		}
+-		else if ( type.isComponentType() ) {
+-			return new CompositeElementGraph( sessionFactory(), this, getPropertyPath() );
+-		}
+-
+-		return null;
+-	}
+-
+-	protected AbstractCollectionReference(AbstractCollectionReference original, CopyContext copyContext) {
+-		super( original );
+-		this.lockMode = original.lockMode;
+-		this.collectionPersister = original.collectionPersister;
+-		this.propertyPath = original.propertyPath;
+-
+-		this.indexGraph = original.indexGraph == null ? null : original.indexGraph.makeCopy( copyContext );
+-		this.elementGraph = original.elementGraph == null ? null : original.elementGraph.makeCopy( copyContext );
+-	}
+-
+-	@Override
+-	public PropertyPath getPropertyPath() {
+-		return propertyPath;
+-	}
+-
+-	@Override
+-	public LockMode getLockMode() {
+-		return lockMode;
+-	}
+-
+-	@Override
+-	public CollectionPersister getCollectionPersister() {
+-		return collectionPersister;
+-	}
+-
+-	@Override
+-	public FetchOwner getIndexGraph() {
+-		return indexGraph;
+-	}
+-
+-	@Override
+-	public FetchOwner getElementGraph() {
+-		return elementGraph;
+-	}
+-
+-
+-	private class BidirectionalEntityElementGraph extends EntityElementGraph implements BidirectionalEntityFetch {
+-		private final EntityReference targetEntityReference;
+-
+-		private BidirectionalEntityElementGraph(
+-				SessionFactoryImplementor sessionFactory,
+-				CollectionReference collectionReference,
+-				PropertyPath propertyPath,
+-				EntityReference targetEntityReference) {
+-			super( sessionFactory, collectionReference, propertyPath );
+-			this.targetEntityReference = targetEntityReference;
+-		}
+-
+-		@Override
+-		public EntityReference getTargetEntityReference() {
+-			return targetEntityReference;
+-		}
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractFetchOwner.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractFetchOwner.java
+deleted file mode 100644
+index fcc51e13c1..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractFetchOwner.java
++++ /dev/null
+@@ -1,168 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.List;
+-
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.plan.internal.LoadPlanBuildingHelper;
+-import org.hibernate.loader.plan.spi.build.LoadPlanBuildingContext;
+-import org.hibernate.persister.walking.spi.AnyMappingDefinition;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.persister.walking.spi.CompositionDefinition;
+-import org.hibernate.type.Type;
+-
+-/**
+- * This is a class for fetch owners, providing functionality related to the owned
+- * fetches.
+- *
+- * @author Steve Ebersole
+- * @author Gail Badner
+- */
+-public abstract class AbstractFetchOwner extends AbstractPlanNode implements FetchOwner {
+-
+-	// TODO: I removed lockMode from this method because I *think* it only relates to EntityFetch and EntityReturn.
+-	//       lockMode should be moved back here if it applies to all fetch owners.
+-
+-	private List<Fetch> fetches;
+-
+-	public AbstractFetchOwner(SessionFactoryImplementor factory) {
+-		super( factory );
+-		validate();
+-	}
+-
+-	private void validate() {
+-	}
+-
+-	/**
+-	 * A "copy" constructor.  Used while making clones/copies of this.
+-	 *
+-	 * @param original - the original object to copy.
+-	 * @param copyContext - the copy context.
+-	 */
+-	protected AbstractFetchOwner(AbstractFetchOwner original, CopyContext copyContext) {
+-		super( original );
+-		validate();
+-
+-		// TODO: I don't think this is correct; shouldn't the fetches from original be copied into this???
+-		copyContext.getReturnGraphVisitationStrategy().startingFetches( original );
+-		if ( fetches == null || fetches.size() == 0 ) {
+-			this.fetches = Collections.emptyList();
+-		}
+-		else {
+-			List<Fetch> fetchesCopy = new ArrayList<Fetch>();
+-			for ( Fetch fetch : fetches ) {
+-				fetchesCopy.add( fetch.makeCopy( copyContext, this ) );
+-			}
+-			this.fetches = fetchesCopy;
+-		}
+-		copyContext.getReturnGraphVisitationStrategy().finishingFetches( original );
+-	}
+-
+-	@Override
+-	public void addFetch(Fetch fetch) {
+-		if ( fetch.getOwner() != this ) {
+-			throw new IllegalArgumentException( "Fetch and owner did not match" );
+-		}
+-
+-		if ( fetches == null ) {
+-			fetches = new ArrayList<Fetch>();
+-		}
+-
+-		fetches.add( fetch );
+-	}
+-
+-	@Override
+-	public Fetch[] getFetches() {
+-		return fetches == null ? NO_FETCHES : fetches.toArray( new Fetch[ fetches.size() ] );
+-	}
+-
+-	@Override
+-	public boolean isNullable(Fetch fetch) {
+-		return fetch.isNullable();
+-	}
+-
+-	@Override
+-	public Type getType(Fetch fetch) {
+-		return fetch.getFetchedType();
+-	}
+-
+-	@Override
+-	public String[] toSqlSelectFragments(Fetch fetch, String alias) {
+-		return fetch.toSqlSelectFragments( alias );
+-	}
+-
+-	@Override
+-	public AnyFetch buildAnyFetch(
+-			AttributeDefinition attribute,
+-			AnyMappingDefinition anyDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		return LoadPlanBuildingHelper.buildAnyFetch(
+-				this,
+-				attribute,
+-				anyDefinition,
+-				fetchStrategy,
+-				loadPlanBuildingContext
+-		);
+-	}
+-
+-	@Override
+-	public CollectionFetch buildCollectionFetch(
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		return LoadPlanBuildingHelper.buildStandardCollectionFetch(
+-				this,
+-				attributeDefinition,
+-				fetchStrategy,
+-				loadPlanBuildingContext
+-		);
+-	}
+-
+-	@Override
+-	public EntityFetch buildEntityFetch(
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		return LoadPlanBuildingHelper.buildStandardEntityFetch(
+-				this,
+-				attributeDefinition,
+-				fetchStrategy,
+-				loadPlanBuildingContext
+-		);
+-	}
+-
+-	@Override
+-	public CompositeFetch buildCompositeFetch(
+-			CompositionDefinition attributeDefinition,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		return LoadPlanBuildingHelper.buildStandardCompositeFetch( this, attributeDefinition, loadPlanBuildingContext );
+-	}
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractPlanNode.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractPlanNode.java
+deleted file mode 100644
+index 8dc122cae8..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractPlanNode.java
++++ /dev/null
+@@ -1,47 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-
+-/**
+- * Base class for LoadPlan nodes to hold references to the session factory.
+- *
+- * @author Steve Ebersole
+- */
+-public abstract class AbstractPlanNode {
+-	private final SessionFactoryImplementor sessionFactory;
+-
+-	public AbstractPlanNode(SessionFactoryImplementor sessionFactory) {
+-		this.sessionFactory = sessionFactory;
+-	}
+-
+-	public AbstractPlanNode(AbstractPlanNode original) {
+-		this( original.sessionFactory() );
+-	}
+-
+-	protected SessionFactoryImplementor sessionFactory() {
+-		return sessionFactory;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractSingularAttributeFetch.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractSingularAttributeFetch.java
+deleted file mode 100644
+index 2f589ddeb4..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AbstractSingularAttributeFetch.java
++++ /dev/null
+@@ -1,142 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.HibernateException;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.FetchStyle;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.type.Type;
+-
+-/**
+- * Represents a singular attribute that is both a {@link FetchOwner} and a {@link Fetch}.
+- *
+- * @author Steve Ebersole
+- * @author Gail Badner
+- */
+-public abstract class AbstractSingularAttributeFetch extends AbstractFetchOwner implements Fetch {
+-	private final FetchOwner owner;
+-	private final AttributeDefinition fetchedAttribute;
+-	private final FetchStrategy fetchStrategy;
+-
+-	private final PropertyPath propertyPath;
+-
+-	/**
+-	 * Constructs an {@link AbstractSingularAttributeFetch} object.
+-	 *
+-	 * @param factory - the session factory.
+-	 * @param owner - the fetch owner for this fetch.
+-	 * @param fetchedAttribute - the attribute being fetched
+-	 * @param fetchStrategy - the fetch strategy for this fetch.
+-	 */
+-	public AbstractSingularAttributeFetch(
+-			SessionFactoryImplementor factory,
+-			FetchOwner owner,
+-			AttributeDefinition fetchedAttribute,
+-			FetchStrategy fetchStrategy) {
+-		super( factory );
+-		this.owner = owner;
+-		this.fetchedAttribute = fetchedAttribute;
+-		this.fetchStrategy = fetchStrategy;
+-
+-		owner.addFetch( this );
+-
+-		this.propertyPath = owner.getPropertyPath().append( fetchedAttribute.getName() );
+-	}
+-
+-	public AbstractSingularAttributeFetch(
+-			AbstractSingularAttributeFetch original,
+-			CopyContext copyContext,
+-			FetchOwner fetchOwnerCopy) {
+-		super( original, copyContext );
+-		this.owner = fetchOwnerCopy;
+-		this.fetchedAttribute = original.fetchedAttribute;
+-		this.fetchStrategy = original.fetchStrategy;
+-		this.propertyPath = original.propertyPath;
+-	}
+-
+-	@Override
+-	public FetchOwner getOwner() {
+-		return owner;
+-	}
+-
+-	public AttributeDefinition getFetchedAttribute() {
+-		return fetchedAttribute;
+-	}
+-
+-	@Override
+-	public Type getFetchedType() {
+-		return fetchedAttribute.getType();
+-	}
+-
+-	@Override
+-	public boolean isNullable() {
+-		return fetchedAttribute.isNullable();
+-//		return owner.isNullable( this );
+-	}
+-
+-	@Override
+-	public String[] toSqlSelectFragments(String alias) {
+-		return owner.toSqlSelectFragments( this, alias );
+-	}
+-
+-	@Override
+-	public FetchStrategy getFetchStrategy() {
+-		return fetchStrategy;
+-	}
+-
+-	@Override
+-	public String getAdditionalJoinConditions() {
+-		// only pertinent for HQL...
+-		return null;
+-	}
+-
+-	@Override
+-	public void validateFetchPlan(FetchStrategy fetchStrategy, AttributeDefinition attributeDefinition) {
+-		if ( fetchStrategy.getStyle() == FetchStyle.JOIN ) {
+-			if ( this.fetchStrategy.getStyle() != FetchStyle.JOIN ) {
+-
+-				throw new HibernateException(
+-						String.format(
+-								"Cannot specify join fetch from owner [%s] that is a non-joined fetch : %s",
+-								getPropertyPath().getFullPath(),
+-								attributeDefinition.getName()
+-						)
+-				);
+-			}
+-		}
+-	}
+-
+-	@Override
+-	public PropertyPath getPropertyPath() {
+-		return propertyPath;
+-	}
+-
+-	@Override
+-	public String toString() {
+-		return "Fetch(" + propertyPath.getFullPath() + ")";
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AnyFetch.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AnyFetch.java
+deleted file mode 100644
+index 13c9bfa110..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/AnyFetch.java
++++ /dev/null
+@@ -1,141 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.cfg.NotYetImplementedException;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.persister.walking.spi.AnyMappingDefinition;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.type.AnyType;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class AnyFetch extends AbstractPlanNode implements Fetch {
+-	private final FetchOwner owner;
+-	private final AttributeDefinition fetchedAttribute;
+-	private final AnyMappingDefinition definition;
+-	private final FetchStrategy fetchStrategy;
+-
+-	private final PropertyPath propertyPath;
+-
+-	public AnyFetch(
+-			SessionFactoryImplementor sessionFactory,
+-			FetchOwner owner,
+-			AttributeDefinition ownerProperty,
+-			AnyMappingDefinition definition,
+-			FetchStrategy fetchStrategy) {
+-		super( sessionFactory );
+-
+-		this.owner = owner;
+-		this.fetchedAttribute = ownerProperty;
+-		this.definition = definition;
+-		this.fetchStrategy = fetchStrategy;
+-
+-		this.propertyPath = owner.getPropertyPath().append( ownerProperty.getName() );
+-
+-		owner.addFetch( this );
+-	}
+-
+-	/**
+-	 * Copy constructor.
+-	 *
+-	 * @param original The original fetch
+-	 * @param copyContext Access to contextual needs for the copy operation
+-	 */
+-	protected AnyFetch(AnyFetch original, CopyContext copyContext, FetchOwner fetchOwnerCopy) {
+-		super( original );
+-		this.owner = fetchOwnerCopy;
+-		this.fetchedAttribute = original.fetchedAttribute;
+-		this.definition = original.definition;
+-		this.fetchStrategy = original.fetchStrategy;
+-		this.propertyPath = original.propertyPath;
+-	}
+-
+-	@Override
+-	public FetchOwner getOwner() {
+-		return owner;
+-	}
+-
+-	@Override
+-	public AnyType getFetchedType() {
+-		return (AnyType) fetchedAttribute.getType();
+-	}
+-
+-	@Override
+-	public boolean isNullable() {
+-		return owner.isNullable( this );
+-	}
+-
+-	@Override
+-	public String[] toSqlSelectFragments(String alias) {
+-		return owner.toSqlSelectFragments( this, alias );
+-	}
+-
+-	@Override
+-	public String getAdditionalJoinConditions() {
+-		// only pertinent for HQL...
+-		return null;
+-	}
+-
+-	@Override
+-	public FetchStrategy getFetchStrategy() {
+-		return fetchStrategy;
+-	}
+-
+-	@Override
+-	public PropertyPath getPropertyPath() {
+-		return propertyPath;
+-	}
+-
+-//	@Override
+-//	public void hydrate(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		throw new NotYetImplementedException();
+-//	}
+-//
+-//	@Override
+-//	public Object resolve(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		throw new NotYetImplementedException();
+-//	}
+-//
+-//	@Override
+-//	public void read(ResultSet resultSet, ResultSetProcessingContext context, Object owner) throws SQLException {
+-//		throw new NotYetImplementedException();
+-//	}
+-
+-	@Override
+-	public AnyFetch makeCopy(CopyContext copyContext, FetchOwner fetchOwnerCopy) {
+-		copyContext.getReturnGraphVisitationStrategy().startingAnyFetch( this );
+-		final AnyFetch copy = new AnyFetch( this, copyContext, fetchOwnerCopy );
+-		copyContext.getReturnGraphVisitationStrategy().startingAnyFetch( this );
+-		return copy;
+-	}
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/BidirectionalEntityFetch.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/BidirectionalEntityFetch.java
+deleted file mode 100644
+index 359c8af7a7..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/BidirectionalEntityFetch.java
++++ /dev/null
+@@ -1,48 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-/**
+- * Represents the circular side of a bi-directional entity fetch.  Wraps a reference to an EntityReference
+- * as an EntityFetch.  We can use the special type as a trigger in AliasResolutionContext, etc to lookup information
+- * based on the wrapped reference.
+- * <p/>
+- * This relies on reference lookups against the EntityReference instances, therefore this allows representation of the
+- * circularity but with a little protection against potential stack overflows.  This is unfortunately still a cyclic
+- * graph.  An alternative approach is to make the graph acyclic (DAG) would be to follow the process I adopted in the
+- * original HQL Antlr v3 work with regard to always applying an alias to the "persister reference", even where that
+- * meant creating a generated, unique identifier as the alias.  That allows other parts of the tree to refer to the
+- * "persister reference" by that alias without the need for potentially cyclic graphs (think ALIAS_REF in the current
+- * ORM parser).  Those aliases can then be mapped/catalogued against the "persister reference" for retrieval as needed.
+- *
+- * @author Steve Ebersole
+- */
+-public interface BidirectionalEntityFetch {
+-	/**
+-	 * Get the targeted EntityReference
+-	 *
+-	 * @return The targeted EntityReference
+-	 */
+-	public EntityReference getTargetEntityReference();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionFetch.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionFetch.java
+deleted file mode 100644
+index 88315dd79e..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionFetch.java
++++ /dev/null
+@@ -1,196 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.internal.CoreLogging;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.type.CollectionType;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class CollectionFetch extends AbstractCollectionReference implements Fetch {
+-	private static final Logger log = CoreLogging.logger( CollectionFetch.class );
+-
+-	private final FetchOwner fetchOwner;
+-	private final AttributeDefinition fetchedAttribute;
+-	private final FetchStrategy fetchStrategy;
+-
+-	public CollectionFetch(
+-			SessionFactoryImplementor sessionFactory,
+-			LockMode lockMode,
+-			FetchOwner fetchOwner,
+-			FetchStrategy fetchStrategy,
+-			AttributeDefinition fetchedAttribute) {
+-		super(
+-				sessionFactory,
+-				lockMode,
+-				sessionFactory.getCollectionPersister( ( (CollectionType) fetchedAttribute.getType() ).getRole() ),
+-				fetchOwner.getPropertyPath().append( fetchedAttribute.getName() ),
+-				(EntityReference) fetchOwner
+-		);
+-		this.fetchOwner = fetchOwner;
+-		this.fetchedAttribute = fetchedAttribute;
+-		this.fetchStrategy = fetchStrategy;
+-		fetchOwner.addFetch( this );
+-	}
+-
+-	protected CollectionFetch(CollectionFetch original, CopyContext copyContext, FetchOwner fetchOwnerCopy) {
+-		super( original, copyContext );
+-		this.fetchOwner = fetchOwnerCopy;
+-		this.fetchedAttribute = original.fetchedAttribute;
+-		this.fetchStrategy = original.fetchStrategy;
+-	}
+-
+-	@Override
+-	public FetchOwner getOwner() {
+-		return fetchOwner;
+-	}
+-
+-	@Override
+-	public CollectionType getFetchedType() {
+-		return (CollectionType) fetchedAttribute.getType();
+-	}
+-
+-	@Override
+-	public boolean isNullable() {
+-		return true;
+-	}
+-
+-	@Override
+-	public String getAdditionalJoinConditions() {
+-		// only pertinent for HQL...
+-		return null;
+-	}
+-
+-	@Override
+-	public String[] toSqlSelectFragments(String alias) {
+-		return getOwner().toSqlSelectFragmentResolver().toSqlSelectFragments( alias, fetchedAttribute );
+-	}
+-
+-	@Override
+-	public FetchStrategy getFetchStrategy() {
+-		return fetchStrategy;
+-	}
+-
+-//	@Override
+-//	public void hydrate(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		//To change body of implemented methods use File | Settings | File Templates.
+-//	}
+-//
+-//	@Override
+-//	public Object resolve(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		return null;
+-//	}
+-//
+-//	@Override
+-//	public void read(ResultSet resultSet, ResultSetProcessingContext context, Object owner) throws SQLException {
+-//		final Serializable collectionRowKey = (Serializable) getCollectionPersister().readKey(
+-//				resultSet,
+-//				context.getAliasResolutionContext().resolveAliases( this ).getCollectionColumnAliases().getSuffixedKeyAliases(),
+-//				context.getSession()
+-//		);
+-//
+-//		final PersistenceContext persistenceContext = context.getSession().getPersistenceContext();
+-//
+-//		if ( collectionRowKey == null ) {
+-//			// we did not find a collection element in the result set, so we
+-//			// ensure that a collection is created with the owner's identifier,
+-//			// since what we have is an empty collection
+-//			final EntityKey ownerEntityKey = findOwnerEntityKey( context );
+-//			if ( ownerEntityKey == null ) {
+-//				// should not happen
+-//				throw new IllegalStateException(
+-//						"Could not locate owner's EntityKey during attempt to read collection element fro JDBC row : " +
+-//								getPropertyPath().getFullPath()
+-//				);
+-//			}
+-//
+-//			if ( log.isDebugEnabled() ) {
+-//				log.debugf(
+-//						"Result set contains (possibly empty) collection: %s",
+-//						MessageHelper.collectionInfoString(
+-//								getCollectionPersister(),
+-//								ownerEntityKey,
+-//								context.getSession().getFactory()
+-//						)
+-//				);
+-//			}
+-//
+-//			persistenceContext.getLoadContexts()
+-//					.getCollectionLoadContext( resultSet )
+-//					.getLoadingCollection( getCollectionPersister(), ownerEntityKey );
+-//		}
+-//		else {
+-//			// we found a collection element in the result set
+-//			if ( log.isDebugEnabled() ) {
+-//				log.debugf(
+-//						"Found row of collection: %s",
+-//						MessageHelper.collectionInfoString(
+-//								getCollectionPersister(),
+-//								collectionRowKey,
+-//								context.getSession().getFactory()
+-//						)
+-//				);
+-//			}
+-//
+-//			PersistentCollection rowCollection = persistenceContext.getLoadContexts()
+-//					.getCollectionLoadContext( resultSet )
+-//					.getLoadingCollection( getCollectionPersister(), collectionRowKey );
+-//
+-//			final CollectionAliases descriptor = context.getAliasResolutionContext().resolveAliases( this ).getCollectionColumnAliases();
+-//
+-//			if ( rowCollection != null ) {
+-//				final Object element = rowCollection.readFrom( resultSet, getCollectionPersister(), descriptor, owner );
+-//
+-//				if ( getElementGraph() != null ) {
+-//					for ( Fetch fetch : getElementGraph().getFetches() ) {
+-//						fetch.read( resultSet, context, element );
+-//					}
+-//				}
+-//			}
+-//		}
+-//	}
+-//
+-//	private EntityKey findOwnerEntityKey(ResultSetProcessingContext context) {
+-//		return context.getProcessingState( findOwnerEntityReference( getOwner() ) ).getEntityKey();
+-//	}
+-//
+-//	private EntityReference findOwnerEntityReference(FetchOwner owner) {
+-//		return Helper.INSTANCE.findOwnerEntityReference( owner );
+-//	}
+-
+-	@Override
+-	public CollectionFetch makeCopy(CopyContext copyContext, FetchOwner fetchOwnerCopy) {
+-		copyContext.getReturnGraphVisitationStrategy().startingCollectionFetch( this );
+-		final CollectionFetch copy = new CollectionFetch( this, copyContext, fetchOwnerCopy );
+-		copyContext.getReturnGraphVisitationStrategy().finishingCollectionFetch( this );
+-		return copy;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionReference.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionReference.java
+deleted file mode 100644
+index 0311ff3b06..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionReference.java
++++ /dev/null
+@@ -1,56 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.persister.collection.CollectionPersister;
+-
+-/**
+- * Represents a reference to an owned collection either as a return or as a fetch
+- *
+- * @author Steve Ebersole
+- */
+-public interface CollectionReference {
+-
+-	/**
+-	 * Retrieve the lock mode associated with this return.
+-	 *
+-	 * @return The lock mode.
+-	 */
+-	public LockMode getLockMode();
+-
+-	/**
+-	 * Retrieves the CollectionPersister describing the collection associated with this Return.
+-	 *
+-	 * @return The CollectionPersister.
+-	 */
+-	public CollectionPersister getCollectionPersister();
+-
+-	public FetchOwner getIndexGraph();
+-
+-	public FetchOwner getElementGraph();
+-
+-	public PropertyPath getPropertyPath();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionReferenceImplementor.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionReferenceImplementor.java
+deleted file mode 100644
+index 1738802aef..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionReferenceImplementor.java
++++ /dev/null
+@@ -1,30 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface CollectionReferenceImplementor {
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionReturn.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionReturn.java
+deleted file mode 100644
+index 4e709eb2ed..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CollectionReturn.java
++++ /dev/null
+@@ -1,88 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.PropertyPath;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class CollectionReturn extends AbstractCollectionReference implements Return, CopyableReturn {
+-	private final String ownerEntityName;
+-	private final String ownerProperty;
+-
+-	public CollectionReturn(
+-			SessionFactoryImplementor sessionFactory,
+-			LockMode lockMode,
+-			String ownerEntityName,
+-			String ownerProperty) {
+-		super(
+-				sessionFactory,
+-				lockMode,
+-				sessionFactory.getCollectionPersister( ownerEntityName + '.' + ownerProperty ),
+-				// its a root
+-				new PropertyPath(),
+-				// no owner
+-				null
+-		);
+-		this.ownerEntityName = ownerEntityName;
+-		this.ownerProperty = ownerProperty;
+-	}
+-
+-	public CollectionReturn(CollectionReturn original, CopyContext copyContext) {
+-		super( original, copyContext );
+-		this.ownerEntityName = original.ownerEntityName;
+-		this.ownerProperty = original.ownerProperty;
+-	}
+-
+-	/**
+-	 * Returns the class owning the collection.
+-	 *
+-	 * @return The class owning the collection.
+-	 */
+-	public String getOwnerEntityName() {
+-		return ownerEntityName;
+-	}
+-
+-	/**
+-	 * Returns the name of the property representing the collection from the {@link #getOwnerEntityName}.
+-	 *
+-	 * @return The name of the property representing the collection on the owner class.
+-	 */
+-	public String getOwnerProperty() {
+-		return ownerProperty;
+-	}
+-
+-	@Override
+-	public String toString() {
+-		return "CollectionReturn(" + getCollectionPersister().getRole() + ")";
+-	}
+-
+-	@Override
+-	public CollectionReturn makeCopy(CopyContext copyContext) {
+-		return new CollectionReturn( this, copyContext );
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeBasedSqlSelectFragmentResolver.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeBasedSqlSelectFragmentResolver.java
+deleted file mode 100644
+index 5e8f6543bc..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeBasedSqlSelectFragmentResolver.java
++++ /dev/null
+@@ -1,88 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import java.util.Arrays;
+-
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.persister.walking.spi.WalkingException;
+-import org.hibernate.type.CompositeType;
+-import org.hibernate.type.Type;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class CompositeBasedSqlSelectFragmentResolver implements SqlSelectFragmentResolver {
+-	protected static interface BaseSqlSelectFragmentResolver {
+-		public String[] toSqlSelectFragments(String alias);
+-	}
+-
+-	public CompositeBasedSqlSelectFragmentResolver(
+-			SessionFactoryImplementor sessionFactory, CompositeType compositeType,
+-			BaseSqlSelectFragmentResolver baseResolver) {
+-		this.sessionFactory = sessionFactory;
+-		this.compositeType = compositeType;
+-		this.baseResolver = baseResolver;
+-	}
+-
+-	private final SessionFactoryImplementor sessionFactory;
+-	private final CompositeType compositeType;
+-	private final BaseSqlSelectFragmentResolver baseResolver;
+-
+-	@Override
+-	public String[] toSqlSelectFragments(String alias, AttributeDefinition attributeDefinition) {
+-		int subIndex = -1;
+-		int selectFragmentRangeStart = 0;
+-		int selectFragmentRangeEnd = -1;
+-
+-		for ( int i = 0; i < compositeType.getPropertyNames().length; i++ ) {
+-			final Type type = compositeType.getSubtypes()[i];
+-			final int typeColSpan = type.getColumnSpan( sessionFactory );
+-			if ( compositeType.getPropertyNames()[ i ].equals( attributeDefinition.getName() ) ) {
+-				// fount it!
+-				subIndex = i;
+-				selectFragmentRangeEnd = selectFragmentRangeStart + typeColSpan;
+-				break;
+-			}
+-			selectFragmentRangeStart += typeColSpan;
+-		}
+-
+-		if ( subIndex < 0 ) {
+-			throw new WalkingException(
+-					String.format(
+-							"Owner property [%s] not found in composite properties [%s]",
+-							attributeDefinition.getName(),
+-							Arrays.asList( compositeType.getPropertyNames() )
+-					)
+-			);
+-		}
+-
+-		return Arrays.copyOfRange(
+-				baseResolver.toSqlSelectFragments( alias ),
+-				selectFragmentRangeStart,
+-				selectFragmentRangeEnd
+-		);
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeElementGraph.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeElementGraph.java
+deleted file mode 100644
+index 44ae6ddb35..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeElementGraph.java
++++ /dev/null
+@@ -1,100 +0,0 @@
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.HibernateException;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.spi.build.LoadPlanBuildingContext;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.persister.collection.QueryableCollection;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.type.CompositeType;
+-
+-/**
+- * Represents the {@link FetchOwner} for a composite collection element.
+- *
+- * @author Steve Ebersole
+- * @author Gail Badner
+- */
+-public class CompositeElementGraph extends AbstractFetchOwner implements FetchableCollectionElement {
+-	private final CollectionReference collectionReference;
+-	private final PropertyPath propertyPath;
+-	private final CollectionPersister collectionPersister;
+-	private final CompositeBasedSqlSelectFragmentResolver sqlSelectFragmentResolver;
+-
+-	/**
+-	 * Constructs a {@link CompositeElementGraph}.
+-	 *
+-	 * @param sessionFactory - the session factory.
+-	 * @param collectionReference - the collection reference.
+-	 * @param collectionPath - the {@link PropertyPath} for the collection.
+-	 */
+-	public CompositeElementGraph(
+-			SessionFactoryImplementor sessionFactory,
+-			CollectionReference collectionReference,
+-			PropertyPath collectionPath) {
+-		super( sessionFactory );
+-
+-		this.collectionReference = collectionReference;
+-		this.collectionPersister = collectionReference.getCollectionPersister();
+-		this.propertyPath = collectionPath.append( "<elements>" );
+-		this.sqlSelectFragmentResolver = new CompositeBasedSqlSelectFragmentResolver(
+-				sessionFactory,
+-				(CompositeType) collectionPersister.getElementType(),
+-				new CompositeBasedSqlSelectFragmentResolver.BaseSqlSelectFragmentResolver() {
+-					@Override
+-					public String[] toSqlSelectFragments(String alias) {
+-						return ( (QueryableCollection) collectionPersister ).getElementColumnNames( alias );
+-					}
+-				}
+-
+-		);
+-	}
+-
+-	public CompositeElementGraph(CompositeElementGraph original, CopyContext copyContext) {
+-		super( original, copyContext );
+-		this.collectionReference = original.collectionReference;
+-		this.collectionPersister = original.collectionPersister;
+-		this.propertyPath = original.propertyPath;
+-		this.sqlSelectFragmentResolver = original.sqlSelectFragmentResolver;
+-	}
+-
+-	@Override
+-	public CollectionReference getCollectionReference() {
+-		return collectionReference;
+-	}
+-
+-	@Override
+-	public void validateFetchPlan(FetchStrategy fetchStrategy, AttributeDefinition attributeDefinition) {
+-	}
+-
+-	@Override
+-	public EntityPersister retrieveFetchSourcePersister() {
+-		return collectionPersister.getOwnerEntityPersister();
+-	}
+-
+-	@Override
+-	public PropertyPath getPropertyPath() {
+-		return propertyPath;
+-	}
+-
+-	@Override
+-	public CompositeElementGraph makeCopy(CopyContext copyContext) {
+-		return new CompositeElementGraph( this, copyContext );
+-	}
+-
+-	@Override
+-	public CollectionFetch buildCollectionFetch(
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		throw new HibernateException( "Collection composite element cannot define collections" );
+-	}
+-
+-	@Override
+-	public SqlSelectFragmentResolver toSqlSelectFragmentResolver() {
+-		return sqlSelectFragmentResolver;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeFetch.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeFetch.java
+deleted file mode 100644
+index e802041b40..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeFetch.java
++++ /dev/null
+@@ -1,140 +0,0 @@
+-/*
+- * jDocBook, processing of DocBook sources
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.FetchStyle;
+-import org.hibernate.engine.FetchTiming;
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.plan.exec.process.internal.Helper;
+-import org.hibernate.loader.plan.spi.build.LoadPlanBuildingContext;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.type.CompositeType;
+-
+-/**
+- * Represents a {@link Fetch} for a composite attribute as well as a
+- * {@link FetchOwner} for any sub-attributes fetches.
+- *
+- * @author Steve Ebersole
+- * @author Gail Badner
+- */
+-public class CompositeFetch extends AbstractSingularAttributeFetch {
+-	private static final FetchStrategy FETCH_PLAN = new FetchStrategy( FetchTiming.IMMEDIATE, FetchStyle.JOIN );
+-
+-	private final CompositeBasedSqlSelectFragmentResolver sqlSelectFragmentResolver;
+-
+-	/**
+-	 * Constructs a {@link CompositeFetch} object.
+-	 *
+-	 * @param sessionFactory - the session factory.
+-	 * @param owner - the fetch owner for this fetch.
+-	 * @param fetchedAttribute - the owner's property referring to this fetch.
+-	 */
+-	public CompositeFetch(
+-			SessionFactoryImplementor sessionFactory,
+-			final FetchOwner owner,
+-			final AttributeDefinition fetchedAttribute) {
+-		super( sessionFactory, owner, fetchedAttribute, FETCH_PLAN );
+-
+-		this.sqlSelectFragmentResolver = new CompositeBasedSqlSelectFragmentResolver(
+-				sessionFactory,
+-				(CompositeType) fetchedAttribute.getType(),
+-				new CompositeBasedSqlSelectFragmentResolver.BaseSqlSelectFragmentResolver() {
+-					@Override
+-					public String[] toSqlSelectFragments(String alias) {
+-						return owner.toSqlSelectFragmentResolver().toSqlSelectFragments( alias, fetchedAttribute );
+-					}
+-				}
+-		);
+-	}
+-
+-	public CompositeFetch(CompositeFetch original, CopyContext copyContext, FetchOwner fetchOwnerCopy) {
+-		super( original, copyContext, fetchOwnerCopy );
+-		this.sqlSelectFragmentResolver = original.sqlSelectFragmentResolver;
+-	}
+-
+-	@Override
+-	public SqlSelectFragmentResolver toSqlSelectFragmentResolver() {
+-		return sqlSelectFragmentResolver;
+-	}
+-
+-	@Override
+-	public EntityPersister retrieveFetchSourcePersister() {
+-		return getOwner().retrieveFetchSourcePersister();
+-	}
+-
+-//	@Override
+-//	public void hydrate(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		// anything to do?
+-//	}
+-//
+-//	@Override
+-//	public Object resolve(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		// anything to do?
+-//		return null;
+-//	}
+-//
+-//	@Override
+-//	public void read(ResultSet resultSet, ResultSetProcessingContext context, Object owner) throws SQLException {
+-//		final EntityReference ownerEntityReference = Helper.INSTANCE.findOwnerEntityReference( this );
+-//		final ResultSetProcessingContext.EntityReferenceProcessingState entityReferenceProcessingState = context.getProcessingState(
+-//				ownerEntityReference
+-//		);
+-//		final EntityKey entityKey = entityReferenceProcessingState.getEntityKey();
+-//		final Object entity = context.resolveEntityKey( entityKey, Helper.INSTANCE.findOwnerEntityReference( (FetchOwner) ownerEntityReference ) );
+-//		for ( Fetch fetch : getFetches() ) {
+-//			fetch.read( resultSet, context, entity );
+-//		}
+-//	}
+-
+-	@Override
+-	public CompositeFetch makeCopy(CopyContext copyContext, FetchOwner fetchOwnerCopy) {
+-		copyContext.getReturnGraphVisitationStrategy().startingCompositeFetch( this );
+-		final CompositeFetch copy = new CompositeFetch( this, copyContext, fetchOwnerCopy );
+-		copyContext.getReturnGraphVisitationStrategy().finishingCompositeFetch( this );
+-		return copy;
+-	}
+-
+-	@Override
+-	public CollectionFetch buildCollectionFetch(
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		return new CollectionFetch(
+-				loadPlanBuildingContext.getSessionFactory(),
+-				LockMode.NONE, // todo : for now
+-				this,
+-				fetchStrategy,
+-				attributeDefinition
+-		);
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeIndexGraph.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeIndexGraph.java
+deleted file mode 100644
+index 3cf59b0aec..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CompositeIndexGraph.java
++++ /dev/null
+@@ -1,99 +0,0 @@
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.HibernateException;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.spi.build.LoadPlanBuildingContext;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.persister.collection.QueryableCollection;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.type.CompositeType;
+-
+-/**
+- *  Represents the {@link FetchOwner} for a composite collection index.
+- *
+- * @author Steve Ebersole
+- * @author Gail Badner
+- */
+-public class CompositeIndexGraph extends AbstractFetchOwner implements FetchableCollectionIndex {
+-	private final CollectionReference collectionReference;
+-	private final PropertyPath propertyPath;
+-	private final CollectionPersister collectionPersister;
+-	private final CompositeBasedSqlSelectFragmentResolver sqlSelectFragmentResolver;
+-
+-	/**
+-	 * Constructs a {@link CompositeElementGraph}.
+-	 *
+-	 * @param sessionFactory - the session factory.
+-	 * @param collectionReference - the collection reference.
+-	 * @param collectionPath - the {@link PropertyPath} for the collection.
+-	 */
+-	public CompositeIndexGraph(
+-			SessionFactoryImplementor sessionFactory,
+-			CollectionReference collectionReference,
+-			PropertyPath collectionPath) {
+-		super( sessionFactory );
+-		this.collectionReference = collectionReference;
+-		this.collectionPersister = collectionReference.getCollectionPersister();
+-		this.propertyPath = collectionPath.append( "<index>" );
+-		this.sqlSelectFragmentResolver = new CompositeBasedSqlSelectFragmentResolver(
+-				sessionFactory,
+-				(CompositeType) collectionPersister.getIndexType(),
+-				new CompositeBasedSqlSelectFragmentResolver.BaseSqlSelectFragmentResolver() {
+-					@Override
+-					public String[] toSqlSelectFragments(String alias) {
+-						return ( (QueryableCollection) collectionPersister ).getIndexColumnNames( alias );
+-					}
+-				}
+-		);
+-	}
+-
+-	protected CompositeIndexGraph(CompositeIndexGraph original, CopyContext copyContext) {
+-		super( original, copyContext );
+-		this.collectionReference = original.collectionReference;
+-		this.collectionPersister = original.collectionPersister;
+-		this.propertyPath = original.propertyPath;
+-		this.sqlSelectFragmentResolver = original.sqlSelectFragmentResolver;
+-	}
+-
+-	@Override
+-	public void validateFetchPlan(FetchStrategy fetchStrategy, AttributeDefinition attributeDefinition) {
+-	}
+-
+-	@Override
+-	public EntityPersister retrieveFetchSourcePersister() {
+-		return collectionPersister.getOwnerEntityPersister();
+-	}
+-
+-	@Override
+-	public CollectionReference getCollectionReference() {
+-		return collectionReference;
+-	}
+-
+-	@Override
+-	public PropertyPath getPropertyPath() {
+-		return propertyPath;
+-	}
+-
+-	@Override
+-	public CompositeIndexGraph makeCopy(CopyContext copyContext) {
+-		return new CompositeIndexGraph( this, copyContext );
+-	}
+-
+-	@Override
+-	public CollectionFetch buildCollectionFetch(
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		throw new HibernateException( "Composite index cannot define collections" );
+-	}
+-
+-	@Override
+-	public SqlSelectFragmentResolver toSqlSelectFragmentResolver() {
+-		return sqlSelectFragmentResolver;
+-	}
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CopyContext.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CopyContext.java
+deleted file mode 100644
+index bfce0bfaa0..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CopyContext.java
++++ /dev/null
+@@ -1,33 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.loader.plan.spi.visit.ReturnGraphVisitationStrategy;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface CopyContext {
+-	public ReturnGraphVisitationStrategy getReturnGraphVisitationStrategy();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CopyableFetch.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CopyableFetch.java
+deleted file mode 100644
+index b5c11ba77d..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CopyableFetch.java
++++ /dev/null
+@@ -1,31 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface CopyableFetch {
+-	public Fetch makeCopy(CopyContext copyContext, FetchOwner fetchOwnerCopy);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CopyableReturn.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CopyableReturn.java
+deleted file mode 100644
+index 48ad99f3df..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/CopyableReturn.java
++++ /dev/null
+@@ -1,38 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface CopyableReturn {
+-
+-	/**
+-	 * Makes a deep copy.
+-	 *
+-	 * @return
+-	 */
+-	public CopyableReturn makeCopy(CopyContext copyContext);
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityElementGraph.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityElementGraph.java
+deleted file mode 100644
+index 840196f616..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityElementGraph.java
++++ /dev/null
+@@ -1,180 +0,0 @@
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.spi.build.LoadPlanBuildingContext;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.entity.Queryable;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.type.AssociationType;
+-import org.hibernate.type.EntityType;
+-
+-/**
+- *  Represents the {@link FetchOwner} for a collection element that is
+- *  an entity association type.
+- *
+- * @author Steve Ebersole
+- */
+-public class EntityElementGraph extends AbstractFetchOwner implements FetchableCollectionElement, EntityReference {
+-	private final CollectionReference collectionReference;
+-	private final CollectionPersister collectionPersister;
+-	private final AssociationType elementType;
+-	private final EntityPersister elementPersister;
+-	private final PropertyPath propertyPath;
+-	private final EntityPersisterBasedSqlSelectFragmentResolver sqlSelectFragmentResolver;
+-
+-	private IdentifierDescription identifierDescription;
+-
+-	/**
+-	 * Constructs an {@link EntityElementGraph}.
+-	 *
+-	 * @param sessionFactory - the session factory.
+-	 * @param collectionReference - the collection reference.
+-	 * @param collectionPath - the {@link PropertyPath} for the collection.
+-	 */
+-	public EntityElementGraph(
+-			SessionFactoryImplementor sessionFactory,
+-			CollectionReference collectionReference,
+-			PropertyPath collectionPath) {
+-		super( sessionFactory );
+-
+-		this.collectionReference = collectionReference;
+-		this.collectionPersister = collectionReference.getCollectionPersister();
+-		this.elementType = (AssociationType) collectionPersister.getElementType();
+-		this.elementPersister = (EntityPersister) this.elementType.getAssociatedJoinable( sessionFactory() );
+-		this.propertyPath = collectionPath;
+-		this.sqlSelectFragmentResolver = new EntityPersisterBasedSqlSelectFragmentResolver( (Queryable) elementPersister );
+-	}
+-
+-	public EntityElementGraph(EntityElementGraph original, CopyContext copyContext) {
+-		super( original, copyContext );
+-
+-		this.collectionReference = original.collectionReference;
+-		this.collectionPersister = original.collectionReference.getCollectionPersister();
+-		this.elementType = original.elementType;
+-		this.elementPersister = original.elementPersister;
+-		this.propertyPath = original.propertyPath;
+-		this.sqlSelectFragmentResolver = original.sqlSelectFragmentResolver;
+-	}
+-
+-	@Override
+-	public LockMode getLockMode() {
+-		return null;
+-	}
+-
+-	@Override
+-	public EntityReference getEntityReference() {
+-		return this;
+-	}
+-
+-	@Override
+-	public EntityPersister getEntityPersister() {
+-		return elementPersister;
+-	}
+-
+-	@Override
+-	public IdentifierDescription getIdentifierDescription() {
+-		return identifierDescription;
+-	}
+-
+-	@Override
+-	public void validateFetchPlan(FetchStrategy fetchStrategy, AttributeDefinition attributeDefinition) {
+-	}
+-
+-	@Override
+-	public EntityPersister retrieveFetchSourcePersister() {
+-		return elementPersister;
+-	}
+-
+-	@Override
+-	public PropertyPath getPropertyPath() {
+-		return propertyPath;
+-	}
+-
+-	@Override
+-	public void injectIdentifierDescription(IdentifierDescription identifierDescription) {
+-		this.identifierDescription = identifierDescription;
+-	}
+-
+-	@Override
+-	public EntityElementGraph makeCopy(CopyContext copyContext) {
+-		return new EntityElementGraph( this, copyContext );
+-	}
+-
+-	@Override
+-	public CollectionReference getCollectionReference() {
+-		return collectionReference;
+-	}
+-
+-	@Override
+-	public String toString() {
+-		return "EntityElementGraph(collection=" + collectionPersister.getRole() + ", type=" + elementPersister.getEntityName() + ")";
+-	}
+-
+-	@Override
+-	public SqlSelectFragmentResolver toSqlSelectFragmentResolver() {
+-		return sqlSelectFragmentResolver;
+-	}
+-
+-	@Override
+-	public EntityFetch buildEntityFetch(
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext) {
+-		final EntityType attributeType = (EntityType) attributeDefinition.getType();
+-
+-		final FetchOwner collectionOwner = CollectionFetch.class.isInstance( collectionReference )
+-				? ( (CollectionFetch) collectionReference ).getOwner()
+-				: null;
+-
+-		if ( collectionOwner != null ) {
+-			// check for bi-directionality
+-			final boolean sameType = attributeType.getAssociatedEntityName().equals(
+-					collectionOwner.retrieveFetchSourcePersister().getEntityName()
+-			);
+-
+-			if ( sameType ) {
+-				// todo : check for columns too...
+-
+-				return new BidirectionalEntityElementGraphFetch(
+-						sessionFactory(),
+-						LockMode.READ,
+-						this,
+-						attributeDefinition,
+-						fetchStrategy,
+-						collectionOwner
+-				);
+-			}
+-		}
+-
+-		return super.buildEntityFetch(
+-				attributeDefinition,
+-				fetchStrategy,
+-				loadPlanBuildingContext
+-		);
+-	}
+-
+-	private class BidirectionalEntityElementGraphFetch extends EntityFetch implements BidirectionalEntityFetch {
+-		private final FetchOwner collectionOwner;
+-
+-		public BidirectionalEntityElementGraphFetch(
+-				SessionFactoryImplementor sessionFactory,
+-				LockMode lockMode,
+-				FetchOwner owner,
+-				AttributeDefinition fetchedAttribute,
+-				FetchStrategy fetchStrategy,
+-				FetchOwner collectionOwner) {
+-			super( sessionFactory, lockMode, owner, fetchedAttribute, fetchStrategy );
+-			this.collectionOwner = collectionOwner;
+-		}
+-
+-		@Override
+-		public EntityReference getTargetEntityReference() {
+-			return (EntityReference) collectionOwner;
+-		}
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityFetch.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityFetch.java
+deleted file mode 100644
+index 63a99892bb..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityFetch.java
++++ /dev/null
+@@ -1,299 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.WrongClassException;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.EntityKey;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.entity.Queryable;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.persister.walking.spi.WalkingException;
+-import org.hibernate.type.EntityType;
+-
+-import static org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext.EntityReferenceProcessingState;
+-
+-/**
+- * Represents a {@link Fetch} for an entity association attribute as well as a
+- * {@link FetchOwner} of the entity association sub-attribute fetches.
+-
+- * @author Steve Ebersole
+- */
+-public class EntityFetch extends AbstractSingularAttributeFetch implements EntityReference, Fetch {
+-	private final EntityPersister persister;
+-	private final EntityPersisterBasedSqlSelectFragmentResolver sqlSelectFragmentResolver;
+-
+-	private IdentifierDescription identifierDescription;
+-
+-	// todo : remove these
+-	private final LockMode lockMode;
+-
+-	/**
+-	 * Constructs an {@link EntityFetch} object.
+-	 *
+-	 * @param sessionFactory - the session factory.
+-	 * @param lockMode - the lock mode.
+-	 * @param owner - the fetch owner for this fetch.
+-	 * @param fetchedAttribute - the attribute being fetched
+-	 * @param fetchStrategy - the fetch strategy for this fetch.
+-	 */
+-	public EntityFetch(
+-			SessionFactoryImplementor sessionFactory,
+-			LockMode lockMode,
+-			FetchOwner owner,
+-			AttributeDefinition fetchedAttribute,
+-			FetchStrategy fetchStrategy) {
+-		super( sessionFactory, owner, fetchedAttribute, fetchStrategy );
+-
+-		this.persister = sessionFactory.getEntityPersister( getFetchedType().getAssociatedEntityName() );
+-		if ( persister == null ) {
+-			throw new WalkingException(
+-					String.format(
+-							"Unable to locate EntityPersister [%s] for fetch [%s]",
+-							getFetchedType().getAssociatedEntityName(),
+-							fetchedAttribute.getName()
+-					)
+-			);
+-		}
+-		this.sqlSelectFragmentResolver = new EntityPersisterBasedSqlSelectFragmentResolver( (Queryable) persister );
+-
+-		this.lockMode = lockMode;
+-	}
+-
+-	/**
+-	 * Copy constructor.
+-	 *
+-	 * @param original The original fetch
+-	 * @param copyContext Access to contextual needs for the copy operation
+-	 */
+-	protected EntityFetch(EntityFetch original, CopyContext copyContext, FetchOwner fetchOwnerCopy) {
+-		super( original, copyContext, fetchOwnerCopy );
+-		this.persister = original.persister;
+-		this.sqlSelectFragmentResolver = original.sqlSelectFragmentResolver;
+-
+-		this.lockMode = original.lockMode;
+-	}
+-
+-	@Override
+-	public EntityType getFetchedType() {
+-		return (EntityType) super.getFetchedType();
+-	}
+-
+-	@Override
+-	public String[] toSqlSelectFragments(String alias) {
+-		return getOwner().toSqlSelectFragmentResolver().toSqlSelectFragments( alias, getFetchedAttribute() );
+-	}
+-
+-	@Override
+-	public EntityReference getEntityReference() {
+-		return this;
+-	}
+-
+-	@Override
+-	public EntityPersister getEntityPersister() {
+-		return persister;
+-	}
+-
+-	@Override
+-	public SqlSelectFragmentResolver toSqlSelectFragmentResolver() {
+-		return sqlSelectFragmentResolver;
+-	}
+-
+-	@Override
+-	public IdentifierDescription getIdentifierDescription() {
+-		return identifierDescription;
+-	}
+-
+-	@Override
+-	public LockMode getLockMode() {
+-		return lockMode;
+-	}
+-
+-	@Override
+-	public EntityPersister retrieveFetchSourcePersister() {
+-		return persister;
+-	}
+-
+-	@Override
+-	public void injectIdentifierDescription(IdentifierDescription identifierDescription) {
+-		this.identifierDescription = identifierDescription;
+-	}
+-
+-//	@Override
+-//	public void hydrate(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		identifierDescription.hydrate( resultSet, context );
+-//
+-//		for ( Fetch fetch : getFetches() ) {
+-//			fetch.hydrate( resultSet, context );
+-//		}
+-//	}
+-//
+-//	@Override
+-//	public EntityKey resolve(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		final ResultSetProcessingContext.EntityReferenceProcessingState entityReferenceProcessingState = context.getProcessingState(
+-//				this
+-//		);
+-//		EntityKey entityKey = entityReferenceProcessingState.getEntityKey();
+-//		if ( entityKey == null ) {
+-//			entityKey = identifierDescription.resolve( resultSet, context );
+-//			if ( entityKey == null ) {
+-//				// register the non-existence (though only for one-to-one associations)
+-//				if ( getFetchedType().isOneToOne() ) {
+-//					// first, find our owner's entity-key...
+-//					final EntityKey ownersEntityKey = context.getProcessingState( (EntityReference) getOwner() ).getEntityKey();
+-//					if ( ownersEntityKey != null ) {
+-//						context.getSession().getPersistenceContext()
+-//								.addNullProperty( ownersEntityKey, getFetchedType().getPropertyName() );
+-//					}
+-//				}
+-//			}
+-//
+-//			entityReferenceProcessingState.registerEntityKey( entityKey );
+-//
+-//			for ( Fetch fetch : getFetches() ) {
+-//				fetch.resolve( resultSet, context );
+-//			}
+-//		}
+-//
+-//		return entityKey;
+-//	}
+-//
+-//	@Override
+-//	public void read(ResultSet resultSet, ResultSetProcessingContext context, Object owner) throws SQLException {
+-//		final EntityReferenceProcessingState entityReferenceProcessingState = context.getProcessingState( this );
+-//		final EntityKey entityKey = entityReferenceProcessingState.getEntityKey();
+-//		if ( entityKey == null ) {
+-//			return;
+-//		}
+-//		final Object entity = context.resolveEntityKey( entityKey, this );
+-//		for ( Fetch fetch : getFetches() ) {
+-//			fetch.read( resultSet, context, entity );
+-//		}
+-//	}
+-
+-//	/**
+-//	 * Resolve any fetches required to resolve the identifier as well
+-//	 * as the entity key for this fetch..
+-//	 *
+-//	 * @param resultSet - the result set.
+-//	 * @param context - the result set processing context.
+-//	 * @return the entity key for this fetch.
+-//	 *
+-//	 * @throws SQLException
+-//	 */
+-//	public EntityKey resolveInIdentifier(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException {
+-//		// todo : may not need to do this if entitykey is already part of the resolution context
+-//
+-//		final EntityKey entityKey = resolve( resultSet, context );
+-//
+-//		final Object existing = context.getSession().getEntityUsingInterceptor( entityKey );
+-//
+-//		if ( existing != null ) {
+-//			if ( !persister.isInstance( existing ) ) {
+-//				throw new WrongClassException(
+-//						"loaded object was of wrong class " + existing.getClass(),
+-//						entityKey.getIdentifier(),
+-//						persister.getEntityName()
+-//				);
+-//			}
+-//
+-//			if ( getLockMode() != null && getLockMode() != LockMode.NONE ) {
+-//				final boolean isVersionCheckNeeded = persister.isVersioned()
+-//						&& context.getSession().getPersistenceContext().getEntry( existing ).getLockMode().lessThan( getLockMode() );
+-//
+-//				// we don't need to worry about existing version being uninitialized because this block isn't called
+-//				// by a re-entrant load (re-entrant loads _always_ have lock mode NONE)
+-//				if ( isVersionCheckNeeded ) {
+-//					//we only check the version when _upgrading_ lock modes
+-//					context.checkVersion(
+-//							resultSet,
+-//							persister,
+-//							context.getAliasResolutionContext().resolveAliases( this ).getColumnAliases(),
+-//							entityKey,
+-//							existing
+-//					);
+-//					//we need to upgrade the lock mode to the mode requested
+-//					context.getSession().getPersistenceContext().getEntry( existing ).setLockMode( getLockMode() );
+-//				}
+-//			}
+-//		}
+-//		else {
+-//			final String concreteEntityTypeName = context.getConcreteEntityTypeName(
+-//					resultSet,
+-//					persister,
+-//					context.getAliasResolutionContext().resolveAliases( this ).getColumnAliases(),
+-//					entityKey
+-//			);
+-//
+-//			final Object entityInstance = context.getSession().instantiate(
+-//					concreteEntityTypeName,
+-//					entityKey.getIdentifier()
+-//			);
+-//
+-//			//need to hydrate it.
+-//
+-//			// grab its state from the ResultSet and keep it in the Session
+-//			// (but don't yet initialize the object itself)
+-//			// note that we acquire LockMode.READ even if it was not requested
+-//			LockMode acquiredLockMode = getLockMode() == LockMode.NONE ? LockMode.READ : getLockMode();
+-//
+-//			context.loadFromResultSet(
+-//					resultSet,
+-//					entityInstance,
+-//					concreteEntityTypeName,
+-//					entityKey,
+-//					context.getAliasResolutionContext().resolveAliases( this ).getColumnAliases(),
+-//					acquiredLockMode,
+-//					persister,
+-//					getFetchStrategy(),
+-//					true,
+-//					getFetchedType()
+-//			);
+-//
+-//			// materialize associations (and initialize the object) later
+-//			context.registerHydratedEntity( this, entityKey, entityInstance );
+-//		}
+-//
+-//		return entityKey;
+-//	}
+-
+-	@Override
+-	public String toString() {
+-		return "EntityFetch(" + getPropertyPath().getFullPath() + " -> " + persister.getEntityName() + ")";
+-	}
+-
+-	@Override
+-	public EntityFetch makeCopy(CopyContext copyContext, FetchOwner fetchOwnerCopy) {
+-		copyContext.getReturnGraphVisitationStrategy().startingEntityFetch( this );
+-		final EntityFetch copy = new EntityFetch( this, copyContext, fetchOwnerCopy );
+-		copyContext.getReturnGraphVisitationStrategy().finishingEntityFetch( this );
+-		return copy;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityIndexGraph.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityIndexGraph.java
+deleted file mode 100644
+index 2c7b0d2170..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityIndexGraph.java
++++ /dev/null
+@@ -1,137 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.entity.Queryable;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.type.AssociationType;
+-
+-/**
+- *  Represents the {@link FetchOwner} for a collection index that is an entity.
+- *
+- * @author Steve Ebersole
+- */
+-public class EntityIndexGraph extends AbstractFetchOwner implements FetchableCollectionIndex, EntityReference {
+-	private final CollectionReference collectionReference;
+-	private final CollectionPersister collectionPersister;
+-	private final AssociationType indexType;
+-	private final EntityPersister indexPersister;
+-	private final PropertyPath propertyPath;
+-	private final EntityPersisterBasedSqlSelectFragmentResolver sqlSelectFragmentResolver;
+-
+-	private IdentifierDescription identifierDescription;
+-
+-	/**
+-	 * Constructs an {@link EntityIndexGraph}.
+-	 *
+-	 * @param sessionFactory - the session factory.
+-	 * @param collectionReference - the collection reference.
+-	 * @param collectionPath - the {@link PropertyPath} for the collection.
+-	 */
+-	public EntityIndexGraph(
+-			SessionFactoryImplementor sessionFactory,
+-			CollectionReference collectionReference,
+-			PropertyPath collectionPath) {
+-		super( sessionFactory );
+-		this.collectionReference = collectionReference;
+-		this.collectionPersister = collectionReference.getCollectionPersister();
+-		this.indexType = (AssociationType) collectionPersister.getIndexType();
+-		this.indexPersister = (EntityPersister) this.indexType.getAssociatedJoinable( sessionFactory() );
+-		this.propertyPath = collectionPath.append( "<index>" ); // todo : do we want the <index> part?
+-		this.sqlSelectFragmentResolver = new EntityPersisterBasedSqlSelectFragmentResolver( (Queryable) indexPersister );
+-	}
+-
+-	public EntityIndexGraph(EntityIndexGraph original, CopyContext copyContext) {
+-		super( original, copyContext );
+-		this.collectionReference = original.collectionReference;
+-		this.collectionPersister = original.collectionReference.getCollectionPersister();
+-		this.indexType = original.indexType;
+-		this.indexPersister = original.indexPersister;
+-		this.propertyPath = original.propertyPath;
+-		this.sqlSelectFragmentResolver = original.sqlSelectFragmentResolver;
+-	}
+-
+-	/**
+-	 * TODO: Does lock mode apply to a collection index that is an entity?
+-	 */
+-	@Override
+-	public LockMode getLockMode() {
+-		return null;
+-	}
+-
+-	@Override
+-	public EntityReference getEntityReference() {
+-		return this;
+-	}
+-
+-	@Override
+-	public EntityPersister getEntityPersister() {
+-		return indexPersister;
+-	}
+-
+-	@Override
+-	public IdentifierDescription getIdentifierDescription() {
+-		return identifierDescription;
+-	}
+-
+-	@Override
+-	public void validateFetchPlan(FetchStrategy fetchStrategy, AttributeDefinition attributeDefinition) {
+-	}
+-
+-	@Override
+-	public EntityPersister retrieveFetchSourcePersister() {
+-		return indexPersister;
+-	}
+-
+-	@Override
+-	public PropertyPath getPropertyPath() {
+-		return propertyPath;
+-	}
+-
+-	@Override
+-	public void injectIdentifierDescription(IdentifierDescription identifierDescription) {
+-		this.identifierDescription = identifierDescription;
+-	}
+-
+-	@Override
+-	public EntityIndexGraph makeCopy(CopyContext copyContext) {
+-		return new EntityIndexGraph( this, copyContext );
+-	}
+-
+-	@Override
+-	public CollectionReference getCollectionReference() {
+-		return collectionReference;
+-	}
+-
+-	@Override
+-	public SqlSelectFragmentResolver toSqlSelectFragmentResolver() {
+-		return sqlSelectFragmentResolver;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityPersisterBasedSqlSelectFragmentResolver.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityPersisterBasedSqlSelectFragmentResolver.java
+deleted file mode 100644
+index efdec15647..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityPersisterBasedSqlSelectFragmentResolver.java
++++ /dev/null
+@@ -1,44 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.persister.entity.Queryable;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class EntityPersisterBasedSqlSelectFragmentResolver implements SqlSelectFragmentResolver {
+-	private final Queryable entityPersister;
+-
+-	public EntityPersisterBasedSqlSelectFragmentResolver(Queryable entityPersister) {
+-		this.entityPersister = entityPersister;
+-	}
+-
+-	@Override
+-	public String[] toSqlSelectFragments(String alias, AttributeDefinition attributeDefinition) {
+-		return entityPersister.toColumns( alias, attributeDefinition.getName() );
+-	}
+-
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReference.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReference.java
+deleted file mode 100644
+index 8c4f68cbd9..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReference.java
++++ /dev/null
+@@ -1,53 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.loader.plan.spi.build.IdentifierDescriptionInjectable;
+-import org.hibernate.persister.entity.EntityPersister;
+-
+-/**
+- * Represents a reference to an entity either as a return or as a fetch
+- *
+- * @author Steve Ebersole
+- */
+-public interface EntityReference
+-		extends IdentifierDescriptionInjectable, ResultSetProcessingContext.EntityKeyResolutionContext {
+-	/**
+-	 * Retrieve the lock mode associated with this return.
+-	 *
+-	 * @return The lock mode.
+-	 */
+-	public LockMode getLockMode();
+-
+-	/**
+-	 * Retrieves the EntityPersister describing the entity associated with this Return.
+-	 *
+-	 * @return The EntityPersister.
+-	 */
+-	public EntityPersister getEntityPersister();
+-
+-	public IdentifierDescription getIdentifierDescription();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReference2.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReference2.java
+deleted file mode 100644
+index fd2084c6aa..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReference2.java
++++ /dev/null
+@@ -1,47 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.persister.entity.EntityPersister;
+-
+-/**
+- * Represents a reference to an entity either as a return or as a fetch
+- *
+- * @author Steve Ebersole
+- */
+-public interface EntityReference2 {
+-	/**
+-	 * Retrieves the EntityPersister describing the entity associated with this Return.
+-	 *
+-	 * @return The EntityPersister.
+-	 */
+-	public EntityPersister getEntityPersister();
+-
+-	/**
+-	 * Get the description of this entity's identifier.
+-	 *
+-	 * @return The identifier description.
+-	 */
+-	public IdentifierDescription getIdentifierDescription();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReturn.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReturn.java
+deleted file mode 100644
+index d1feabac14..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReturn.java
++++ /dev/null
+@@ -1,132 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.entity.Queryable;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-
+-/**
+- * Represents an entity return value in the query results.  Not the same
+- * as a result (column) in the JDBC ResultSet!
+- *
+- * @see Return
+- *
+- * @author Steve Ebersole
+- */
+-public class EntityReturn extends AbstractFetchOwner implements Return, EntityReference, CopyableReturn {
+-	private final EntityPersister persister;
+-	private final EntityPersisterBasedSqlSelectFragmentResolver sqlSelectFragmentResolver;
+-	private IdentifierDescription identifierDescription;
+-
+-	private final PropertyPath propertyPath;
+-
+-	private final LockMode lockMode;
+-
+-	/**
+-	 * Construct an {@link EntityReturn}.
+-	 *
+-	 * @param sessionFactory - the session factory.
+-	 * @param lockMode - the lock mode.
+-	 * @param entityName - the entity name.
+-	 */
+-	public EntityReturn(
+-			SessionFactoryImplementor sessionFactory,
+-			LockMode lockMode,
+-			String entityName) {
+-		super( sessionFactory );
+-		this.persister = sessionFactory.getEntityPersister( entityName );
+-		this.propertyPath = new PropertyPath( entityName );
+-		this.sqlSelectFragmentResolver = new EntityPersisterBasedSqlSelectFragmentResolver( (Queryable) persister );
+-
+-		this.lockMode = lockMode;
+-	}
+-
+-	protected EntityReturn(EntityReturn original, CopyContext copyContext) {
+-		super( original, copyContext );
+-		this.persister = original.persister;
+-		this.propertyPath = original.propertyPath;
+-		this.sqlSelectFragmentResolver = original.sqlSelectFragmentResolver;
+-
+-		this.lockMode = original.lockMode;
+-	}
+-
+-	@Override
+-	public LockMode getLockMode() {
+-		return lockMode;
+-	}
+-
+-	@Override
+-	public EntityReference getEntityReference() {
+-		return this;
+-	}
+-
+-	@Override
+-	public EntityPersister getEntityPersister() {
+-		return persister;
+-	}
+-
+-	@Override
+-	public IdentifierDescription getIdentifierDescription() {
+-		return identifierDescription;
+-	}
+-
+-	@Override
+-	public void validateFetchPlan(FetchStrategy fetchStrategy, AttributeDefinition attributeDefinition) {
+-	}
+-
+-	@Override
+-	public EntityPersister retrieveFetchSourcePersister() {
+-		return getEntityPersister();
+-	}
+-
+-	@Override
+-	public PropertyPath getPropertyPath() {
+-		return propertyPath;
+-	}
+-
+-	@Override
+-	public void injectIdentifierDescription(IdentifierDescription identifierDescription) {
+-		this.identifierDescription = identifierDescription;
+-	}
+-
+-	@Override
+-	public String toString() {
+-		return "EntityReturn(" + persister.getEntityName() + ")";
+-	}
+-
+-	@Override
+-	public EntityReturn makeCopy(CopyContext copyContext) {
+-		return new EntityReturn( this, copyContext );
+-	}
+-
+-	@Override
+-	public SqlSelectFragmentResolver toSqlSelectFragmentResolver() {
+-		return sqlSelectFragmentResolver;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReturn2.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReturn2.java
+deleted file mode 100644
+index abafc44d85..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/EntityReturn2.java
++++ /dev/null
+@@ -1,31 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface EntityReturn2 extends EntityReference2 {
+-	public String getQuerySpaceUid();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/Fetch.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/Fetch.java
+deleted file mode 100644
+index 5571da6be4..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/Fetch.java
++++ /dev/null
+@@ -1,89 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.exec.process.spi.ResultSetProcessingContext;
+-import org.hibernate.type.Type;
+-
+-/**
+- * Contract for associations that are being fetched.
+- * <p/>
+- * NOTE : can represent components/embeddables
+- *
+- * @author Steve Ebersole
+- */
+-public interface Fetch extends CopyableFetch {
+-	/**
+-	 * Obtain the owner of this fetch.
+-	 *
+-	 * @return The fetch owner.
+-	 */
+-	public FetchOwner getOwner();
+-
+-	/**
+-	 * Get the property path to this fetch
+-	 *
+-	 * @return The property path
+-	 */
+-	public PropertyPath getPropertyPath();
+-
+-	public Type getFetchedType();
+-
+-	/**
+-	 * Gets the fetch strategy for this fetch.
+-	 *
+-	 * @return the fetch strategy for this fetch.
+-	 */
+-	public FetchStrategy getFetchStrategy();
+-
+-	/**
+-	 * Is this fetch nullable?
+-	 *
+-	 * @return true, if this fetch is nullable; false, otherwise.
+-	 */
+-	public boolean isNullable();
+-
+-	public String getAdditionalJoinConditions();
+-
+-	/**
+-	 * Generates the SQL select fragments for this fetch.  A select fragment is the column and formula references.
+-	 *
+-	 * @return the select fragments
+-	 */
+-	public String[] toSqlSelectFragments(String alias);
+-
+-//	public void hydrate(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException;
+-//
+-//	public Object resolve(ResultSet resultSet, ResultSetProcessingContext context) throws SQLException;
+-//
+-//	public void read(ResultSet resultSet, ResultSetProcessingContext context, Object owner) throws SQLException;
+-
+-	@Override
+-	public Fetch makeCopy(CopyContext copyContext, FetchOwner fetchOwnerCopy);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/FetchOwner.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/FetchOwner.java
+deleted file mode 100644
+index 963f4cb2e2..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/FetchOwner.java
++++ /dev/null
+@@ -1,136 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.spi.build.AbstractLoadPlanBuilderStrategy;
+-import org.hibernate.loader.plan.spi.build.LoadPlanBuildingContext;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.entity.PropertyMapping;
+-import org.hibernate.persister.walking.spi.AnyMappingDefinition;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.persister.walking.spi.CompositionDefinition;
+-import org.hibernate.type.Type;
+-
+-/**
+- * Contract for owners of fetches.  Any non-scalar return could be a fetch owner.
+- *
+- * @author Steve Ebersole
+- */
+-public interface FetchOwner {
+-	/**
+-	 * Convenient constant for returning no fetches from {@link #getFetches()}
+-	 */
+-	public static final Fetch[] NO_FETCHES = new Fetch[0];
+-
+-	/**
+-	 * Contract to add fetches to this owner.  Care should be taken in calling this method; it is intended
+-	 * for Hibernate usage
+-	 *
+-	 * @param fetch The fetch to add
+-	 */
+-	public void addFetch(Fetch fetch);
+-
+-	/**
+-	 * Retrieve the fetches owned by this return.
+-	 *
+-	 * @return The owned fetches.
+-	 */
+-	public Fetch[] getFetches();
+-
+-	/**
+-	 * Returns the type of the specified fetch.
+-	 *
+-	 * @param fetch - the owned fetch.
+-	 *
+-	 * @return the type of the specified fetch.
+-	 */
+-	public Type getType(Fetch fetch);
+-
+-	/**
+-	 * Is the specified fetch nullable?
+-	 *
+-	 * @param fetch - the owned fetch.
+-	 *
+-	 * @return true, if the fetch is nullable; false, otherwise.
+-	 */
+-	public boolean isNullable(Fetch fetch);
+-
+-	/**
+-	 * Generates the SQL select fragments for the specified fetch.  A select fragment is the column and formula
+-	 * references.
+-	 *
+-	 * @param fetch - the owned fetch.
+-	 * @param alias The table alias to apply to the fragments (used to qualify column references)
+-	 *
+-	 * @return the select fragments
+-	 */
+-	public String[] toSqlSelectFragments(Fetch fetch, String alias);
+-
+-	/**
+-	 * Is the asserted plan valid from this owner to a fetch?
+-	 *
+-	 * @param fetchStrategy The type of fetch to validate
+-	 * @param attributeDefinition The attribute to be fetched
+-	 */
+-	public void validateFetchPlan(FetchStrategy fetchStrategy, AttributeDefinition attributeDefinition);
+-
+-	/**
+-	 * Retrieve the EntityPersister that is the base for any property references in the fetches it owns.
+-	 *
+-	 * @return The EntityPersister, for property name resolution.
+-	 */
+-	public EntityPersister retrieveFetchSourcePersister();
+-
+-	/**
+-	 * Get the property path to this fetch owner
+-	 *
+-	 * @return The property path
+-	 */
+-	public PropertyPath getPropertyPath();
+-
+-	public CollectionFetch buildCollectionFetch(
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext);
+-
+-	public EntityFetch buildEntityFetch(
+-			AssociationAttributeDefinition attributeDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext);
+-
+-	public CompositeFetch buildCompositeFetch(
+-			CompositionDefinition attributeDefinition,
+-			LoadPlanBuildingContext loadPlanBuildingContext);
+-
+-	public AnyFetch buildAnyFetch(
+-			AttributeDefinition attribute,
+-			AnyMappingDefinition anyDefinition,
+-			FetchStrategy fetchStrategy,
+-			LoadPlanBuildingContext loadPlanBuildingContext);
+-
+-	public SqlSelectFragmentResolver toSqlSelectFragmentResolver();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/FetchableCollectionElement.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/FetchableCollectionElement.java
+deleted file mode 100644
+index f714ad3240..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/FetchableCollectionElement.java
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface FetchableCollectionElement extends FetchOwner, CopyableReturn {
+-	@Override
+-	public FetchableCollectionElement makeCopy(CopyContext copyContext);
+-
+-	/**
+-	 * Returns the collection reference.
+-	 * @return the collection reference.
+-	 */
+-	public CollectionReference getCollectionReference();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/FetchableCollectionIndex.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/FetchableCollectionIndex.java
+deleted file mode 100644
+index d051fb3099..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/FetchableCollectionIndex.java
++++ /dev/null
+@@ -1,40 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-/**
+- * A collection index which can be a fetch owner.
+- *
+- * @author Steve Ebersole
+- */
+-public interface FetchableCollectionIndex extends FetchOwner, CopyableReturn {
+-	@Override
+-	public FetchableCollectionIndex makeCopy(CopyContext copyContext);
+-
+-	/**
+-	 * Returns the collection reference.
+-	 * @return the collection reference.
+-	 */
+-	public CollectionReference getCollectionReference();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/IdentifierDescription.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/IdentifierDescription.java
+deleted file mode 100644
+index 26e7ed5e4c..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/IdentifierDescription.java
++++ /dev/null
+@@ -1,37 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface IdentifierDescription {
+-	/**
+-	 * Obtain fetches that are specific to the identifier.  These will only be either of type EntityFetch
+-	 * (many-key-to-one) or CompositeFetch (composite ids, possibly with nested CompositeFetches and EntityFetches).
+-	 *
+-	 * @return This identifier's fetches.
+-	 */
+-	public Fetch[] getFetches();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/KeyManyToOneBidirectionalEntityFetch.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/KeyManyToOneBidirectionalEntityFetch.java
+deleted file mode 100644
+index 71b59770a5..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/KeyManyToOneBidirectionalEntityFetch.java
++++ /dev/null
+@@ -1,65 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-
+-/**
+- * Represents a key-many-to-one fetch that is bi-directionally join fetched.
+- * <p/>
+- * For example, consider an Order entity whose primary key is partially made up of the Customer entity to which
+- * it is associated.  When we join fetch Customer -> Order(s) and then Order -> Customer we have a bi-directional
+- * fetch.  This class would be used to represent the Order -> Customer part of that link.
+- *
+- * @author Steve Ebersole
+- */
+-public class KeyManyToOneBidirectionalEntityFetch extends EntityFetch implements BidirectionalEntityFetch {
+-	private final EntityReference targetEntityReference;
+-
+-	public KeyManyToOneBidirectionalEntityFetch(
+-			SessionFactoryImplementor sessionFactory,
+-			LockMode lockMode,
+-			FetchOwner owner,
+-			AttributeDefinition fetchedAttribute,
+-			EntityReference targetEntityReference,
+-			FetchStrategy fetchStrategy) {
+-		super( sessionFactory, lockMode, owner, fetchedAttribute, fetchStrategy );
+-		this.targetEntityReference = targetEntityReference;
+-	}
+-
+-	public KeyManyToOneBidirectionalEntityFetch(
+-			KeyManyToOneBidirectionalEntityFetch original,
+-			CopyContext copyContext,
+-			FetchOwner fetchOwnerCopy) {
+-		super( original, copyContext, fetchOwnerCopy );
+-		this.targetEntityReference = original.targetEntityReference;
+-	}
+-
+-	public EntityReference getTargetEntityReference() {
+-		return targetEntityReference;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/LoadPlan.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/LoadPlan.java
+deleted file mode 100644
+index 4a7dc88d02..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/LoadPlan.java
++++ /dev/null
+@@ -1,128 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import java.util.List;
+-
+-/**
+- * Describes a plan for performing a load of results.
+- *
+- * Generally speaking there are 3 forms of load plans:<ul>
+- *     <li>
+- *         {@link org.hibernate.loader.plan.spi.LoadPlan.Disposition#ENTITY_LOADER} - An entity load plan for
+- *         handling get/load handling.  This form will typically have a single return (of type {@link EntityReturn})
+- *         defined by {@link #getReturns()}, possibly defining fetches.
+- *     </li>
+- *     <li>
+- *         {@link org.hibernate.loader.plan.spi.LoadPlan.Disposition#COLLECTION_INITIALIZER} - A collection initializer,
+- *         used to load the contents of a collection.  This form will typically have a single return (of
+- *         type {@link CollectionReturn}) defined by {@link #getReturns()}, possibly defining fetches
+- *     </li>
+- *     <li>
+- *         {@link org.hibernate.loader.plan.spi.LoadPlan.Disposition#MIXED} - A query load plan which can contain
+- *         multiple returns of mixed type (though all implementing {@link Return}).  Again, may possibly define fetches.
+- *     </li>
+- * </ul>
+- * <p/>
+- * todo : would also like to see "call back" style access for handling "subsequent actions" such as...<ul>
+- *     <li>follow-on locking</li>
+- *     <li>join fetch conversions to subselect fetches</li>
+- * </ul>
+- *
+- * @author Steve Ebersole
+- */
+-public interface LoadPlan {
+-
+-	/**
+-	 * What is the disposition of this LoadPlan, in terms of its returns.
+-	 *
+-	 * @return The LoadPlan's disposition
+-	 */
+-	public Disposition getDisposition();
+-
+-	/**
+-	 * Get the returns indicated by this LoadPlan.<ul>
+-	 *     <li>
+-	 *         A {@link Disposition#ENTITY_LOADER} LoadPlan would have just a single Return of type {@link EntityReturn}.
+-	 *     </li>
+-	 *     <li>
+-	 *         A {@link Disposition#COLLECTION_INITIALIZER} LoadPlan would have just a single Return of type
+-	 *         {@link CollectionReturn}.
+-	 *     </li>
+-	 *     <li>
+-	 *         A {@link Disposition#MIXED} LoadPlan would contain a mix of {@link EntityReturn} and
+-	 *         {@link ScalarReturn} elements, but no {@link CollectionReturn}.
+-	 *     </li>
+-	 * </ul>
+-	 *
+-	 * @return The Returns for this LoadPlan.
+-	 *
+-	 * @see Disposition
+-	 */
+-	public List<? extends Return> getReturns();
+-
+-	/**
+-	 * Does this load plan indicate that lazy attributes are to be force fetched?
+-	 * <p/>
+-	 * Here we are talking about laziness in regards to the legacy bytecode enhancement which adds support for
+-	 * partial selects of an entity's state (e.g., skip loading a lob initially, wait until/if it is needed)
+-	 * <p/>
+-	 * This one would effect the SQL that needs to get generated as well as how the result set would be read.
+-	 * Therefore we make this part of the LoadPlan contract.
+-	 * <p/>
+-	 * NOTE that currently this is only relevant for HQL loaders when the HQL has specified the {@code FETCH ALL PROPERTIES}
+-	 * key-phrase.  In all other cases, this returns false.
+-
+-	 * @return Whether or not to
+-	 */
+-	public boolean areLazyAttributesForceFetched();
+-
+-	/**
+-	 * Convenient form of checking {@link #getReturns()} for scalar root returns.
+-	 *
+-	 * @return {@code true} if {@link #getReturns()} contained any scalar returns; {@code false} otherwise.
+-	 */
+-	public boolean hasAnyScalarReturns();
+-
+-	/**
+-	 * Enumerated possibilities for describing the disposition of this LoadPlan.
+-	 */
+-	public static enum Disposition {
+-		/**
+-		 * This is an "entity loader" load plan, which describes a plan for loading one or more entity instances of
+-		 * the same entity type.  There is a single return, which will be of type {@link EntityReturn}
+-		 */
+-		ENTITY_LOADER,
+-		/**
+-		 * This is a "collection initializer" load plan, which describes a plan for loading one or more entity instances of
+-		 * the same collection type.  There is a single return, which will be of type {@link CollectionReturn}
+-		 */
+-		COLLECTION_INITIALIZER,
+-		/**
+-		 * We have a mixed load plan, which will have one or more returns of {@link EntityReturn} and {@link ScalarReturn}
+-		 * (NOT {@link CollectionReturn}).
+-		 */
+-		MIXED
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/Return.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/Return.java
+deleted file mode 100644
+index 30bb6f97fe..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/Return.java
++++ /dev/null
+@@ -1,38 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-/**
+- * Represents a return value in the query results.  Not the same as a result (column) in the JDBC ResultSet!
+- * <p/>
+- * Return is distinctly different from a {@link Fetch} and so modeled as completely separate hierarchy.
+- *
+- * @see ScalarReturn
+- * @see EntityReturn
+- * @see CollectionReturn
+- *
+- * @author Steve Ebersole
+- */
+-public interface Return {
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/ScalarReturn.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/ScalarReturn.java
+deleted file mode 100644
+index 12dfcaf0f7..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/ScalarReturn.java
++++ /dev/null
+@@ -1,49 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.type.Type;
+-
+-/**
+- * Represent a simple scalar return within a query result.  Generally this would be values of basic (String, Integer,
+- * etc) or composite types.
+- * <p/>
+- * todo : we should link the Returns back to their "source"
+- * 		aka the entity/collection/etc that defines the qualifier used to qualify this Return's columns
+- *
+- * @author Steve Ebersole
+- */
+-public class ScalarReturn extends AbstractPlanNode implements Return {
+-	private final Type type;
+-
+-	public ScalarReturn(SessionFactoryImplementor factory, Type type) {
+-		super( factory );
+-		this.type = type;
+-	}
+-
+-	public Type getType() {
+-		return type;
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/SourceQualifiable.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/SourceQualifiable.java
+deleted file mode 100644
+index 70368e8136..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/SourceQualifiable.java
++++ /dev/null
+@@ -1,32 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-/**
+- * Marker interface for LoadPlan nodes that can be qualifiable in the source queries.
+- *
+- * @author Steve Ebersole
+- */
+-public class SourceQualifiable {
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/SqlSelectFragmentResolver.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/SqlSelectFragmentResolver.java
+deleted file mode 100644
+index e84f30252e..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/SqlSelectFragmentResolver.java
++++ /dev/null
+@@ -1,40 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi;
+-
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-
+-/**
+- * Delegate for resolving the "SQL select fragments" pertaining to an attribute.
+- * <p/>
+- * Most implementations will delegate to the {@link org.hibernate.persister.entity.PropertyMapping} portion
+- * of the EntityPersister contract via the "optional" {@link org.hibernate.persister.entity.Queryable} contract.
+- *
+- * @author Steve Ebersole
+- *
+- * @see org.hibernate.persister.entity.PropertyMapping
+- */
+-public interface SqlSelectFragmentResolver {
+-	public String[] toSqlSelectFragments(String alias, AttributeDefinition attributeDefinition);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/AbstractLoadPlanBuilderStrategy.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/AbstractLoadPlanBuilderStrategy.java
+deleted file mode 100644
+index 01cf88b945..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/AbstractLoadPlanBuilderStrategy.java
++++ /dev/null
+@@ -1,939 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.build;
+-
+-import java.util.ArrayDeque;
+-import java.util.HashMap;
+-import java.util.Map;
+-
+-import org.jboss.logging.Logger;
+-import org.jboss.logging.MDC;
+-
+-import org.hibernate.HibernateException;
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.FetchStrategy;
+-import org.hibernate.engine.FetchStyle;
+-import org.hibernate.engine.FetchTiming;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.internal.util.StringHelper;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.spi.AbstractFetchOwner;
+-import org.hibernate.loader.plan.spi.AnyFetch;
+-import org.hibernate.loader.plan.spi.BidirectionalEntityFetch;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CollectionReference;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.CopyContext;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityPersisterBasedSqlSelectFragmentResolver;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.IdentifierDescription;
+-import org.hibernate.loader.plan.spi.KeyManyToOneBidirectionalEntityFetch;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.SqlSelectFragmentResolver;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.entity.Queryable;
+-import org.hibernate.persister.spi.HydratedCompoundValueHandler;
+-import org.hibernate.persister.walking.spi.AnyMappingDefinition;
+-import org.hibernate.persister.walking.spi.AssociationAttributeDefinition;
+-import org.hibernate.persister.walking.spi.AssociationKey;
+-import org.hibernate.persister.walking.spi.AttributeDefinition;
+-import org.hibernate.persister.walking.spi.CollectionDefinition;
+-import org.hibernate.persister.walking.spi.CollectionElementDefinition;
+-import org.hibernate.persister.walking.spi.CollectionIndexDefinition;
+-import org.hibernate.persister.walking.spi.CompositionDefinition;
+-import org.hibernate.persister.walking.spi.EntityDefinition;
+-import org.hibernate.persister.walking.spi.EntityIdentifierDefinition;
+-import org.hibernate.persister.walking.spi.WalkingException;
+-import org.hibernate.type.EntityType;
+-import org.hibernate.type.Type;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public abstract class AbstractLoadPlanBuilderStrategy implements LoadPlanBuilderStrategy, LoadPlanBuildingContext {
+-	private static final Logger log = Logger.getLogger( AbstractLoadPlanBuilderStrategy.class );
+-	private static final String MDC_KEY = "hibernateLoadPlanWalkPath";
+-
+-	private final SessionFactoryImplementor sessionFactory;
+-
+-	private ArrayDeque<FetchOwner> fetchOwnerStack = new ArrayDeque<FetchOwner>();
+-	private ArrayDeque<CollectionReference> collectionReferenceStack = new ArrayDeque<CollectionReference>();
+-
+-	protected AbstractLoadPlanBuilderStrategy(SessionFactoryImplementor sessionFactory) {
+-		this.sessionFactory = sessionFactory;
+-	}
+-
+-	public SessionFactoryImplementor sessionFactory() {
+-		return sessionFactory;
+-	}
+-
+-	protected FetchOwner currentFetchOwner() {
+-		return fetchOwnerStack.peekFirst();
+-	}
+-
+-	@Override
+-	public void start() {
+-		if ( ! fetchOwnerStack.isEmpty() ) {
+-			throw new WalkingException(
+-					"Fetch owner stack was not empty on start; " +
+-							"be sure to not use LoadPlanBuilderStrategy instances concurrently"
+-			);
+-		}
+-		if ( ! collectionReferenceStack.isEmpty() ) {
+-			throw new WalkingException(
+-					"Collection reference stack was not empty on start; " +
+-							"be sure to not use LoadPlanBuilderStrategy instances concurrently"
+-			);
+-		}
+-		MDC.put( MDC_KEY, new MDCStack() );
+-	}
+-
+-	@Override
+-	public void finish() {
+-		MDC.remove( MDC_KEY );
+-		fetchOwnerStack.clear();
+-		collectionReferenceStack.clear();
+-	}
+-
+-	@Override
+-	public void startingEntity(EntityDefinition entityDefinition) {
+-		log.tracef(
+-				"%s Starting entity : %s",
+-				StringHelper.repeat( ">>", fetchOwnerStack.size() ),
+-				entityDefinition.getEntityPersister().getEntityName()
+-		);
+-
+-		if ( fetchOwnerStack.isEmpty() ) {
+-			// this is a root...
+-			if ( ! supportsRootEntityReturns() ) {
+-				throw new HibernateException( "This strategy does not support root entity returns" );
+-			}
+-			final EntityReturn entityReturn = buildRootEntityReturn( entityDefinition );
+-			addRootReturn( entityReturn );
+-			pushToStack( entityReturn );
+-		}
+-		// otherwise this call should represent a fetch which should have been handled in #startingAttribute
+-	}
+-
+-	protected boolean supportsRootEntityReturns() {
+-		return false;
+-	}
+-
+-	protected abstract void addRootReturn(Return rootReturn);
+-
+-	@Override
+-	public void finishingEntity(EntityDefinition entityDefinition) {
+-		// pop the current fetch owner, and make sure what we just popped represents this entity
+-		final FetchOwner poppedFetchOwner = popFromStack();
+-
+-		if ( ! EntityReference.class.isInstance( poppedFetchOwner ) ) {
+-			throw new WalkingException( "Mismatched FetchOwner from stack on pop" );
+-		}
+-
+-		final EntityReference entityReference = (EntityReference) poppedFetchOwner;
+-		// NOTE : this is not the most exhaustive of checks because of hierarchical associations (employee/manager)
+-		if ( ! entityReference.getEntityPersister().equals( entityDefinition.getEntityPersister() ) ) {
+-			throw new WalkingException( "Mismatched FetchOwner from stack on pop" );
+-		}
+-
+-		log.tracef(
+-				"%s Finished entity : %s",
+-				StringHelper.repeat( "<<", fetchOwnerStack.size() ),
+-				entityDefinition.getEntityPersister().getEntityName()
+-		);
+-	}
+-
+-	@Override
+-	public void startingEntityIdentifier(EntityIdentifierDefinition entityIdentifierDefinition) {
+-		log.tracef(
+-				"%s Starting entity identifier : %s",
+-				StringHelper.repeat( ">>", fetchOwnerStack.size() ),
+-				entityIdentifierDefinition.getEntityDefinition().getEntityPersister().getEntityName()
+-		);
+-
+-		final EntityReference entityReference = (EntityReference) currentFetchOwner();
+-
+-		// perform some stack validation
+-		if ( ! entityReference.getEntityPersister().equals( entityIdentifierDefinition.getEntityDefinition().getEntityPersister() ) ) {
+-			throw new WalkingException(
+-					String.format(
+-							"Encountered unexpected fetch owner [%s] in stack while processing entity identifier for [%s]",
+-							entityReference.getEntityPersister().getEntityName(),
+-							entityIdentifierDefinition.getEntityDefinition().getEntityPersister().getEntityName()
+-					)
+-			);
+-		}
+-
+-		final FetchOwner identifierAttributeCollector;
+-		if ( entityIdentifierDefinition.isEncapsulated() ) {
+-			identifierAttributeCollector = new EncapsulatedIdentifierAttributeCollector( sessionFactory, entityReference );
+-		}
+-		else {
+-			identifierAttributeCollector = new NonEncapsulatedIdentifierAttributeCollector( sessionFactory, entityReference );
+-		}
+-		pushToStack( identifierAttributeCollector );
+-	}
+-
+-	@Override
+-	public void finishingEntityIdentifier(EntityIdentifierDefinition entityIdentifierDefinition) {
+-		// perform some stack validation on exit, first on the current stack element we want to pop
+-		{
+-			final FetchOwner poppedFetchOwner = popFromStack();
+-
+-			if ( ! AbstractIdentifierAttributeCollector.class.isInstance( poppedFetchOwner ) ) {
+-				throw new WalkingException( "Unexpected state in FetchOwner stack" );
+-			}
+-
+-			final EntityReference entityReference = (EntityReference) poppedFetchOwner;
+-			if ( ! entityReference.getEntityPersister().equals( entityIdentifierDefinition.getEntityDefinition().getEntityPersister() ) ) {
+-				throw new WalkingException(
+-						String.format(
+-								"Encountered unexpected fetch owner [%s] in stack while processing entity identifier for [%s]",
+-								entityReference.getEntityPersister().getEntityName(),
+-								entityIdentifierDefinition.getEntityDefinition().getEntityPersister().getEntityName()
+-						)
+-				);
+-			}
+-		}
+-
+-		// and then on the element before it
+-		{
+-			final FetchOwner currentFetchOwner = currentFetchOwner();
+-			if ( ! EntityReference.class.isInstance( currentFetchOwner ) ) {
+-				throw new WalkingException( "Unexpected state in FetchOwner stack" );
+-			}
+-			final EntityReference entityReference = (EntityReference) currentFetchOwner;
+-			if ( ! entityReference.getEntityPersister().equals( entityIdentifierDefinition.getEntityDefinition().getEntityPersister() ) ) {
+-				throw new WalkingException(
+-						String.format(
+-								"Encountered unexpected fetch owner [%s] in stack while processing entity identifier for [%s]",
+-								entityReference.getEntityPersister().getEntityName(),
+-								entityIdentifierDefinition.getEntityDefinition().getEntityPersister().getEntityName()
+-						)
+-				);
+-			}
+-		}
+-
+-		log.tracef(
+-				"%s Finished entity identifier : %s",
+-				StringHelper.repeat( "<<", fetchOwnerStack.size() ),
+-				entityIdentifierDefinition.getEntityDefinition().getEntityPersister().getEntityName()
+-		);
+-	}
+-
+-	@Override
+-	public void startingCollection(CollectionDefinition collectionDefinition) {
+-		log.tracef(
+-				"%s Starting collection : %s",
+-				StringHelper.repeat( ">>", fetchOwnerStack.size() ),
+-				collectionDefinition.getCollectionPersister().getRole()
+-		);
+-
+-		if ( fetchOwnerStack.isEmpty() ) {
+-			// this is a root...
+-			if ( ! supportsRootCollectionReturns() ) {
+-				throw new HibernateException( "This strategy does not support root collection returns" );
+-			}
+-			final CollectionReturn collectionReturn = buildRootCollectionReturn( collectionDefinition );
+-			addRootReturn( collectionReturn );
+-			pushToCollectionStack( collectionReturn );
+-		}
+-	}
+-
+-	protected boolean supportsRootCollectionReturns() {
+-		return false;
+-	}
+-
+-	@Override
+-	public void startingCollectionIndex(CollectionIndexDefinition collectionIndexDefinition) {
+-		final Type indexType = collectionIndexDefinition.getType();
+-		if ( indexType.isAssociationType() || indexType.isComponentType() ) {
+-			final CollectionReference collectionReference = collectionReferenceStack.peekFirst();
+-			final FetchOwner indexGraph = collectionReference.getIndexGraph();
+-			if ( indexGraph == null ) {
+-				throw new WalkingException( "Collection reference did not return index handler" );
+-			}
+-			pushToStack( indexGraph );
+-		}
+-	}
+-
+-	@Override
+-	public void finishingCollectionIndex(CollectionIndexDefinition collectionIndexDefinition) {
+-		// nothing to do here
+-		// 	- the element graph pushed while starting would be popped in finishing/Entity/finishingComposite
+-	}
+-
+-	@Override
+-	public void startingCollectionElements(CollectionElementDefinition elementDefinition) {
+-		if ( elementDefinition.getType().isAssociationType() || elementDefinition.getType().isComponentType() ) {
+-			final CollectionReference collectionReference = collectionReferenceStack.peekFirst();
+-			final FetchOwner elementGraph = collectionReference.getElementGraph();
+-			if ( elementGraph == null ) {
+-				throw new WalkingException( "Collection reference did not return element handler" );
+-			}
+-			pushToStack( elementGraph );
+-		}
+-	}
+-
+-	@Override
+-	public void finishingCollectionElements(CollectionElementDefinition elementDefinition) {
+-		// nothing to do here
+-		// 	- the element graph pushed while starting would be popped in finishing/Entity/finishingComposite
+-	}
+-
+-//	@Override
+-//	public void startingCompositeCollectionElement(CompositeCollectionElementDefinition compositeElementDefinition) {
+-//		log.tracef(
+-//				"%s Starting composite collection element for (%s)",
+-//				StringHelper.repeat( ">>", fetchOwnerStack.size() ),
+-//				compositeElementDefinition.getCollectionDefinition().getCollectionPersister().getRole()
+-//		);
+-//	}
+-//
+-//	@Override
+-//	public void finishingCompositeCollectionElement(CompositeCollectionElementDefinition compositeElementDefinition) {
+-//		// pop the current fetch owner, and make sure what we just popped represents this composition
+-//		final FetchOwner poppedFetchOwner = popFromStack();
+-//
+-//		if ( ! CompositeElementGraph.class.isInstance( poppedFetchOwner ) ) {
+-//			throw new WalkingException( "Mismatched FetchOwner from stack on pop" );
+-//		}
+-//
+-//		// NOTE : not much else we can really check here atm since on the walking spi side we do not have path
+-//
+-//		log.tracef(
+-//				"%s Finished composite element for  : %s",
+-//				StringHelper.repeat( "<<", fetchOwnerStack.size() ),
+-//				compositeElementDefinition.getCollectionDefinition().getCollectionPersister().getRole()
+-//		);
+-//	}
+-
+-	@Override
+-	public void finishingCollection(CollectionDefinition collectionDefinition) {
+-		// pop the current fetch owner, and make sure what we just popped represents this collection
+-		final CollectionReference collectionReference = popFromCollectionStack();
+-		if ( ! collectionReference.getCollectionPersister().equals( collectionDefinition.getCollectionPersister() ) ) {
+-			throw new WalkingException( "Mismatched FetchOwner from stack on pop" );
+-		}
+-
+-		log.tracef(
+-				"%s Finished collection : %s",
+-				StringHelper.repeat( "<<", fetchOwnerStack.size() ),
+-				collectionDefinition.getCollectionPersister().getRole()
+-		);
+-	}
+-
+-	@Override
+-	public void startingComposite(CompositionDefinition compositionDefinition) {
+-		log.tracef(
+-				"%s Starting composition : %s",
+-				StringHelper.repeat( ">>", fetchOwnerStack.size() ),
+-				compositionDefinition.getName()
+-		);
+-
+-		if ( fetchOwnerStack.isEmpty() ) {
+-			throw new HibernateException( "A component cannot be the root of a walk nor a graph" );
+-		}
+-	}
+-
+-	@Override
+-	public void finishingComposite(CompositionDefinition compositionDefinition) {
+-		// pop the current fetch owner, and make sure what we just popped represents this composition
+-		final FetchOwner poppedFetchOwner = popFromStack();
+-
+-		if ( ! CompositeFetch.class.isInstance( poppedFetchOwner ) ) {
+-			throw new WalkingException( "Mismatched FetchOwner from stack on pop" );
+-		}
+-
+-		// NOTE : not much else we can really check here atm since on the walking spi side we do not have path
+-
+-		log.tracef(
+-				"%s Finished composition : %s",
+-				StringHelper.repeat( "<<", fetchOwnerStack.size() ),
+-				compositionDefinition.getName()
+-		);
+-	}
+-
+-	@Override
+-	public boolean startingAttribute(AttributeDefinition attributeDefinition) {
+-		log.tracef(
+-				"%s Starting attribute %s",
+-				StringHelper.repeat( ">>", fetchOwnerStack.size() ),
+-				attributeDefinition
+-		);
+-
+-		final Type attributeType = attributeDefinition.getType();
+-
+-		final boolean isAnyType = attributeType.isAnyType();
+-		final boolean isComponentType = attributeType.isComponentType();
+-		final boolean isAssociationType = attributeType.isAssociationType();
+-		final boolean isBasicType = ! ( isComponentType || isAssociationType );
+-
+-		if ( isBasicType ) {
+-			return true;
+-		}
+-		else if ( isAnyType ) {
+-			// If isAnyType is true, then isComponentType and isAssociationType will also be true
+-			// so need to check isAnyType first so that it is handled properly.
+-			return handleAnyAttribute( (AssociationAttributeDefinition) attributeDefinition );
+-		}
+-		else if ( isAssociationType ) {
+-			return handleAssociationAttribute( (AssociationAttributeDefinition) attributeDefinition );
+-		}
+-		else {
+-			return handleCompositeAttribute( (CompositionDefinition) attributeDefinition );
+-		}
+-	}
+-
+-	@Override
+-	public void finishingAttribute(AttributeDefinition attributeDefinition) {
+-		log.tracef(
+-				"%s Finishing up attribute : %s",
+-				StringHelper.repeat( "<<", fetchOwnerStack.size() ),
+-				attributeDefinition
+-		);
+-	}
+-
+-	private Map<AssociationKey,FetchOwner> fetchedAssociationKeyOwnerMap = new HashMap<AssociationKey, FetchOwner>();
+-
+-	@Override
+-	public boolean isDuplicateAssociationKey(AssociationKey associationKey) {
+-		return fetchedAssociationKeyOwnerMap.containsKey( associationKey );
+-	}
+-
+-	@Override
+-	public void associationKeyRegistered(AssociationKey associationKey) {
+-		// todo : use this information to maintain a map of AssociationKey->FetchOwner mappings (associationKey + current fetchOwner stack entry)
+-		//		that mapping can then be used in #foundCircularAssociationKey to build the proper BiDirectionalEntityFetch
+-		//		based on the mapped owner
+-		fetchedAssociationKeyOwnerMap.put( associationKey, currentFetchOwner() );
+-	}
+-
+-	@Override
+-	public void foundCircularAssociation(AssociationAttributeDefinition attributeDefinition) {
+-		// todo : use this information to create the BiDirectionalEntityFetch instances
+-		final AssociationKey associationKey = attributeDefinition.getAssociationKey();
+-		final FetchOwner fetchOwner = fetchedAssociationKeyOwnerMap.get( associationKey );
+-		if ( fetchOwner == null ) {
+-			throw new IllegalStateException(
+-					String.format(
+-							"Expecting AssociationKey->FetchOwner mapping for %s",
+-							associationKey.toString()
+-					)
+-			);
+-		}
+-
+-		currentFetchOwner().addFetch( new CircularFetch( currentFetchOwner(), fetchOwner, attributeDefinition ) );
+-	}
+-
+-	public static class CircularFetch implements BidirectionalEntityFetch, EntityReference, Fetch {
+-		private final FetchOwner circularFetchOwner;
+-		private final FetchOwner associationOwner;
+-		private final AttributeDefinition attributeDefinition;
+-
+-		private final EntityReference targetEntityReference;
+-
+-		private final FetchStrategy fetchStrategy = new FetchStrategy(
+-				FetchTiming.IMMEDIATE,
+-				FetchStyle.JOIN
+-		);
+-
+-		public CircularFetch(FetchOwner circularFetchOwner, FetchOwner associationOwner, AttributeDefinition attributeDefinition) {
+-			this.circularFetchOwner = circularFetchOwner;
+-			this.associationOwner = associationOwner;
+-			this.attributeDefinition = attributeDefinition;
+-			this.targetEntityReference = resolveEntityReference( associationOwner );
+-		}
+-
+-		@Override
+-		public EntityReference getTargetEntityReference() {
+-			return targetEntityReference;
+-		}
+-
+-		protected static EntityReference resolveEntityReference(FetchOwner owner) {
+-			if ( EntityReference.class.isInstance( owner ) ) {
+-				return (EntityReference) owner;
+-			}
+-			if ( CompositeFetch.class.isInstance( owner ) ) {
+-				return resolveEntityReference( ( (CompositeFetch) owner ).getOwner() );
+-			}
+-			// todo : what others?
+-
+-			throw new UnsupportedOperationException(
+-					"Unexpected FetchOwner type [" + owner + "] encountered trying to build circular fetch"
+-			);
+-
+-		}
+-
+-		@Override
+-		public FetchOwner getOwner() {
+-			return circularFetchOwner;
+-		}
+-
+-		@Override
+-		public PropertyPath getPropertyPath() {
+-			return null;  //To change body of implemented methods use File | Settings | File Templates.
+-		}
+-
+-		@Override
+-		public Type getFetchedType() {
+-			return attributeDefinition.getType();
+-		}
+-
+-		@Override
+-		public FetchStrategy getFetchStrategy() {
+-			return fetchStrategy;
+-		}
+-
+-		@Override
+-		public boolean isNullable() {
+-			return attributeDefinition.isNullable();
+-		}
+-
+-		@Override
+-		public String getAdditionalJoinConditions() {
+-			return null;
+-		}
+-
+-		@Override
+-		public String[] toSqlSelectFragments(String alias) {
+-			return new String[0];
+-		}
+-
+-		@Override
+-		public Fetch makeCopy(CopyContext copyContext, FetchOwner fetchOwnerCopy) {
+-			// todo : will need this implemented
+-			return null;
+-		}
+-
+-		@Override
+-		public LockMode getLockMode() {
+-			return targetEntityReference.getLockMode();
+-		}
+-
+-		@Override
+-		public EntityReference getEntityReference() {
+-			return targetEntityReference;
+-		}
+-
+-		@Override
+-		public EntityPersister getEntityPersister() {
+-			return targetEntityReference.getEntityPersister();
+-		}
+-
+-		@Override
+-		public IdentifierDescription getIdentifierDescription() {
+-			return targetEntityReference.getIdentifierDescription();
+-		}
+-
+-		@Override
+-		public void injectIdentifierDescription(IdentifierDescription identifierDescription) {
+-			throw new IllegalStateException( "IdentifierDescription should never be injected from circular fetch side" );
+-		}
+-	}
+-
+-	@Override
+-	public void foundAny(AnyMappingDefinition anyDefinition) {
+-		// do nothing.
+-	}
+-
+-	protected boolean handleAnyAttribute(AssociationAttributeDefinition attributeDefinition) {
+-		// for ANY mappings we need to build a Fetch:
+-		//		1) fetch type is SELECT, timing might be IMMEDIATE or DELAYED depending on whether it was defined as lazy
+-		//		2) (because the fetch cannot be a JOIN...) do not push it to the stack
+-		final FetchStrategy fetchStrategy = determineFetchPlan( attributeDefinition );
+-
+-		final FetchOwner fetchOwner = currentFetchOwner();
+-		fetchOwner.validateFetchPlan( fetchStrategy, attributeDefinition );
+-
+-		fetchOwner.buildAnyFetch(
+-				attributeDefinition,
+-				attributeDefinition.toAnyDefinition(),
+-				fetchStrategy,
+-				this
+-		);
+-
+-		return false;
+-	}
+-
+-	protected boolean handleCompositeAttribute(CompositionDefinition attributeDefinition) {
+-		final FetchOwner fetchOwner = currentFetchOwner();
+-		final CompositeFetch fetch = fetchOwner.buildCompositeFetch( attributeDefinition, this );
+-		pushToStack( fetch );
+-		return true;
+-	}
+-
+-	protected boolean handleAssociationAttribute(AssociationAttributeDefinition attributeDefinition) {
+-		// todo : this seems to not be correct for one-to-one
+-		final FetchStrategy fetchStrategy = determineFetchPlan( attributeDefinition );
+-		if ( fetchStrategy.getStyle() != FetchStyle.JOIN ) {
+-			return false;
+-		}
+-//		if ( fetchStrategy.getTiming() != FetchTiming.IMMEDIATE ) {
+-//			return false;
+-//		}
+-
+-		final FetchOwner fetchOwner = currentFetchOwner();
+-		fetchOwner.validateFetchPlan( fetchStrategy, attributeDefinition );
+-
+-		final Fetch associationFetch;
+-		final AssociationAttributeDefinition.AssociationNature nature = attributeDefinition.getAssociationNature();
+-		if ( nature == AssociationAttributeDefinition.AssociationNature.ANY ) {
+-			return false;
+-//			throw new NotYetImplementedException( "AnyType support still in progress" );
+-		}
+-		else if ( nature == AssociationAttributeDefinition.AssociationNature.ENTITY ) {
+-			associationFetch = fetchOwner.buildEntityFetch(
+-					attributeDefinition,
+-					fetchStrategy,
+-					this
+-			);
+-		}
+-		else {
+-			associationFetch = fetchOwner.buildCollectionFetch( attributeDefinition, fetchStrategy, this );
+-			pushToCollectionStack( (CollectionReference) associationFetch );
+-		}
+-
+-		if ( FetchOwner.class.isInstance( associationFetch) ) {
+-			pushToStack( (FetchOwner) associationFetch );
+-		}
+-
+-		return true;
+-	}
+-
+-	protected abstract FetchStrategy determineFetchPlan(AssociationAttributeDefinition attributeDefinition);
+-
+-	protected int currentDepth() {
+-		return fetchOwnerStack.size();
+-	}
+-
+-	protected boolean isTooManyCollections() {
+-		return false;
+-	}
+-
+-	private void pushToStack(FetchOwner fetchOwner) {
+-		log.trace( "Pushing fetch owner to stack : " + fetchOwner );
+-		mdcStack().push( fetchOwner.getPropertyPath() );
+-		fetchOwnerStack.addFirst( fetchOwner );
+-	}
+-
+-	private MDCStack mdcStack() {
+-		return (MDCStack) MDC.get( MDC_KEY );
+-	}
+-
+-	private FetchOwner popFromStack() {
+-		final FetchOwner last = fetchOwnerStack.removeFirst();
+-		log.trace( "Popped fetch owner from stack : " + last );
+-		mdcStack().pop();
+-		if ( FetchStackAware.class.isInstance( last ) ) {
+-			( (FetchStackAware) last ).poppedFromStack();
+-		}
+-		return last;
+-	}
+-
+-	private void pushToCollectionStack(CollectionReference collectionReference) {
+-		log.trace( "Pushing collection reference to stack : " + collectionReference );
+-		mdcStack().push( collectionReference.getPropertyPath() );
+-		collectionReferenceStack.addFirst( collectionReference );
+-	}
+-
+-	private CollectionReference popFromCollectionStack() {
+-		final CollectionReference last = collectionReferenceStack.removeFirst();
+-		log.trace( "Popped collection reference from stack : " + last );
+-		mdcStack().pop();
+-		if ( FetchStackAware.class.isInstance( last ) ) {
+-			( (FetchStackAware) last ).poppedFromStack();
+-		}
+-		return last;
+-	}
+-
+-	protected abstract EntityReturn buildRootEntityReturn(EntityDefinition entityDefinition);
+-
+-	protected abstract CollectionReturn buildRootCollectionReturn(CollectionDefinition collectionDefinition);
+-
+-
+-
+-	// LoadPlanBuildingContext impl ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-
+-	@Override
+-	public SessionFactoryImplementor getSessionFactory() {
+-		return sessionFactory();
+-	}
+-
+-	public static interface FetchStackAware {
+-		public void poppedFromStack();
+-	}
+-
+-	protected static abstract class AbstractIdentifierAttributeCollector
+-			extends AbstractFetchOwner
+-			implements FetchOwner, EntityReference, FetchStackAware {
+-		protected final EntityReference entityReference;
+-		private final EntityPersisterBasedSqlSelectFragmentResolver sqlSelectFragmentResolver;
+-		protected final Map<Fetch,HydratedCompoundValueHandler> fetchToHydratedStateExtractorMap
+-				= new HashMap<Fetch, HydratedCompoundValueHandler>();
+-
+-		public AbstractIdentifierAttributeCollector(SessionFactoryImplementor sessionFactory, EntityReference entityReference) {
+-			super( sessionFactory );
+-			this.entityReference = entityReference;
+-			this.sqlSelectFragmentResolver = new EntityPersisterBasedSqlSelectFragmentResolver(
+-					(Queryable) entityReference.getEntityPersister()
+-			);
+-		}
+-
+-		@Override
+-		public LockMode getLockMode() {
+-			return entityReference.getLockMode();
+-		}
+-
+-		@Override
+-		public EntityReference getEntityReference() {
+-			return this;
+-		}
+-
+-		@Override
+-		public EntityPersister getEntityPersister() {
+-			return entityReference.getEntityPersister();
+-		}
+-
+-		@Override
+-		public IdentifierDescription getIdentifierDescription() {
+-			return entityReference.getIdentifierDescription();
+-		}
+-
+-		@Override
+-		public CollectionFetch buildCollectionFetch(
+-				AssociationAttributeDefinition attributeDefinition,
+-				FetchStrategy fetchStrategy,
+-				LoadPlanBuildingContext loadPlanBuildingContext) {
+-			throw new WalkingException( "Entity identifier cannot contain persistent collections" );
+-		}
+-
+-		@Override
+-		public AnyFetch buildAnyFetch(
+-				AttributeDefinition attribute,
+-				AnyMappingDefinition anyDefinition,
+-				FetchStrategy fetchStrategy,
+-				LoadPlanBuildingContext loadPlanBuildingContext) {
+-			throw new WalkingException( "Entity identifier cannot contain ANY type mappings" );
+-		}
+-
+-		@Override
+-		public EntityFetch buildEntityFetch(
+-				AssociationAttributeDefinition attributeDefinition,
+-				FetchStrategy fetchStrategy,
+-				LoadPlanBuildingContext loadPlanBuildingContext) {
+-			// we have a key-many-to-one
+-			//
+-			// IMPL NOTE: we pass ourselves as the FetchOwner which will route the fetch back through our #addFetch
+-			// 		impl.  We collect them there and later build the IdentifierDescription
+-
+-			// if `this` is a fetch and its owner is "the same" (bi-directionality) as the attribute to be join fetched
+-			// we should wrap our FetchOwner as an EntityFetch.  That should solve everything except for the alias
+-			// context lookups because of the different instances (because of wrapping).  So somehow the consumer of this
+-			// needs to be able to unwrap it to do the alias lookup, and would have to know to do that.
+-			//
+-			//
+-			// we are processing the EntityReference(Address) identifier.  we come across its key-many-to-one reference
+-			// to Person.  Now, if EntityReference(Address) is an instance of EntityFetch(Address) there is a strong
+-			// likelihood that we have a bi-directionality and need to handle that specially.
+-			//
+-			// how to best (a) find the bi-directionality and (b) represent that?
+-
+-			if ( EntityFetch.class.isInstance( entityReference ) ) {
+-				// we just confirmed that EntityReference(Address) is an instance of EntityFetch(Address),
+-				final EntityFetch entityFetch = (EntityFetch) entityReference;
+-				final FetchOwner entityFetchOwner = entityFetch.getOwner();
+-				// so at this point we need to see if entityFetchOwner and attributeDefinition refer to the
+-				// "same thing".  "same thing" == "same type" && "same column(s)"?
+-				//
+-				// i make assumptions here that that the attribute type is the EntityType, is that always valid?
+-				final EntityType attributeDefinitionTypeAsEntityType = (EntityType) attributeDefinition.getType();
+-
+-				final boolean sameType = attributeDefinitionTypeAsEntityType.getAssociatedEntityName().equals(
+-						entityFetchOwner.retrieveFetchSourcePersister().getEntityName()
+-				);
+-
+-				if ( sameType ) {
+-					// check same columns as well?
+-
+-					return new KeyManyToOneBidirectionalEntityFetch(
+-							sessionFactory(),
+-							//ugh
+-							LockMode.READ,
+-							this,
+-							attributeDefinition,
+-							(EntityReference) entityFetchOwner,
+-							fetchStrategy
+-					);
+-				}
+-			}
+-
+-			final EntityFetch fetch = super.buildEntityFetch( attributeDefinition, fetchStrategy, loadPlanBuildingContext );
+-
+-			// pretty sure this HydratedCompoundValueExtractor stuff is not needed...
+-			fetchToHydratedStateExtractorMap.put( fetch, attributeDefinition.getHydratedCompoundValueExtractor() );
+-
+-			return fetch;
+-		}
+-
+-
+-		@Override
+-		public Type getType(Fetch fetch) {
+-			return fetch.getFetchedType();
+-		}
+-
+-		@Override
+-		public boolean isNullable(Fetch fetch) {
+-			return  fetch.isNullable();
+-		}
+-
+-		@Override
+-		public String[] toSqlSelectFragments(Fetch fetch, String alias) {
+-			return fetch.toSqlSelectFragments( alias );
+-		}
+-
+-		@Override
+-		public SqlSelectFragmentResolver toSqlSelectFragmentResolver() {
+-			return sqlSelectFragmentResolver;
+-		}
+-
+-		@Override
+-		public void poppedFromStack() {
+-			final IdentifierDescription identifierDescription = buildIdentifierDescription();
+-			entityReference.injectIdentifierDescription( identifierDescription );
+-		}
+-
+-		protected abstract IdentifierDescription buildIdentifierDescription();
+-
+-		@Override
+-		public void validateFetchPlan(FetchStrategy fetchStrategy, AttributeDefinition attributeDefinition) {
+-			( (FetchOwner) entityReference ).validateFetchPlan( fetchStrategy, attributeDefinition );
+-		}
+-
+-		@Override
+-		public EntityPersister retrieveFetchSourcePersister() {
+-			return ( (FetchOwner) entityReference ).retrieveFetchSourcePersister();
+-		}
+-
+-		@Override
+-		public void injectIdentifierDescription(IdentifierDescription identifierDescription) {
+-			throw new WalkingException(
+-					"IdentifierDescription collector should not get injected with IdentifierDescription"
+-			);
+-		}
+-	}
+-
+-	protected static class EncapsulatedIdentifierAttributeCollector extends AbstractIdentifierAttributeCollector {
+-		private final PropertyPath propertyPath;
+-
+-		public EncapsulatedIdentifierAttributeCollector(
+-				final SessionFactoryImplementor sessionFactory,
+-				final EntityReference entityReference) {
+-			super( sessionFactory, entityReference );
+-			this.propertyPath = ( (FetchOwner) entityReference ).getPropertyPath();
+-		}
+-
+-		@Override
+-		protected IdentifierDescription buildIdentifierDescription() {
+-			return new IdentifierDescriptionImpl(
+-					entityReference,
+-					getFetches(),
+-					null
+-			);
+-		}
+-
+-		@Override
+-		public PropertyPath getPropertyPath() {
+-			return propertyPath;
+-		}
+-	}
+-
+-	protected static class NonEncapsulatedIdentifierAttributeCollector extends AbstractIdentifierAttributeCollector {
+-		private final PropertyPath propertyPath;
+-
+-		public NonEncapsulatedIdentifierAttributeCollector(
+-				final SessionFactoryImplementor sessionfactory,
+-				final EntityReference entityReference) {
+-			super( sessionfactory, entityReference );
+-			this.propertyPath = ( (FetchOwner) entityReference ).getPropertyPath().append( "<id>" );
+-		}
+-
+-		@Override
+-		protected IdentifierDescription buildIdentifierDescription() {
+-			return new IdentifierDescriptionImpl(
+-					entityReference,
+-					getFetches(),
+-					fetchToHydratedStateExtractorMap
+-			);
+-		}
+-
+-		@Override
+-		public PropertyPath getPropertyPath() {
+-			return propertyPath;
+-		}
+-	}
+-
+-	private static class IdentifierDescriptionImpl implements IdentifierDescription {
+-		private final EntityReference entityReference;
+-		private final Fetch[] identifierFetches;
+-		private final Map<Fetch,HydratedCompoundValueHandler> fetchToHydratedStateExtractorMap;
+-
+-		private IdentifierDescriptionImpl(
+-				EntityReference entityReference,
+-				Fetch[] identifierFetches,
+-				Map<Fetch, HydratedCompoundValueHandler> fetchToHydratedStateExtractorMap) {
+-			this.entityReference = entityReference;
+-			this.identifierFetches = identifierFetches;
+-			this.fetchToHydratedStateExtractorMap = fetchToHydratedStateExtractorMap;
+-		}
+-
+-		@Override
+-		public Fetch[] getFetches() {
+-			return identifierFetches;
+-		}
+-	}
+-
+-
+-	public static class MDCStack {
+-		private ArrayDeque<PropertyPath> pathStack = new ArrayDeque<PropertyPath>();
+-
+-		public void push(PropertyPath path) {
+-			pathStack.addFirst( path );
+-		}
+-
+-		public void pop() {
+-			pathStack.removeFirst();
+-		}
+-
+-		public String toString() {
+-			final PropertyPath path = pathStack.peekFirst();
+-			return path == null ? "<no-path>" : path.getFullPath();
+-		}
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/IdentifierDescriptionInjectable.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/IdentifierDescriptionInjectable.java
+deleted file mode 100644
+index 6b629cc632..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/IdentifierDescriptionInjectable.java
++++ /dev/null
+@@ -1,35 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.build;
+-
+-import org.hibernate.loader.plan.spi.IdentifierDescription;
+-
+-/**
+- * Ugh.
+- *
+- * @author Steve Ebersole
+- */
+-public interface IdentifierDescriptionInjectable {
+-	public void injectIdentifierDescription(IdentifierDescription identifierDescription);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/LoadPlanBuilderStrategy.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/LoadPlanBuilderStrategy.java
+deleted file mode 100644
+index 120af2a638..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/LoadPlanBuilderStrategy.java
++++ /dev/null
+@@ -1,42 +0,0 @@
+-/*
+- * jDocBook, processing of DocBook sources
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.build;
+-
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.persister.walking.spi.AssociationVisitationStrategy;
+-
+-/**
+- * Specialized {@link org.hibernate.persister.walking.spi.AssociationVisitationStrategy} implementation for
+- * building {@link org.hibernate.loader.plan.spi.LoadPlan} instances.
+- *
+- * @author Steve Ebersole
+- */
+-public interface LoadPlanBuilderStrategy extends AssociationVisitationStrategy {
+-	/**
+-	 * After visitation is done, build the load plan.
+-	 *
+-	 * @return The load plan
+-	 */
+-	public LoadPlan buildLoadPlan();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/LoadPlanBuildingContext.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/LoadPlanBuildingContext.java
+deleted file mode 100644
+index 30f63b5f48..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/LoadPlanBuildingContext.java
++++ /dev/null
+@@ -1,40 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.build;
+-
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-
+-/**
+- * Provides access to context needed in building a LoadPlan.
+- *
+- * @author Steve Ebersole
+- */
+-public interface LoadPlanBuildingContext {
+-	/**
+-	 * Access to the SessionFactory
+-	 *
+-	 * @return The SessionFactory
+-	 */
+-	public SessionFactoryImplementor getSessionFactory();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/MetadataDrivenLoadPlanBuilder.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/MetadataDrivenLoadPlanBuilder.java
+deleted file mode 100644
+index fb96c367ec..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/build/MetadataDrivenLoadPlanBuilder.java
++++ /dev/null
+@@ -1,67 +0,0 @@
+-/*
+- * jDocBook, processing of DocBook sources
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.build;
+-
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.persister.collection.CollectionPersister;
+-import org.hibernate.persister.entity.EntityPersister;
+-import org.hibernate.persister.walking.spi.MetamodelGraphWalker;
+-
+-/**
+- * A metadata-driven builder of LoadPlans.  Coordinates between the {@link org.hibernate.persister.walking.spi.MetamodelGraphWalker} and
+- * {@link LoadPlanBuilderStrategy}.
+- *
+- * @author Steve Ebersole
+- *
+- * @see org.hibernate.persister.walking.spi.MetamodelGraphWalker
+- */
+-public class MetadataDrivenLoadPlanBuilder {
+-	/**
+-	 * Coordinates building a LoadPlan that defines just a single root entity return (may have fetches).
+-	 * <p/>
+-	 * Typically this includes building load plans for entity loading or cascade loading.
+-	 *
+-	 * @param strategy The strategy defining the load plan shaping
+-	 * @param persister The persister for the entity forming the root of the load plan.
+-	 *
+-	 * @return The built load plan.
+-	 */
+-	public static LoadPlan buildRootEntityLoadPlan(LoadPlanBuilderStrategy strategy, EntityPersister persister) {
+-		MetamodelGraphWalker.visitEntity( strategy, persister );
+-		return strategy.buildLoadPlan();
+-	}
+-
+-	/**
+-	 * Coordinates building a LoadPlan that defines just a single root collection return (may have fetches).
+-	 *
+-	 * @param strategy The strategy defining the load plan shaping
+-	 * @param persister The persister for the collection forming the root of the load plan.
+-	 *
+-	 * @return The built load plan.
+-	 */
+-	public static LoadPlan buildRootCollectionLoadPlan(LoadPlanBuilderStrategy strategy, CollectionPersister persister) {
+-		MetamodelGraphWalker.visitCollection( strategy, persister );
+-		return strategy.buildLoadPlan();
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/DelegatedLoadPlanVisitationStrategy.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/DelegatedLoadPlanVisitationStrategy.java
+deleted file mode 100644
+index 1dd773e364..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/DelegatedLoadPlanVisitationStrategy.java
++++ /dev/null
+@@ -1,129 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.visit;
+-
+-import org.hibernate.loader.plan.spi.AnyFetch;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.ScalarReturn;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class DelegatedLoadPlanVisitationStrategy implements LoadPlanVisitationStrategy {
+-	private final ReturnGraphVisitationStrategy returnGraphVisitationStrategy;
+-
+-	public DelegatedLoadPlanVisitationStrategy(ReturnGraphVisitationStrategy returnGraphVisitationStrategy) {
+-		this.returnGraphVisitationStrategy = returnGraphVisitationStrategy;
+-	}
+-
+-	@Override
+-	public void start(LoadPlan loadPlan) {
+-	}
+-
+-	@Override
+-	public void finish(LoadPlan loadPlan) {
+-	}
+-
+-	@Override
+-	public void startingRootReturn(Return rootReturn) {
+-		returnGraphVisitationStrategy.startingRootReturn( rootReturn );
+-	}
+-
+-	@Override
+-	public void finishingRootReturn(Return rootReturn) {
+-		returnGraphVisitationStrategy.finishingRootReturn( rootReturn );
+-	}
+-
+-	@Override
+-	public void handleScalarReturn(ScalarReturn scalarReturn) {
+-		returnGraphVisitationStrategy.handleScalarReturn( scalarReturn );
+-	}
+-
+-	@Override
+-	public void handleEntityReturn(EntityReturn rootEntityReturn) {
+-		returnGraphVisitationStrategy.handleEntityReturn( rootEntityReturn );
+-	}
+-
+-	@Override
+-	public void handleCollectionReturn(CollectionReturn rootCollectionReturn) {
+-		returnGraphVisitationStrategy.handleCollectionReturn( rootCollectionReturn );
+-	}
+-
+-	@Override
+-	public void startingFetches(FetchOwner fetchOwner) {
+-		returnGraphVisitationStrategy.startingFetches( fetchOwner );
+-	}
+-
+-	@Override
+-	public void finishingFetches(FetchOwner fetchOwner) {
+-		returnGraphVisitationStrategy.finishingFetches( fetchOwner );
+-	}
+-
+-	@Override
+-	public void startingEntityFetch(EntityFetch fetch) {
+-		returnGraphVisitationStrategy.startingEntityFetch( fetch );
+-	}
+-
+-	@Override
+-	public void finishingEntityFetch(EntityFetch fetch) {
+-		returnGraphVisitationStrategy.finishingEntityFetch( fetch );
+-	}
+-
+-	@Override
+-	public void startingCollectionFetch(CollectionFetch fetch) {
+-		returnGraphVisitationStrategy.startingCollectionFetch( fetch );
+-	}
+-
+-	@Override
+-	public void finishingCollectionFetch(CollectionFetch fetch) {
+-		returnGraphVisitationStrategy.finishingCollectionFetch( fetch );
+-	}
+-
+-	@Override
+-	public void startingCompositeFetch(CompositeFetch fetch) {
+-		returnGraphVisitationStrategy.startingCompositeFetch( fetch );
+-	}
+-
+-	@Override
+-	public void finishingCompositeFetch(CompositeFetch fetch) {
+-		returnGraphVisitationStrategy.finishingCompositeFetch( fetch );
+-	}
+-
+-	@Override
+-	public void startingAnyFetch(AnyFetch fetch) {
+-		returnGraphVisitationStrategy.startingAnyFetch( fetch );
+-	}
+-
+-	@Override
+-	public void finishingAnyFetch(AnyFetch fetch) {
+-		returnGraphVisitationStrategy.finishingAnyFetch( fetch );
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/LoadPlanVisitationStrategy.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/LoadPlanVisitationStrategy.java
+deleted file mode 100644
+index 9a0d08fd09..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/LoadPlanVisitationStrategy.java
++++ /dev/null
+@@ -1,41 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.visit;
+-
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public interface LoadPlanVisitationStrategy extends ReturnGraphVisitationStrategy {
+-	/**
+-	 * Notification we are preparing to start visitation.
+-	 */
+-	public void start(LoadPlan loadPlan);
+-
+-	/**
+-	 * Notification we are finished visitation.
+-	 */
+-	public void finish(LoadPlan loadPlan);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/LoadPlanVisitationStrategyAdapter.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/LoadPlanVisitationStrategyAdapter.java
+deleted file mode 100644
+index 7e80079c22..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/LoadPlanVisitationStrategyAdapter.java
++++ /dev/null
+@@ -1,110 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.visit;
+-
+-import org.hibernate.loader.plan.spi.AnyFetch;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.ScalarReturn;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class LoadPlanVisitationStrategyAdapter implements LoadPlanVisitationStrategy {
+-	public static final LoadPlanVisitationStrategyAdapter INSTANCE = new LoadPlanVisitationStrategyAdapter();
+-
+-	@Override
+-	public void start(LoadPlan loadPlan) {
+-	}
+-
+-	@Override
+-	public void finish(LoadPlan loadPlan) {
+-	}
+-
+-	@Override
+-	public void startingRootReturn(Return rootReturn) {
+-	}
+-
+-	@Override
+-	public void finishingRootReturn(Return rootReturn) {
+-	}
+-
+-	@Override
+-	public void handleScalarReturn(ScalarReturn scalarReturn) {
+-	}
+-
+-	@Override
+-	public void handleEntityReturn(EntityReturn rootEntityReturn) {
+-	}
+-
+-	@Override
+-	public void handleCollectionReturn(CollectionReturn rootCollectionReturn) {
+-	}
+-
+-	@Override
+-	public void startingFetches(FetchOwner fetchOwner) {
+-	}
+-
+-	@Override
+-	public void finishingFetches(FetchOwner fetchOwner) {
+-	}
+-
+-	@Override
+-	public void startingEntityFetch(EntityFetch entityFetch) {
+-	}
+-
+-	@Override
+-	public void finishingEntityFetch(EntityFetch entityFetch) {
+-	}
+-
+-	@Override
+-	public void startingCollectionFetch(CollectionFetch collectionFetch) {
+-	}
+-
+-	@Override
+-	public void finishingCollectionFetch(CollectionFetch collectionFetch) {
+-	}
+-
+-	@Override
+-	public void startingCompositeFetch(CompositeFetch fetch) {
+-	}
+-
+-	@Override
+-	public void finishingCompositeFetch(CompositeFetch fetch) {
+-	}
+-
+-	@Override
+-	public void startingAnyFetch(AnyFetch fetch) {
+-	}
+-
+-	@Override
+-	public void finishingAnyFetch(AnyFetch fetch) {
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/LoadPlanVisitor.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/LoadPlanVisitor.java
+deleted file mode 100644
+index 7f20addb60..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/LoadPlanVisitor.java
++++ /dev/null
+@@ -1,53 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2012, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.visit;
+-
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-
+-/**
+- * Visitor for processing {@link org.hibernate.loader.plan.spi.Return} graphs
+- *
+- * @author Steve Ebersole
+- */
+-public class LoadPlanVisitor {
+-	public static void visit(LoadPlan loadPlan, LoadPlanVisitationStrategy strategy) {
+-		new LoadPlanVisitor( strategy ).visit( loadPlan );
+-	}
+-
+-	private final LoadPlanVisitationStrategy strategy;
+-	private final ReturnGraphVisitor returnGraphVisitor;
+-
+-	public LoadPlanVisitor(LoadPlanVisitationStrategy strategy) {
+-		this.strategy = strategy;
+-		this.returnGraphVisitor = new ReturnGraphVisitor( strategy );
+-	}
+-
+-	private void visit(LoadPlan loadPlan) {
+-		strategy.start( loadPlan );
+-
+-		returnGraphVisitor.visit( loadPlan.getReturns() );
+-
+-		strategy.finish( loadPlan );
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/ReturnGraphVisitationStrategy.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/ReturnGraphVisitationStrategy.java
+deleted file mode 100644
+index 0b7a0914b0..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/ReturnGraphVisitationStrategy.java
++++ /dev/null
+@@ -1,154 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.visit;
+-
+-import org.hibernate.loader.plan.spi.AnyFetch;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.ScalarReturn;
+-
+-/**
+- * A strategy for visiting a root {@link Return} and fetches it defines.
+- *
+- * @author Steve Ebersole
+- */
+-public interface ReturnGraphVisitationStrategy {
+-	/**
+-	 * Notification that a new root return branch is being started.  Will be followed by calls
+-	 * to one of the following based on the type of return:<ul>
+-	 *     <li>{@link #handleScalarReturn}</li>
+-	 *     <li>{@link #handleEntityReturn}</li>
+-	 *     <li>{@link #handleCollectionReturn}</li>
+-	 * </ul>
+-	 *
+-	 * @param rootReturn The root return at the root of the branch.
+-	 */
+-	public void startingRootReturn(Return rootReturn);
+-
+-	/**
+-	 * Notification that we are finishing up processing a root return branch
+-	 *
+-	 * @param rootReturn The RootReturn we are finishing up processing.
+-	 */
+-	public void finishingRootReturn(Return rootReturn);
+-
+-	/**
+-	 * Notification that a scalar return is being processed.  Will be surrounded by calls to
+-	 * {@link #startingRootReturn} and {@link #finishingRootReturn}
+-	 *
+-	 * @param scalarReturn The scalar return
+-	 */
+-	public void handleScalarReturn(ScalarReturn scalarReturn);
+-
+-	/**
+-	 * Notification that a root entity return is being processed.  Will be surrounded by calls to
+-	 * {@link #startingRootReturn} and {@link #finishingRootReturn}
+-	 *
+-	 * @param rootEntityReturn The root entity return
+-	 */
+-	public void handleEntityReturn(EntityReturn rootEntityReturn);
+-
+-	/**
+-	 * Notification that a root collection return is being processed.  Will be surrounded by calls to
+-	 * {@link #startingRootReturn} and {@link #finishingRootReturn}
+-	 *
+-	 * @param rootCollectionReturn The root collection return
+-	 */
+-	public void handleCollectionReturn(CollectionReturn rootCollectionReturn);
+-
+-	/**
+-	 * Notification that we are about to start processing the fetches for the given fetch owner.
+-	 *
+-	 * @param fetchOwner The fetch owner.
+-	 */
+-	public void startingFetches(FetchOwner fetchOwner);
+-
+-	/**
+-	 * Notification that we are finishing up processing the fetches for the given fetch owner.
+-	 *
+-	 * @param fetchOwner The fetch owner.
+-	 */
+-	public void finishingFetches(FetchOwner fetchOwner);
+-
+-	/**
+-	 * Notification we are starting the processing of an entity fetch
+-	 *
+-	 * @param entityFetch The entity fetch
+-	 */
+-	public void startingEntityFetch(EntityFetch entityFetch);
+-
+-	/**
+-	 * Notification that we are finishing up the processing of an entity fetch
+-	 *
+-	 * @param entityFetch The entity fetch
+-	 */
+-	public void finishingEntityFetch(EntityFetch entityFetch);
+-
+-	/**
+-	 * Notification we are starting the processing of a collection fetch
+-	 *
+-	 * @param collectionFetch The collection fetch
+-	 */
+-	public void startingCollectionFetch(CollectionFetch collectionFetch);
+-
+-	/**
+-	 * Notification that we are finishing up the processing of a collection fetch
+-	 *
+-	 * @param collectionFetch The collection fetch
+-	 */
+-	public void finishingCollectionFetch(CollectionFetch collectionFetch);
+-
+-	/**
+-	 * Notification we are starting the processing of a component fetch
+-	 *
+-	 * @param fetch The composite fetch
+-	 */
+-	public void startingCompositeFetch(CompositeFetch fetch);
+-
+-	/**
+-	 * Notification that we are finishing up the processing of a composite fetch
+-	 *
+-	 * @param fetch The composite fetch
+-	 */
+-	public void finishingCompositeFetch(CompositeFetch fetch);
+-
+-	/**
+-	 * Notification we are starting the processing of a ANY fetch
+-	 *
+-	 * @param fetch The ANY fetch
+-	 */
+-	public void startingAnyFetch(AnyFetch fetch);
+-
+-	/**
+-	 * Notification that we are finishing up the processing of a ANY fetch
+-	 *
+-	 * @param fetch The ANY fetch
+-	 */
+-	public void finishingAnyFetch(AnyFetch fetch);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/ReturnGraphVisitationStrategyAdapter.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/ReturnGraphVisitationStrategyAdapter.java
+deleted file mode 100644
+index d6f57a2ac6..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/ReturnGraphVisitationStrategyAdapter.java
++++ /dev/null
+@@ -1,101 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.visit;
+-
+-import org.hibernate.loader.plan.spi.AnyFetch;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.ScalarReturn;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class ReturnGraphVisitationStrategyAdapter implements ReturnGraphVisitationStrategy {
+-	public static final ReturnGraphVisitationStrategyAdapter INSTANCE = new ReturnGraphVisitationStrategyAdapter();
+-
+-	@Override
+-	public void startingRootReturn(Return rootReturn) {
+-	}
+-
+-	@Override
+-	public void finishingRootReturn(Return rootReturn) {
+-	}
+-
+-	@Override
+-	public void handleScalarReturn(ScalarReturn scalarReturn) {
+-	}
+-
+-	@Override
+-	public void handleEntityReturn(EntityReturn rootEntityReturn) {
+-	}
+-
+-	@Override
+-	public void handleCollectionReturn(CollectionReturn rootCollectionReturn) {
+-	}
+-
+-	@Override
+-	public void startingFetches(FetchOwner fetchOwner) {
+-	}
+-
+-	@Override
+-	public void finishingFetches(FetchOwner fetchOwner) {
+-	}
+-
+-	@Override
+-	public void startingEntityFetch(EntityFetch entityFetch) {
+-	}
+-
+-	@Override
+-	public void finishingEntityFetch(EntityFetch entityFetch) {
+-	}
+-
+-	@Override
+-	public void startingCollectionFetch(CollectionFetch collectionFetch) {
+-	}
+-
+-	@Override
+-	public void finishingCollectionFetch(CollectionFetch collectionFetch) {
+-	}
+-
+-	@Override
+-	public void startingCompositeFetch(CompositeFetch fetch) {
+-	}
+-
+-	@Override
+-	public void finishingCompositeFetch(CompositeFetch fetch) {
+-	}
+-
+-	@Override
+-	public void startingAnyFetch(AnyFetch fetch) {
+-	}
+-
+-	@Override
+-	public void finishingAnyFetch(AnyFetch fetch) {
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/ReturnGraphVisitor.java b/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/ReturnGraphVisitor.java
+deleted file mode 100644
+index e512167c33..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/plan/spi/visit/ReturnGraphVisitor.java
++++ /dev/null
+@@ -1,128 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.plan.spi.visit;
+-
+-import java.util.List;
+-
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CollectionReturn;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.ScalarReturn;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class ReturnGraphVisitor {
+-	private final ReturnGraphVisitationStrategy strategy;
+-
+-	public ReturnGraphVisitor(ReturnGraphVisitationStrategy strategy) {
+-		this.strategy = strategy;
+-	}
+-
+-	public void visit(Return... rootReturns) {
+-		for ( Return rootReturn : rootReturns ) {
+-			visitRootReturn( rootReturn );
+-		}
+-	}
+-
+-	public void visit(List<? extends Return> rootReturns) {
+-		for ( Return rootReturn : rootReturns ) {
+-			visitRootReturn( rootReturn );
+-		}
+-	}
+-
+-	private void visitRootReturn(Return rootReturn) {
+-		strategy.startingRootReturn( rootReturn );
+-
+-		if ( org.hibernate.loader.plan.spi.ScalarReturn.class.isInstance( rootReturn ) ) {
+-			strategy.handleScalarReturn( (ScalarReturn) rootReturn );
+-		}
+-		else {
+-			visitNonScalarRootReturn( rootReturn );
+-		}
+-
+-		strategy.finishingRootReturn( rootReturn );
+-	}
+-
+-	private void visitNonScalarRootReturn(Return rootReturn) {
+-		if ( EntityReturn.class.isInstance( rootReturn ) ) {
+-			strategy.handleEntityReturn( (EntityReturn) rootReturn );
+-			visitFetches( (EntityReturn) rootReturn );
+-		}
+-		else if ( CollectionReturn.class.isInstance( rootReturn ) ) {
+-			strategy.handleCollectionReturn( (CollectionReturn) rootReturn );
+-			final CollectionReturn collectionReturn = (CollectionReturn) rootReturn;
+-			visitFetches( collectionReturn.getIndexGraph() );
+-			visitFetches( collectionReturn.getElementGraph() );
+-		}
+-		else {
+-			throw new IllegalStateException(
+-					"Unexpected return type encountered; expecting a non-scalar root return, but found " +
+-							rootReturn.getClass().getName()
+-			);
+-		}
+-	}
+-
+-	private void visitFetches(FetchOwner fetchOwner) {
+-		if ( fetchOwner != null ) {
+-			strategy.startingFetches( fetchOwner );
+-
+-			for ( Fetch fetch : fetchOwner.getFetches() ) {
+-				visitFetch( fetch );
+-			}
+-
+-			strategy.finishingFetches( fetchOwner );
+-		}
+-	}
+-
+-	private void visitFetch(Fetch fetch) {
+-		if ( EntityFetch.class.isInstance( fetch ) ) {
+-			strategy.startingEntityFetch( (EntityFetch) fetch );
+-			visitFetches( (EntityFetch) fetch );
+-			strategy.finishingEntityFetch( (EntityFetch) fetch );
+-		}
+-		else if ( CollectionFetch.class.isInstance( fetch ) ) {
+-			strategy.startingCollectionFetch( (CollectionFetch) fetch );
+-			visitFetches( ( (CollectionFetch) fetch ).getIndexGraph() );
+-			visitFetches( ( (CollectionFetch) fetch ).getElementGraph() );
+-			strategy.finishingCollectionFetch( (CollectionFetch) fetch );
+-		}
+-		else if ( CompositeFetch.class.isInstance( fetch ) ) {
+-			strategy.startingCompositeFetch( (CompositeFetch) fetch );
+-			visitFetches( (CompositeFetch) fetch );
+-			strategy.finishingCompositeFetch( (CompositeFetch) fetch );
+-		}
+-		else {
+-			throw new IllegalStateException(
+-					"Unexpected return type encountered; expecting a fetch return, but found " +
+-							fetch.getClass().getName()
+-			);
+-		}
+-	}
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/spi/JoinableAssociation.java b/hibernate-core/src/main/java/org/hibernate/loader/spi/JoinableAssociation.java
+deleted file mode 100644
+index d25098bc72..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/spi/JoinableAssociation.java
++++ /dev/null
+@@ -1,172 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.spi;
+-
+-import java.util.Map;
+-
+-import org.hibernate.Filter;
+-import org.hibernate.loader.PropertyPath;
+-import org.hibernate.loader.plan.spi.CollectionReference;
+-import org.hibernate.loader.plan.spi.EntityReference;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.persister.entity.Joinable;
+-import org.hibernate.sql.JoinType;
+-import org.hibernate.type.AssociationType;
+-
+-/**
+- * Represents a joinable (entity or collection) association.
+- *
+- * @author Gail Badner
+- */
+-public interface JoinableAssociation {
+-
+-	/**
+-	 * Returns the property path of the association.
+-	 *
+- 	 * @return the property path of the association.
+-	 */
+-	PropertyPath getPropertyPath();
+-
+-	/**
+-	 * Returns the type of join used for the association.
+-	 *
+-	 * @return the type of join used for the association.
+-	 *
+-	 * @see JoinType
+-	 */
+-	JoinType getJoinType();
+-
+-	/**
+-	 * Returns the current association fetch object.
+-	 *
+-	 * @return the current association fetch object.
+-	 *
+-	 * @see Fetch
+-	 */
+-	Fetch getCurrentFetch();
+-
+-	/**
+-	 * Return the current {@link EntityReference}, or null if none.
+-     * <p/>
+-	 * If {@link #getCurrentFetch()} returns an
+-	 * {@link org.hibernate.loader.plan.spi.EntityFetch}, this method will
+-	 * return the same object as {@link #getCurrentFetch()}.
+-	 * <p/>
+-	 * If {@link #getCurrentFetch()} returns a
+-	 * {@link org.hibernate.loader.plan.spi.CollectionFetch} and
+-	 * the collection's owner is returned or fetched, this
+-	 * method will return the {@link EntityReference} that owns the
+-	 * {@link Fetch} returned by {@link #getCurrentFetch()};
+-	 * otherwise this method returns null.
+-	 *
+-	 * @return the current {@link EntityReference}, or null if none.
+-	 *
+-	 * @see #getCurrentFetch()
+-	 * @see Fetch
+-	 * @see org.hibernate.loader.plan.spi.CollectionFetch
+-	 * @see org.hibernate.loader.plan.spi.EntityFetch
+-	 * @see EntityReference
+-	 */
+-	EntityReference getCurrentEntityReference();
+-
+-	/**
+-	 * Return the current {@link CollectionReference}, or null if none.
+-	 * <p/>
+-	 * If {@link #getCurrentFetch()} returns a
+-	 * {@link org.hibernate.loader.plan.spi.CollectionFetch}, this method
+-	 * will return the same object as {@link #getCurrentFetch()}.
+-	 * <p/>
+-	 * If {@link #getCurrentFetch()} returns an
+-	 * {@link org.hibernate.loader.plan.spi.EntityFetch} that is
+-	 * a collection element (or part of a composite collection element),
+-	 * and that collection is being returned or fetched, this
+-	 * method will return the {@link CollectionReference};
+-	 * otherwise this method returns null.
+-	 *
+-	 * @return the current {@link CollectionReference}, or null if none.
+-	 *
+-	 * @see #getCurrentFetch()
+-	 * @see Fetch
+-	 * @see org.hibernate.loader.plan.spi.EntityFetch
+-	 * @see org.hibernate.loader.plan.spi.CollectionFetch
+-	 * @see CollectionReference
+-	 */
+-	CollectionReference getCurrentCollectionReference();
+-
+-	/**
+-	 * Returns the association type.
+-	 *
+-	 * @return the association type.
+-	 *
+-	 * @see AssociationType
+-	 */
+-	AssociationType getAssociationType();
+-
+-	/**
+-	 * Return the persister for creating the join for the association.
+-	 *
+-	 * @return the persister for creating the join for the association.
+-	 */
+-	Joinable getJoinable();
+-
+-	/**
+-	 * Is this a collection association?
+-	 *
+-	 * @return true, if this is a collection association; false otherwise.
+-	 */
+-	boolean isCollection();
+-
+-	/**
+-	 * Does this association have a restriction?
+-	 *
+-	 * @return true if this association has a restriction; false, otherwise.
+-	 */
+-	boolean hasRestriction();
+-
+-	/**
+-	 * Does this association have a many-to-many association
+-	 * with the specified association?
+-     *
+-	 * @param other - the other association.
+-	 * @return true, if this association has a many-to-many association
+-	 *         with the other association; false otherwise.
+-	 */
+-	boolean isManyToManyWith(JoinableAssociation other);
+-
+-	/**
+-	 * Returns the with clause for this association.
+-	 *
+-	 * @return the with clause for this association.
+-	 */
+-	String getWithClause();
+-
+-	/**
+-	 * Returns the filters that are enabled for this association.
+-	 *
+-	 * @return the filters that are enabled for this association.
+-	 *
+-	 * @see Filter
+-	 */
+-	Map<String,Filter> getEnabledFilters();
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/spi/LoadPlanAdvisor.java b/hibernate-core/src/main/java/org/hibernate/loader/spi/LoadPlanAdvisor.java
+deleted file mode 100644
+index 0d3f647d9a..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/spi/LoadPlanAdvisor.java
++++ /dev/null
+@@ -1,49 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.spi;
+-
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-
+-/**
+- * An advisor that can be made available to the {@link org.hibernate.loader.plan.exec.process.spi.ResultSetProcessor} and {@link org.hibernate.loader.plan.exec.process.spi.ScrollableResultSetProcessor}.
+- *
+- * The processors consult with the advisor, if one is provided, as a means to influence the load plan, meaning that
+- * the advisor might add fetches.  A caveat is that any added fetches cannot be join fetches (they cannot alter the
+- * SQL); if a fetch is added as {@link org.hibernate.engine.FetchTiming#IMMEDIATE}, it must be a "subsequent form":
+- * {@link org.hibernate.engine.FetchStyle#SELECT}, {@link org.hibernate.engine.FetchStyle#SUBSELECT},
+- * {@link org.hibernate.engine.FetchStyle#BATCH}.
+- *
+- * @author Steve Ebersole
+- */
+-public interface LoadPlanAdvisor {
+-	/**
+-	 * Advise on the given LoadPlan, returning a new LoadPlan if any additions are needed.  It is the responsibility
+-	 * of the advisor to return the original load plan if no additions were needed
+-	 *
+-	 * @param loadPlan The load plan to advise on.
+-	 *
+-	 * @return The original or advised load plan.
+-	 */
+-	public LoadPlan advise(LoadPlan loadPlan);
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/spi/Loader.java b/hibernate-core/src/main/java/org/hibernate/loader/spi/Loader.java
+deleted file mode 100644
+index 1513d61a82..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/spi/Loader.java
++++ /dev/null
+@@ -1,59 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.spi;
+-
+-import java.sql.ResultSet;
+-import java.sql.SQLException;
+-import java.util.List;
+-
+-import org.hibernate.engine.spi.QueryParameters;
+-import org.hibernate.engine.spi.SessionImplementor;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.transform.ResultTransformer;
+-
+-/**
+- * Definition of the Loader contract.  A Loader is intended to perform loading based on a query and a load-plan.
+- * Under the covers it uses many delegates to perform that work that might be better used individually in
+- * different situations.  In general, Loader is intended for being fed a set of results and processing through
+- * all of those result rows in one swoop.  For cases that do not fit that template, it is probably better to
+- * individually use the delegates to perform the work.
+- *
+- * @author Gavin King
+- * @author Steve Ebersole
+- */
+-public interface Loader {
+-	/**
+-	 * Obtain the LoadPlan this Loader is following.
+-	 *
+-	 * @return
+-	 */
+-	public LoadPlan getLoadPlan();
+-
+-	public List extractResults(
+-			ResultSet resultSet,
+-			SessionImplementor session,
+-			QueryParameters queryParameters,
+-			boolean returnProxies,
+-			ResultTransformer forcedResultTransformer) throws SQLException;
+-}
+diff --git a/hibernate-core/src/main/java/org/hibernate/loader/spi/NoOpLoadPlanAdvisor.java b/hibernate-core/src/main/java/org/hibernate/loader/spi/NoOpLoadPlanAdvisor.java
+deleted file mode 100644
+index 8769d6c6ee..0000000000
+--- a/hibernate-core/src/main/java/org/hibernate/loader/spi/NoOpLoadPlanAdvisor.java
++++ /dev/null
+@@ -1,38 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.loader.spi;
+-
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class NoOpLoadPlanAdvisor implements LoadPlanAdvisor {
+-	public static final NoOpLoadPlanAdvisor INSTANCE = new NoOpLoadPlanAdvisor();
+-
+-	@Override
+-	public LoadPlan advise(LoadPlan loadPlan) {
+-		return loadPlan;
+-	}
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceHelper.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceHelper.java
+deleted file mode 100644
+index f4328042d0..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceHelper.java
++++ /dev/null
+@@ -1,68 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import org.hibernate.cfg.NotYetImplementedException;
+-import org.hibernate.graph.spi.AttributeNodeImplementor;
+-import org.hibernate.loader.plan.spi.Fetch;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class AdviceHelper {
+-	private AdviceHelper() {
+-	}
+-
+-	static Fetch buildFetch(FetchOwner fetchOwner, AttributeNodeImplementor attributeNode) {
+-		throw new NotYetImplementedException();
+-//		if ( attributeNode.getAttribute().isAssociation() ) {
+-//			if ( attributeNode.getAttribute().isCollection() ) {
+-//				return new CollectionFetch(
+-//						(SessionFactoryImplementor) attributeNode.entityManagerFactory().getSessionFactory(),
+-//						LockMode.NONE,
+-//						fetchOwner,
+-//						new FetchStrategy( FetchTiming.IMMEDIATE, FetchStyle.SELECT ),
+-//						attributeNode.getAttributeName()
+-//				);
+-//			}
+-//			else {
+-//				return new EntityFetch(
+-//						(SessionFactoryImplementor) attributeNode.entityManagerFactory().getSessionFactory(),
+-//						LockMode.NONE,
+-//						fetchOwner,
+-//						attributeNode.getAttributeName(),
+-//						new FetchStrategy( FetchTiming.IMMEDIATE, FetchStyle.SELECT )
+-//				);
+-//			}
+-//		}
+-//		else {
+-//			return new CompositeFetch(
+-//					(SessionFactoryImplementor) attributeNode.entityManagerFactory().getSessionFactory(),
+-//					fetchOwner,
+-//					attributeNode.getAttributeName()
+-//			);
+-//		}
+-	}
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptor.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptor.java
+deleted file mode 100644
+index b3fca7ea2f..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptor.java
++++ /dev/null
+@@ -1,35 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-/**
+- * Links together the LoadPlan graph and JPA graph notions of the same node.
+- *
+- * @author Steve Ebersole
+- */
+-interface AdviceNodeDescriptor {
+-	public JpaGraphReference attributeProcessed(String attributeName);
+-
+-	public void applyMissingFetches();
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptorCollectionReference.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptorCollectionReference.java
+deleted file mode 100644
+index 6939f641fd..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptorCollectionReference.java
++++ /dev/null
+@@ -1,59 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class AdviceNodeDescriptorCollectionReference implements AdviceNodeDescriptor {
+-	private final CollectionFetch collectionFetch;
+-	private final JpaGraphReference jpaGraphReference;
+-
+-	public AdviceNodeDescriptorCollectionReference(
+-			CollectionFetch collectionFetch,
+-			JpaGraphReference jpaGraphReference) {
+-		//To change body of created methods use File | Settings | File Templates.
+-		this.collectionFetch = collectionFetch;
+-		this.jpaGraphReference = jpaGraphReference;
+-	}
+-
+-	@Override
+-	public JpaGraphReference attributeProcessed(String attributeName) {
+-		return jpaGraphReference != null
+-				? jpaGraphReference.attributeProcessed( attributeName )
+-				: null;
+-	}
+-
+-	@Override
+-	public void applyMissingFetches() {
+-		if ( jpaGraphReference == null ) {
+-			return;
+-		}
+-		jpaGraphReference.applyMissingFetches( collectionFetch.getElementGraph() );
+-		( (JpaGraphCollectionReference) jpaGraphReference ).applyMissingKeyFetches( collectionFetch.getIndexGraph() );
+-
+-	}
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptorCompositeReference.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptorCompositeReference.java
+deleted file mode 100644
+index 76173e3ca2..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptorCompositeReference.java
++++ /dev/null
+@@ -1,54 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class AdviceNodeDescriptorCompositeReference implements AdviceNodeDescriptor {
+-	private final FetchOwner fetchOwner;
+-	private final JpaGraphReference jpaGraphReference;
+-
+-	AdviceNodeDescriptorCompositeReference(CompositeFetch fetchOwner, JpaGraphReference jpaGraphReference) {
+-		this.fetchOwner = fetchOwner;
+-		this.jpaGraphReference = jpaGraphReference;
+-	}
+-
+-	@Override
+-	public JpaGraphReference attributeProcessed(String attributeName) {
+-		return jpaGraphReference != null
+-				? jpaGraphReference.attributeProcessed( attributeName )
+-				: null;
+-	}
+-
+-	@Override
+-	public void applyMissingFetches() {
+-		if ( jpaGraphReference != null ) {
+-			jpaGraphReference.applyMissingFetches( fetchOwner );
+-		}
+-	}
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptorEntityReference.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptorEntityReference.java
+deleted file mode 100644
+index 79022edc96..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceNodeDescriptorEntityReference.java
++++ /dev/null
+@@ -1,62 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-
+-/**
+- * An AdviceNodeDescriptor that represents an entity reference
+- *
+- * @author Steve Ebersole
+- */
+-class AdviceNodeDescriptorEntityReference implements AdviceNodeDescriptor {
+-	private final FetchOwner fetchOwner;
+-	private final JpaGraphReference jpaGraphReference;
+-
+-	AdviceNodeDescriptorEntityReference(EntityReturn fetchOwner, JpaGraphReference jpaGraphReference) {
+-		this.fetchOwner = fetchOwner;
+-		this.jpaGraphReference = jpaGraphReference;
+-	}
+-
+-	AdviceNodeDescriptorEntityReference(EntityFetch fetchOwner, JpaGraphReference jpaGraphReference) {
+-		this.fetchOwner = fetchOwner;
+-		this.jpaGraphReference = jpaGraphReference;
+-	}
+-
+-	@Override
+-	public JpaGraphReference attributeProcessed(String attributeName) {
+-		return jpaGraphReference != null
+-				? jpaGraphReference.attributeProcessed( attributeName )
+-				: null;
+-	}
+-
+-	@Override
+-	public void applyMissingFetches() {
+-		if ( jpaGraphReference != null ) {
+-			jpaGraphReference.applyMissingFetches( fetchOwner );
+-		}
+-	}
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceStyle.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceStyle.java
+deleted file mode 100644
+index 43cc0fef89..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/AdviceStyle.java
++++ /dev/null
+@@ -1,39 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-/** The style of advice.  This is defined by the JPA spec.  See tha values for details.
+- *
+- * @author Steve Ebersole
+- */
+-public enum AdviceStyle {
+-	/**
+-	 * Indicates a graph specified by the {@code javax.persistence.fetchgraph} setting.
+-	 */
+-	FETCH,
+-	/**
+-	 * Indicates a graph specified by the {@code javax.persistence.loadgraph} setting.
+-	 */
+-	LOAD
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/EntityGraphBasedLoadPlanAdvisor.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/EntityGraphBasedLoadPlanAdvisor.java
+deleted file mode 100644
+index 4b603eae35..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/EntityGraphBasedLoadPlanAdvisor.java
++++ /dev/null
+@@ -1,134 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.jpa.graph.internal.EntityGraphImpl;
+-import org.hibernate.loader.plan.internal.LoadPlanImpl;
+-import org.hibernate.loader.plan.spi.CopyContext;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.visit.ReturnGraphVisitationStrategy;
+-import org.hibernate.loader.spi.LoadPlanAdvisor;
+-
+-/**
+- * A LoadPlanAdvisor implementation for applying JPA "entity graph" fetches
+- *
+- * @author Steve Ebersole
+- */
+-public class EntityGraphBasedLoadPlanAdvisor implements LoadPlanAdvisor {
+-	private static final Logger log = Logger.getLogger( EntityGraphBasedLoadPlanAdvisor.class );
+-
+-	private final EntityGraphImpl root;
+-	private final AdviceStyle adviceStyle;
+-
+-	/**
+-	 * Constricts a LoadPlanAdvisor for applying any additional fetches needed as indicated by the
+-	 * given entity graph.
+-	 *
+-	 * @param root The entity graph indicating the fetches.
+-	 * @param adviceStyle The style of advise (this is defikned
+-	 */
+-	public EntityGraphBasedLoadPlanAdvisor(EntityGraphImpl root, AdviceStyle adviceStyle) {
+-		if ( root == null ) {
+-			throw new IllegalArgumentException( "EntityGraph cannot be null" );
+-		}
+-		this.root = root;
+-		this.adviceStyle = adviceStyle;
+-	}
+-
+-	@Override
+-	public LoadPlan advise(LoadPlan loadPlan) {
+-		if ( root == null ) {
+-			log.debug( "Skipping load plan advising: no entity graph was specified" );
+-		}
+-		else {
+-			// for now, lets assume that the graph and the load-plan returns have to match up
+-			EntityReturn entityReturn = findRootEntityReturn( loadPlan );
+-			if ( entityReturn == null ) {
+-				log.debug( "Skipping load plan advising: not able to find appropriate root entity return in load plan" );
+-			}
+-			else {
+-				final String entityName = entityReturn.getEntityPersister().getEntityName();
+-				if ( ! root.appliesTo( entityName ) ) {
+-					log.debugf(
+-							"Skipping load plan advising: entity types did not match : [%s] and [%s]",
+-							root.getEntityType().getName(),
+-							entityName
+-					);
+-				}
+-				else {
+-					// ok to apply the advice
+-					return applyAdvice( entityReturn );
+-				}
+-			}
+-		}
+-
+-		// return the original load-plan
+-		return loadPlan;
+-	}
+-
+-	private LoadPlan applyAdvice(final EntityReturn entityReturn) {
+-		final EntityReturn copy = entityReturn.makeCopy( new CopyContextImpl( entityReturn ) );
+-		return new LoadPlanImpl( copy );
+-	}
+-
+-	private EntityReturn findRootEntityReturn(LoadPlan loadPlan) {
+-		EntityReturn rootEntityReturn = null;
+-		for ( Return rtn : loadPlan.getReturns() ) {
+-			if ( ! EntityReturn.class.isInstance( rtn ) ) {
+-				continue;
+-			}
+-
+-			if ( rootEntityReturn != null ) {
+-				log.debug( "Multiple EntityReturns were found" );
+-				return null;
+-			}
+-
+-			rootEntityReturn = (EntityReturn) rtn;
+-		}
+-
+-		if ( rootEntityReturn == null ) {
+-			log.debug( "Unable to find root entity return in load plan" );
+-		}
+-
+-		return rootEntityReturn;
+-	}
+-
+-	public class CopyContextImpl implements CopyContext {
+-		private final ReturnGraphVisitationStrategyImpl strategy;
+-
+-		public CopyContextImpl(EntityReturn entityReturn) {
+-			strategy = new ReturnGraphVisitationStrategyImpl( entityReturn, root );
+-		}
+-
+-		@Override
+-		public ReturnGraphVisitationStrategy getReturnGraphVisitationStrategy() {
+-			return strategy;
+-		}
+-	}
+-
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphCollectionReference.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphCollectionReference.java
+deleted file mode 100644
+index 83690d7674..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphCollectionReference.java
++++ /dev/null
+@@ -1,49 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import org.hibernate.graph.spi.AttributeNodeImplementor;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-class JpaGraphCollectionReference extends JpaGraphReferenceSubGraphSupport {
+-	private final AttributeNodeImplementor<?> attributeNode;
+-
+-	JpaGraphCollectionReference(AttributeNodeImplementor<?> attributeNode) {
+-		super( attributeNode );
+-		this.attributeNode = attributeNode;
+-	}
+-
+-	@Override
+-	public void applyMissingFetches(FetchOwner fetchOwner) {
+-		super.applyMissingFetches( fetchOwner );
+-		// todo : additionally we need to process key graph(s)
+-	}
+-
+-	void applyMissingKeyFetches(FetchOwner fetchOwner) {
+-		// todo : additionally we need to process key graph(s)
+-	}
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphReference.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphReference.java
+deleted file mode 100644
+index 4fa07ec80d..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphReference.java
++++ /dev/null
+@@ -1,53 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-
+-/**
+- * Describes a reference to a JPA graph.  This encompasses both {@link javax.persistence.EntityGraph}
+- * and {@link javax.persistence.Subgraph}.  Exposes the functionality needed for advising in a common way.
+- *
+- * @author Steve Ebersole
+- */
+-interface JpaGraphReference {
+-	/**
+-	 * Callback to let the JPA graph reference node know that the particular attribute (by name) was processed, which
+-	 * means it already was accounted for in the LoadPlan graph.  For association attributes and composites, also
+-	 * returns a representation of the corresponding JPA graph node.
+-	 *
+-	 * @param attributeName The name of the attribute processed.
+-	 *
+-	 * @return The JPA graph reference corresponding to that attribute, if one.
+-	 */
+-	public JpaGraphReference attributeProcessed(String attributeName);
+-
+-	/**
+-	 * For any attributes that are defined in the JPA graph, that were not processed (as would have been indicated
+-	 * by a previous call to {@link #attributeProcessed}), apply needed fetches to the fetch owner.
+-	 *
+-	 * @param fetchOwner The owner of any generated fetches.
+-	 */
+-	public void applyMissingFetches(FetchOwner fetchOwner);
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphReferenceSubGraphSupport.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphReferenceSubGraphSupport.java
+deleted file mode 100644
+index d827edb986..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphReferenceSubGraphSupport.java
++++ /dev/null
+@@ -1,101 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import javax.persistence.AttributeNode;
+-import javax.persistence.Subgraph;
+-import java.util.HashMap;
+-import java.util.Map;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.graph.spi.AttributeNodeImplementor;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-abstract class JpaGraphReferenceSubGraphSupport implements JpaGraphReference {
+-	private static final Logger log = Logger.getLogger( JpaGraphReferenceSubGraphSupport.class );
+-
+-	private final Map<String,AttributeNodeImplementor> elementGraphAttributeMap;
+-
+-
+-	protected JpaGraphReferenceSubGraphSupport(AttributeNodeImplementor<?> attributeNode) {
+-		this.elementGraphAttributeMap = new HashMap<String, AttributeNodeImplementor>();
+-
+-		for ( Subgraph<?> subgraph : attributeNode.getSubgraphs().values() ) {
+-			for ( AttributeNode<?> subGraphAttributeNode : subgraph.getAttributeNodes() ) {
+-				final AttributeNodeImplementor<?> nodeImplementor = (AttributeNodeImplementor<?>) subGraphAttributeNode;
+-				final AttributeNodeImplementor<?> old = this.elementGraphAttributeMap.put(
+-						nodeImplementor.getAttributeName(),
+-						nodeImplementor
+-				);
+-
+-				if ( old != null && old != nodeImplementor ) {
+-					throw new IllegalStateException(
+-							"Found multiple representations of the same attribute : " + nodeImplementor.getAttributeName()
+-					);
+-				}
+-			}
+-		}
+-	}
+-
+-	@Override
+-	public JpaGraphReference attributeProcessed(String attributeName) {
+-		final AttributeNodeImplementor attributeNode = this.elementGraphAttributeMap.remove( attributeName );
+-
+-		if ( attributeNode == null ) {
+-			return NoOpJpaGraphReference.INSTANCE;
+-		}
+-
+-		return attributeNode.getAttribute().isCollection()
+-				? new JpaGraphCollectionReference( attributeNode )
+-				: new JpaGraphSingularAttributeReference( attributeNode );
+-	}
+-
+-	@Override
+-	public void applyMissingFetches(FetchOwner fetchOwner) {
+-		for ( AttributeNodeImplementor attributeNode : elementGraphAttributeMap.values() ) {
+-			System.out.println(
+-					String.format(
+-							"Found unprocessed attribute node [%s], applying to fetch-owner [%s]",
+-							attributeNode.getAttributeName(),
+-							fetchOwner.getPropertyPath().getFullPath()
+-					)
+-			);
+-
+-			log.tracef(
+-					"Found unprocessed attribute node [%s], applying to fetch-owner [%s]",
+-					attributeNode.getAttributeName(),
+-					fetchOwner.getPropertyPath()
+-			);
+-
+-			AdviceHelper.buildFetch( fetchOwner, attributeNode );
+-
+-			// todo : additionally we need to process any further graphs in the attribute node path
+-			//		since we are effectively at a leaf in the LoadPlan graph
+-		}
+-	}
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphRootEntityReference.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphRootEntityReference.java
+deleted file mode 100644
+index 4331dc2651..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphRootEntityReference.java
++++ /dev/null
+@@ -1,95 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import java.util.HashMap;
+-import java.util.List;
+-import java.util.Map;
+-
+-import org.jboss.logging.Logger;
+-
+-import org.hibernate.graph.spi.AttributeNodeImplementor;
+-import org.hibernate.jpa.graph.internal.EntityGraphImpl;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-
+-/**
+- * Models the root {@link javax.persistence.EntityGraph} as a JpaGraphReference
+- *
+- * @author Steve Ebersole
+- */
+-class JpaGraphRootEntityReference implements JpaGraphReference {
+-	private static final Logger log = Logger.getLogger( JpaGraphRootEntityReference.class );
+-
+-	private final Map<String,AttributeNodeImplementor> graphAttributeMap;
+-
+-	JpaGraphRootEntityReference(EntityGraphImpl entityGraph) {
+-		graphAttributeMap = new HashMap<String, AttributeNodeImplementor>();
+-
+-		final List<AttributeNodeImplementor<?>> explicitAttributeNodes = entityGraph.attributeImplementorNodes();
+-		if ( explicitAttributeNodes != null ) {
+-			for ( AttributeNodeImplementor node : explicitAttributeNodes ) {
+-				graphAttributeMap.put( node.getAttributeName(), node );
+-			}
+-		}
+-	}
+-
+-	@Override
+-	public JpaGraphReference attributeProcessed(String attributeName) {
+-		final AttributeNodeImplementor attributeNode = graphAttributeMap.remove( attributeName );
+-
+-		if ( attributeNode == null ) {
+-			return NoOpJpaGraphReference.INSTANCE;
+-		}
+-
+-		return attributeNode.getAttribute().isCollection()
+-				? new JpaGraphCollectionReference( attributeNode )
+-				: new JpaGraphSingularAttributeReference( attributeNode );
+-	}
+-
+-
+-	@Override
+-	public void applyMissingFetches(FetchOwner fetchOwner) {
+-		for ( AttributeNodeImplementor attributeNode : graphAttributeMap.values() ) {
+-			System.out.println(
+-					String.format(
+-							"Found unprocessed attribute node [%s], applying to fetch-owner [%s]",
+-							attributeNode.getAttributeName(),
+-							fetchOwner.getPropertyPath().getFullPath()
+-					)
+-			);
+-
+-			log.tracef(
+-					"Found unprocessed attribute node [%s], applying to fetch-owner [%s]",
+-					attributeNode.getAttributeName(),
+-					fetchOwner.getPropertyPath()
+-			);
+-
+-			AdviceHelper.buildFetch( fetchOwner, attributeNode );
+-
+-			// todo : additionally we need to process any further graphs in the attribute node path
+-			//		since we are effectively at a leaf in the LoadPlan graph
+-		}
+-	}
+-
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphSingularAttributeReference.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphSingularAttributeReference.java
+deleted file mode 100644
+index 9b7542d016..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/JpaGraphSingularAttributeReference.java
++++ /dev/null
+@@ -1,36 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-
+-import org.hibernate.graph.spi.AttributeNodeImplementor;
+-
+-/**
+-* @author Steve Ebersole
+-*/
+-class JpaGraphSingularAttributeReference extends JpaGraphReferenceSubGraphSupport {
+-	JpaGraphSingularAttributeReference(AttributeNodeImplementor attributeNode) {
+-		super( attributeNode );
+-	}
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/NoOpJpaGraphReference.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/NoOpJpaGraphReference.java
+deleted file mode 100644
+index 9763ef6c7b..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/NoOpJpaGraphReference.java
++++ /dev/null
+@@ -1,47 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-
+-/**
+- * A no-op implementation of JpaGraphReference.  Used when the LoadPlan graph already defines
+- * nodes beyond the scope of the JPA graph.
+- *
+- * @author Steve Ebersole
+- */
+-class NoOpJpaGraphReference implements JpaGraphReference {
+-	public static final NoOpJpaGraphReference INSTANCE = new NoOpJpaGraphReference();
+-
+-	@Override
+-	public JpaGraphReference attributeProcessed(String attributeName) {
+-		// its no-op, nothing to do
+-		return INSTANCE;
+-	}
+-
+-	@Override
+-	public void applyMissingFetches(FetchOwner fetchOwner) {
+-		// its no-op, nothing to do
+-	}
+-}
+diff --git a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/ReturnGraphVisitationStrategyImpl.java b/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/ReturnGraphVisitationStrategyImpl.java
+deleted file mode 100644
+index d85721a271..0000000000
+--- a/hibernate-entitymanager/src/main/java/org/hibernate/jpa/graph/internal/advisor/ReturnGraphVisitationStrategyImpl.java
++++ /dev/null
+@@ -1,105 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.graph.internal.advisor;
+-
+-import java.util.ArrayDeque;
+-
+-import org.hibernate.cfg.NotYetImplementedException;
+-import org.hibernate.jpa.graph.internal.EntityGraphImpl;
+-import org.hibernate.loader.plan.spi.CollectionFetch;
+-import org.hibernate.loader.plan.spi.CompositeFetch;
+-import org.hibernate.loader.plan.spi.EntityFetch;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.FetchOwner;
+-import org.hibernate.loader.plan.spi.Return;
+-import org.hibernate.loader.plan.spi.visit.ReturnGraphVisitationStrategyAdapter;
+-
+-/**
+- * The visitor strategy for visiting the return graph of the load plan being advised.
+- *
+- * @author Steve Ebersole
+- */
+-public class ReturnGraphVisitationStrategyImpl extends ReturnGraphVisitationStrategyAdapter {
+-	private ArrayDeque<AdviceNodeDescriptor> nodeStack = new ArrayDeque<AdviceNodeDescriptor>();
+-
+-	public ReturnGraphVisitationStrategyImpl(EntityReturn entityReturn, EntityGraphImpl jpaRoot) {
+-		nodeStack.addFirst( new AdviceNodeDescriptorEntityReference( entityReturn, new JpaGraphRootEntityReference( jpaRoot ) ) );
+-	}
+-
+-	@Override
+-	public void finishingRootReturn(Return rootReturn) {
+-		nodeStack.removeFirst();
+-	}
+-
+-	@Override
+-	public void finishingFetches(FetchOwner fetchOwner) {
+-		nodeStack.peekFirst().applyMissingFetches();
+-	}
+-
+-	@Override
+-	public void startingEntityFetch(EntityFetch entityFetch) {
+-		throw new NotYetImplementedException();
+-//		final AdviceNodeDescriptor currentNode = nodeStack.peekFirst();
+-//		final String attributeName = entityFetch.getOwnerPropertyName();
+-//		final JpaGraphReference fetchedGraphReference = currentNode.attributeProcessed( attributeName );
+-//
+-//		nodeStack.addFirst( new AdviceNodeDescriptorEntityReference( entityFetch, fetchedGraphReference ) );
+-	}
+-
+-	@Override
+-	public void finishingEntityFetch(EntityFetch entityFetch) {
+-		nodeStack.removeFirst();
+-	}
+-
+-	@Override
+-	public void startingCollectionFetch(CollectionFetch collectionFetch) {
+-		throw new NotYetImplementedException();
+-//		final AdviceNodeDescriptor currentNode = nodeStack.peekFirst();
+-//		final String attributeName = collectionFetch.getOwnerPropertyName();
+-//		final JpaGraphReference fetchedGraphReference = currentNode.attributeProcessed( attributeName );
+-//
+-//		nodeStack.addFirst( new AdviceNodeDescriptorCollectionReference( collectionFetch, fetchedGraphReference ) );
+-	}
+-
+-	@Override
+-	public void finishingCollectionFetch(CollectionFetch collectionFetch) {
+-		nodeStack.removeFirst();
+-	}
+-
+-	@Override
+-	public void startingCompositeFetch(CompositeFetch fetch) {
+-		throw new NotYetImplementedException();
+-//		final AdviceNodeDescriptor currentNode = nodeStack.peekFirst();
+-//		final String attributeName = fetch.getOwnerPropertyName();
+-//		final JpaGraphReference fetchedGraphReference = currentNode.attributeProcessed( attributeName );
+-//
+-//		nodeStack.addFirst( new AdviceNodeDescriptorCompositeReference( fetch, fetchedGraphReference ) );
+-	}
+-
+-	@Override
+-	public void finishingCompositeFetch(CompositeFetch fetch) {
+-		nodeStack.removeFirst();
+-	}
+-
+-}
+diff --git a/hibernate-entitymanager/src/test/java/org/hibernate/jpa/test/graphs/BasicGraphLoadPlanAdviceTests.java b/hibernate-entitymanager/src/test/java/org/hibernate/jpa/test/graphs/BasicGraphLoadPlanAdviceTests.java
+deleted file mode 100644
+index 818038f23d..0000000000
+--- a/hibernate-entitymanager/src/test/java/org/hibernate/jpa/test/graphs/BasicGraphLoadPlanAdviceTests.java
++++ /dev/null
+@@ -1,138 +0,0 @@
+-/*
+- * Hibernate, Relational Persistence for Idiomatic Java
+- *
+- * Copyright (c) 2013, Red Hat Inc. or third-party contributors as
+- * indicated by the @author tags or express copyright attribution
+- * statements applied by the authors.  All third-party contributions are
+- * distributed under license by Red Hat Inc.
+- *
+- * This copyrighted material is made available to anyone wishing to use, modify,
+- * copy, or redistribute it subject to the terms and conditions of the GNU
+- * Lesser General Public License, as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this distribution; if not, write to:
+- * Free Software Foundation, Inc.
+- * 51 Franklin Street, Fifth Floor
+- * Boston, MA  02110-1301  USA
+- */
+-package org.hibernate.jpa.test.graphs;
+-
+-import javax.persistence.Entity;
+-import javax.persistence.EntityGraph;
+-import javax.persistence.EntityManager;
+-import javax.persistence.Id;
+-import javax.persistence.ManyToOne;
+-import javax.persistence.OneToMany;
+-import javax.persistence.Subgraph;
+-import java.util.Set;
+-
+-import org.hibernate.LockMode;
+-import org.hibernate.engine.spi.SessionFactoryImplementor;
+-import org.hibernate.jpa.graph.internal.EntityGraphImpl;
+-import org.hibernate.jpa.graph.internal.advisor.EntityGraphBasedLoadPlanAdvisor;
+-import org.hibernate.jpa.test.BaseEntityManagerFunctionalTestCase;
+-import org.hibernate.loader.plan.internal.LoadPlanImpl;
+-import org.hibernate.loader.plan.spi.EntityReturn;
+-import org.hibernate.loader.plan.spi.LoadPlan;
+-import org.hibernate.loader.spi.LoadPlanAdvisor;
+-
+-import org.junit.Ignore;
+-import org.junit.Test;
+-
+-import org.hibernate.jpa.graph.internal.advisor.AdviceStyle;
+-
+-import org.hibernate.testing.Skip;
+-
+-import static org.junit.Assert.assertEquals;
+-import static org.junit.Assert.assertNotSame;
+-import static org.junit.Assert.assertNull;
+-import static org.junit.Assert.assertTrue;
+-
+-/**
+- * @author Steve Ebersole
+- */
+-public class BasicGraphLoadPlanAdviceTests extends BaseEntityManagerFunctionalTestCase {
+-	private static final String ENTIYT_NAME = "org.hibernate.jpa.test.graphs.BasicGraphLoadPlanAdviceTests$Entity1";
+-
+-	@Override
+-	protected Class<?>[] getAnnotatedClasses() {
+-		return new Class[] { Entity1.class };
+-	}
+-
+-	public void testNoAdvice() {
+-		EntityManager em = getOrCreateEntityManager();
+-	}
+-
+-	private LoadPlan buildBasicLoadPlan() {
+-		return new LoadPlanImpl(
+-				new EntityReturn(
+-						sfi(),
+-						LockMode.NONE,
+-						ENTIYT_NAME
+-				)
+-		);
+-	}
+-
+-	private SessionFactoryImplementor sfi() {
+-		return entityManagerFactory().unwrap( SessionFactoryImplementor.class );
+-	}
+-
+-	@Test
+-	public void testBasicGraphBuilding() {
+-		EntityManager em = getOrCreateEntityManager();
+-		EntityGraph<Entity1> graphRoot = em.createEntityGraph( Entity1.class );
+-		assertNull( graphRoot.getName() );
+-		assertEquals( 0, graphRoot.getAttributeNodes().size() );
+-
+-		LoadPlan loadPlan = buildBasicLoadPlan();
+-
+-		LoadPlan advised = buildAdvisor( graphRoot, AdviceStyle.FETCH ).advise( loadPlan );
+-		assertNotSame( advised, loadPlan );
+-	}
+-
+-	private LoadPlanAdvisor buildAdvisor(EntityGraph<Entity1> graphRoot, AdviceStyle adviceStyle) {
+-		return new EntityGraphBasedLoadPlanAdvisor( (EntityGraphImpl) graphRoot, adviceStyle );
+-	}
+-
+-	@Test
+-	@Ignore
+-	public void testBasicSubgraphBuilding() {
+-		EntityManager em = getOrCreateEntityManager();
+-		EntityGraph<Entity1> graphRoot = em.createEntityGraph( Entity1.class );
+-		Subgraph<Entity1> parentGraph = graphRoot.addSubgraph( "parent" );
+-		Subgraph<Entity1> childGraph = graphRoot.addSubgraph( "children" );
+-
+-		assertNull( graphRoot.getName() );
+-		assertEquals( 2, graphRoot.getAttributeNodes().size() );
+-		assertTrue(
+-				graphRoot.getAttributeNodes().get( 0 ).getSubgraphs().containsValue( parentGraph )
+-						|| graphRoot.getAttributeNodes().get( 0 ).getSubgraphs().containsValue( childGraph )
+-		);
+-		assertTrue(
+-				graphRoot.getAttributeNodes().get( 1 ).getSubgraphs().containsValue( parentGraph )
+-						|| graphRoot.getAttributeNodes().get( 1 ).getSubgraphs().containsValue( childGraph )
+-		);
+-
+-		LoadPlan loadPlan = buildBasicLoadPlan();
+-
+-		LoadPlan advised = buildAdvisor( graphRoot, AdviceStyle.FETCH ).advise( loadPlan );
+-		assertNotSame( advised, loadPlan );
+-	}
+-
+-	@Entity( name = "Entity1" )
+-	public static class Entity1 {
+-		@Id
+-		public Integer id;
+-		public String name;
+-		@ManyToOne
+-		public Entity1 parent;
+-		@OneToMany( mappedBy = "parent" )
+-		public Set<Entity1> children;
+-	}
+-}

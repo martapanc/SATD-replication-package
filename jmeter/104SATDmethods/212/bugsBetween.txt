@@ -1,0 +1,3 @@
+db972810f Bug 48300 - Allow override of IP source address for HTTP HttpClient requests
+1987e3fdb Bug 47461 - Update Cache Manager to handle Expires HTTP header
+22ef64ab6 Bug 47321 -  HTTPSampler2 response timeout not honored

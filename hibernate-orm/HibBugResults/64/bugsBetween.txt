@@ -1,0 +1,11 @@
+66ce8b7fb5 HHH-9466 - Drop metamodel package from source
+ac16473511 HHH-9003 Avoid allocating arrays in most methods of ComponentType
+8fe5460ec0 HHH-8741 - More checkstyle cleanups
+cd590470c0 HHH-8741 - More checkstyle cleanups
+803c73c555 HHH-8276 - Integrate LoadPlans into UniqueEntityLoader (PoC)
+a102bf2c31 HHH-7841 - Redesign Loader
+b11c23fd45 HHH-7561 - Fix and test
+ddb3a8cd18 HHH-6858 reuse reference to PersistenceContext
+fb0255a87a HHH-6858 non-intrusive performance improvements
+129c0f1348 HHH-6732 more logging trace statements are missing guards against unneeded string creation
+46102a2be3 HHH-6471 - Redesign how EntityBinding models hierarchy-shared information

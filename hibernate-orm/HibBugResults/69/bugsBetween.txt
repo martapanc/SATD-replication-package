@@ -1,0 +1,5 @@
+9e063ffa25 HHH-9837 - Remove reliance during annotation binding on org.hibernate.internal.util.ClassLoaderHelper HHH-9841 - Redesign org.hibernate.property.PropertyAccessorFactory
+bd256e4783 HHH-9803 - Checkstyle fix ups - headers
+611f8a0e1c HHH-9803 - Checkstyle fix ups
+7308e14fed HHH-9803 - Checkstyle fix ups
+66ce8b7fb5 HHH-9466 - Drop metamodel package from source

@@ -1,0 +1,5 @@
+d8922d6d2 deprecate reverse attribute.  PR 45845.
+e0d63af0c only add classpath elements to existing loaders, not to a freshly created one.  PR 45847.
+b6aa5cb51 make log more usefull.  PR 45841.
+c885f5683 remove authors from files PR: 27177 Obtained from: J.M. (Martijn) Kruithof
+3396e7c32 Remove direct call to deprecated project, location, tasktype Task field, replaced by an accessor way into tasks. Remove too some unused variable declaration and some unused imports. PR: 22515 Submitted by: Emmanuel Feller ( Emmanuel dot Feller at free dot fr)

@@ -1,0 +1,8 @@
+db972810f Bug 48300 - Allow override of IP source address for HTTP HttpClient requests
+1987e3fdb Bug 47461 - Update Cache Manager to handle Expires HTTP header
+22ef64ab6 Bug 47321 -  HTTPSampler2 response timeout not honored
+006b977a0 Bug 44521 - empty variables for a POST in the HTTP Request don't get ignored
+2526e684a Bug 28502 - HTTP Resource Cache - initial implementation
+0431342fc Bug 19128 - Added multiple file POST support to HTTP Samplers
+4f047a40b Bug 44852 SOAP/ XML-RPC Request does not show Request details in View Results Tree - give access to method
+6ccc5cf06 Implement Bug 41921 for HTTP Samplers

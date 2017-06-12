@@ -1,0 +1,1 @@
+f41a28e93 Bug 57084 - BeanShellClient: Close socket after usage. Bugzilla Id: 57084

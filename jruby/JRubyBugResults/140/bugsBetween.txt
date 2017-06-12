@@ -1,0 +1,12 @@
+0a93732b75 Fix JRUBY-3560: Time.local ignores provided time zone
+dcf1146839 Fix for JRUBY-5008: [19] Time.new can accept parameters
+06778cfaf3 Fix for JRUBY-5056: Time marshal format differs between Ruby and JRuby
+fe79900910 Fix JRUBY-4842: Time#utc_offset is incorrect in small time range. Specs are in RubySpec a186c01.
+6e0d3d549c fixes JRUBY-4166: [1.9] most of the specs for Time#inspect, Time#+ and Time#- passing
+a3a0d23083 Fix for JRUBY-4784: Lost implicit conversion from ruby Time to java.util.Date
+1b919d492b Fixes (and more) for JRUBY-4737: Compatibility issue with Spring property from 1.4.0 to 1.5.0.RC1
+011aa5b87c fixes JRUBY-3907: Time.strftime allows tokens deriving from GNU C library
+025450fd95 fixes JRUBY-3914: In 1.9 mode, Time.now == nil should return false, not nil
+3aadd8a941 Fix by Colin Jones for JRUBY-3498: New failure in MRI's test_time
+d5e194d55a Fix by Aurelian Oancea for JRUBY-3671: RubySpec: Time.times is an obsolete method
+98d7de504c Fix fir JRUBY-2788: Make Time.now monotonically increasing

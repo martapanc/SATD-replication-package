@@ -1,0 +1,2 @@
+56c1fb34da Fix JRUBY-5594: Seeing ConnectionPendingException in my code
+2eb09cdec6 Fix intermittent failure in JRUBY-5232 regression test.

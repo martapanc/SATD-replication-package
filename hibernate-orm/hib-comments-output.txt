@@ -1,0 +1,33 @@
+
+***// NONE might be a better option moving forward in the case of callable
+9caca0ce37 HHH-9490 - Migrate from dom4j to jaxb for XML processing; HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc); HHH-7078 - Split NamingStrategy into ImplicitNamingStrategy/PhysicalNamingStrategy; HHH-6005 - Better handling of implicit column naming with @ElementCollection of @Embeddables; HHH-9633 - Add tests that explicitly test the "main" NamingStrategy impls
+a7179fbc49 HHH-6371 - Develop metamodel binding creation using a push approach
+819f8da9ea HHH-5672 - Develop the binding model (binding between logical and relational)
+d8d6d82e30 SVN layout migration for core/trunk
+9caca0ce37d5a2763d476c6fa2471addcca710ca
+hibernate-core/src/main/java/org/hibernate/cfg/HbmBinder.java
+-			// NONE might be a better option moving forward in the case of callable
+9caca0ce37 HHH-9490 - Migrate from dom4j to jaxb for XML processing; HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc); HHH-7078 - Split NamingStrategy into ImplicitNamingStrategy/PhysicalNamingStrategy; HHH-6005 - Better handling of implicit column naming with @ElementCollection of @Embeddables; HHH-9633 - Add tests that explicitly test the "main" NamingStrategy impls
+a7179fbc49 HHH-6371 - Develop metamodel binding creation using a push approach
+819f8da9ea HHH-5672 - Develop the binding model (binding between logical and relational)
+d8d6d82e30 SVN layout migration for core/trunk
+a7179fbc496707ba5055ea7188a4f01c192b1665
+hibernate-core/src/main/java/org/hibernate/metamodel/binder/source/hbm/HbmHelper.java
+-			// NONE might be a better option moving forward in the case of callable
+9caca0ce37 HHH-9490 - Migrate from dom4j to jaxb for XML processing; HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc); HHH-7078 - Split NamingStrategy into ImplicitNamingStrategy/PhysicalNamingStrategy; HHH-6005 - Better handling of implicit column naming with @ElementCollection of @Embeddables; HHH-9633 - Add tests that explicitly test the "main" NamingStrategy impls
+a7179fbc49 HHH-6371 - Develop metamodel binding creation using a push approach
+819f8da9ea HHH-5672 - Develop the binding model (binding between logical and relational)
+d8d6d82e30 SVN layout migration for core/trunk
+819f8da9eae198f9b7509965ad902604760fa6b1
+hibernate-core/src/main/java/org/hibernate/metamodel/source/hbm/HbmHelper.java
++			// NONE might be a better option moving forward in the case of callable
+9caca0ce37 HHH-9490 - Migrate from dom4j to jaxb for XML processing; HHH-9492 - Migrate to new bootstrap API (MetadataSources, etc); HHH-7078 - Split NamingStrategy into ImplicitNamingStrategy/PhysicalNamingStrategy; HHH-6005 - Better handling of implicit column naming with @ElementCollection of @Embeddables; HHH-9633 - Add tests that explicitly test the "main" NamingStrategy impls
+a7179fbc49 HHH-6371 - Develop metamodel binding creation using a push approach
+819f8da9ea HHH-5672 - Develop the binding model (binding between logical and relational)
+d8d6d82e30 SVN layout migration for core/trunk
+d8d6d82e30960e0c255950eaf875ad48831b12b0
+code/core/src/main/java/org/hibernate/cfg/HbmBinder.java
++			// NONE might be a better option moving forward in the case of callable
+***//perhaps not really necessary...
+# shas =  1
+***// todo : what else to do here?
