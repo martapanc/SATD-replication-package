@@ -1,0 +1,341 @@
+// we basically ignore protocol. let someone report it...
+// SSS FIXME: Is this correct?
+// FIXME: I use a for block to implement END node because we need a proc which captures
+// SSS FIXME: 1. Is the ordering correct? (poll before next)
+// We use a highly uncommon string to represent the paragraph delimiter (100% soln not worth it) 
+// TODO: is this right?
+// TODO: // MRI behavior: Call "+" or "add"
+// SSS FIXME: Is this correctly placed ... at the end of the loop iteration?
+// TODO: Ruby reuses this logic for other "write" behavior by checking if it's an IO and calling write again
+// SSS FIXME: Where does this go?
+// it would be nice (and logical!) if exponent form
+// SSS FIXME: These should get normally compiled or initialized some other way …
+// TODO: NOT_ALLOCATABLE_ALLOCATOR is probably ok here. Confirm. JRUBY-415
+// SSS FIXME: I could make IR_Loop a scope too ... Semantically
+// this covers the rare case of lower-case class names (and thus will
+// SSS FIXME: Should this be a string literal or a string?
+// TODO should this be deprecated ? (to be efficient
+// SSS FIXME: Does int suffice
+// modules are included with a shim class
+// Reset value map if this instruction is the start/end of a basic block
+// TODO: Determine whether we should perhaps store non-singleton class
+// SSS FIXME: Correct?  Where does closure arg come from?
+/* FIXME: Consider fixing node_assign itself rather than single case*/
+// SSS FIXME: Should I have a reference to the IR_loop that is being retried?
+// temporary hack to handle non-Ruby values
+// Simplify the variables too -- to keep these variables in sync with what is actually used in the when clauses
+// Must be called from main thread (it is currently
+// CON FIXME: I don't know how to make case be an expression...does that
+// FIXME: legal here? may want UnsupportedOperationException
+// FIXME: This is an ugly hack to resolve JRUBY-1381
+// TODO: Is this behavior really desirable? /mov
+// TODO: no java stringity
+// FIXME:  Total hack to get flash in Rails marshalling/unmarshalling in session ok...We need
+// TODO: this method is not present in MRI!
+// FIXME: Ideally JavaObject instances should be marshallable
+// TODO: public only?
+// FIXME: This should probably do some translation from Ruby priority levels to Java priority levels (until we have green threads)
+// TODO: Consider a better way of synchronizing 
+// using IOInputStream may not be the most performance way
+// FIXME: We should not be regenerating this over and over
+// XXX: This check previously used callMethod("==") to check for equality between classes
+// TODO: NOT_ALLOCATABLE_ALLOCATOR is probably ok here. Confirm. JRUBY-415
+// TODO: why are we duplicating the constants here
+// TODO: Make DynamicMethod immutable
+// TODO: These were missing, so we're not handling them elsewhere?
+// TODO: cache?
+// FIXME: wtf is this? Why would these use the class?
+// TODO: Figure out how this can happen and possibly remove
+// FIXME: I don't like this
+// FIXME: these descriptions should probably be moved out
+but its much safer for COW (it prevents not shared Strings with begin != 0)
+// TODO: what about n arg?
+// FIXME: I think this chunk is equivalent to MRI id2name (and not our public method
+// TODO: cache?
+// FIXME: This is probably not very efficient
+/* Hack in to replace usual readline with this */
+// TODO: choose narrowest method by continuing to search
+// TODO: this is kinda gross
+// FIXME: In order for Thread to play well with the standard 'new' behavior
+// these extra arrays are really unfortunate
+// We clone dynamic scope because this will be a new instance of a block.  Any previously
+// TODO: protected methods.  this is going to require a rework
+// TODO: just adding first one right now...add in signature-guessing logic
+// SSS FIXME: This should never get called for constant svalues
+         * TODO: This version is better than the hackish previous one. Windows
+// FIXME: There's some code duplication here with RubyObject#inspect
+// TODO: don't bother passing when fcall or vcall
+// FIXME: figure out why we get null sometimes
+// Hacky: Advance position to eat newline here....
+// need to reexamine this
+// FIXME: This is currently only here because of some problems with IOOutputStream writing to a "bare" runtime without a proper scope
+// Workaround for JRUBY-4149
+// using IOOutputStream may not be the most performance way
+// TODO: Why does that bother me?
+// TODO: NOT_ALLOCATABLE_ALLOCATOR is probably ok here. Confirm. JRUBY-415
+/* ENEBO: Lots of optz in 1.9 parser here*/
+// FIXME: move out of this class!
+we should probably raise an error
+//TODO: ary_sort_check should be done here
+// TODO: get rid of this (lax returns 0.0
+// bit risky if someone changes completor
+// TODO: the rest of this...seeking to same position is unnecessary since we share a channel
+// TODO: is this the right thing to do?
+// FIXME: this probably belongs in a different package.
+// FIXME: not very efficient
+// We clone dynamic scope because this will be a new instance of a block.  Any previously
+but Java API's aren't ISO 8601 compliant at all
+// TODO: is this correct ?
+/* Workaround for JRUBY-2326 (MRI does not enter this production for some reason)*/
+// FIXME: We shouldn't use the current scope if it's not actually from the same hierarchy of static scopes
+/* SSS FIXME: Do we need to check if l is same as whatever popped? */
+// SSS FIXME: Where is this set up?  How is this diff from ClassVarDeclNode??
+// Fixme: Do we need the check or does Main.java not call this...they should consolidate 
+// FIXME: This table will get moved into POSIX library so we can get all actual supported
+// FIXME: This worries me a bit
+// TODO: This filtering is kind of gross...it would be nice to get some parser help here
+// TODO: decompose getJavaPackageModule so we don't parse fullName
+// FIXME: Get rid of laziness and handle restricted access elsewhere
+// TODO: for now
+// if we don't have opt args
+// FIXME: Determine if a real allocator is needed here. Do people want to extend
+// so we must do all this (the next 70 lines of code)
+// FIXME: do we really want 'declared' methods?  includes private/protected
+// small hack to save a cast later on
+// This is perhaps innefficient timewise?  Optimal spacewise
+// TODO: confirm expected args are IRubyObject (or similar)
+// There's not a compelling reason to keep JavaClass instances in a weak map
+// TODO: check for Java reserved names and raise exception if encountered
+// FIXME: JRUBY-3188 ends up with condition returning null...quick fix until I can dig into it
+// Workaround for a bug in Sun's JDK 1.5.x
+// FIXME weakref.rb also does caller(2) here for the backtrace
+// FIXME: Remove this from grammars.
+// TODO: It's perhaps just a coincidence that all the channels for
+// FIXME: Not sure what the semantics of transfer are
+// FIXME: This is pretty gross
+// This is a dummy scope
+/* FIXME: Resolve what the hell is going on*/
+     * FIXME: Should this be renamed to match its ruby name?
+shouldn't happen. TODO: might want to throw exception instead.
+// FIXME: Maybe not best place
+// TODO: NOT_ALLOCATABLE_ALLOCATOR may be ok here
+//TODO: Should next and return also catch here?
+// We always prepend an org.jruby.proxy package to the beginning
+// TODO: we should be able to optimize this quite a bit post-1.0.  JavaClass already
+// this could probably be more efficient
+// TODO: make more efficient by not creating IRubyArray[]
+     * FIXME: any good reason to have two identical methods? (same as remove_class_variable)
+// from DUP_SETUP // rb_copy_generic_ivar from DUP_SETUP here ...unlikely..
+// FIXME: only starting after required args
+// FIXME: This is a gross way to figure it out
+// TODO: Only setAccessible to account for pattern found by
+// not intended to be called directly by users (private)
+// FIXME: Don't allow multiple threads to do this at once
+// TODO: Bleeding runtime into parser.  Arity may be should be in parser (to keep bleeding oneway)
+     * FIXME: Whis is this named "push_m"?
+// TODO: This probably isn't the best hack
+// TODO: At least ParserSupport.attrset passes argsNode as null.  ImplicitNil is wrong magic for
+// HACK: in order to have stdout/err act like ttys and flush always
+// FIXME: not very efficient
+// TODO: People extending GzipWriter/reader will break.  Find better way here.
+// FIXME: set up a call configuration for this
+     * Process streams get Channel.newChannel()ed into FileChannel but are not actually
+shouldn't happen. TODO: might want to throw exception instead.
+// FIXME: Somehow I'd feel better if this could get the appropriate var index from the ArgumentNode
+// FIXME: Can get optimized for IEqlNode
+// TODO: rounding mode should not be hard-coded. See #mode.
+// FIXME moved this here to get what's obviously a utility method out of IRubyObject
+// FIXME: If NativeException is expected to be used from Ruby code
+// Object#to_a is obsolete.  We match Ruby's hack until to_a goes away.  Then we can
+// TODO: callback for value would be more efficient
+// FIXME: this should go somewhere more generic -- maybe IdUtil
+// SSS FIXME: Move this code to some utils area .. or probably there is already a method for this in some jruby utils class
+// TODO: set our metaclass to target's class (i.e. scary!)
+// TODO: no need for this to be a full
+wipe out the SoftReference (this could be done with a reference queue)
+// TODO: remove
+// FIXME: not very efficient
+// FIXME: Big fat hack here
+// TODO: This is actually now returning the scope of whoever called Method#to_proc
+ * FIXME convert to enum ?
+// The following three methods must be defined fast
+// TODO: NOT_ALLOCATABLE_ALLOCATOR is probably ok here, since we don't intend for people to monkey with
+// SSS FIXME: Can this return anything other than nil?
+// XXX: const lookup can trigger const_missing
+// TODO: don't bother passing when fcall or vcall
+// TODO: Should frozen error have its own distinct class?  If not should more share?
+// TODO: Only used by interface implementation
+// FIXME: null check is removable once we figure out how to assign to unset named block args
+when MET choose CET timezone to work around Joda
+// FIXME: This is gross. Don't do this.
+// FIXME: I think we need these pushed somewhere?
+// SSS FIXME: Deprecated!  Going forward
+// TODO: should probably apply the null object pattern for a
+//TODO: Should next and return also catch here?
+// Yow...this is still ugly
+// TODO: no need for this to be a full
+ * FIXME: This version is faster than the previous
+// FIXME: Clearing read buffer here...is this appropriate?
+// TODO: specifying soft refs
+/* FIXME: lose syntactical elements here (and others like this)*/
+// ENEBO: Totally weird naming (in MRI is not allocated and is a local var name)
+// FIXME: This doesn't actually support anything but String
+// up to ten, stuff into tmp locals
+// XXX: do something?
+// TODO: Only setAccessible to account for pattern found by
+// FIXME we want to eliminate these type casts when possible
+// TODO: decompose getJavaPackageModule so we don't parse fullName
+// HACK: force clinit to be created
+// FIXME: If true array is common enough we should pre-allocate and stick somewhere
+// optional args
+// TODO: This is almost RubyModule#instance_methods on the metaClass.  Perhaps refactor.
+// FIXME: Added this because marshal_spec seemed to reconstitute objects without calling dataWrapStruct
+// TODO: factor this chunk as in MRI/YARV GETASTER
+//TODO: ary_sort_check should be done here
+// FIXME: this not being in a finally is a little worrisome
+// SSS FIXME: Verify that this is correct
+// This is for JRUBY-2988
+// TODO: do above but not below for additional newline nodes
+// SSS FIXME: Receiver -- this is the class meta object basically?
+// FIXME This whole thing could probably be implemented as a module and
+// FIXME: bit of a kludge here (non-interface classes assigned to both
+// FIXME: what should these really be? Numeric?
+// we're depending on the side effect of the load, which loads the class but does not turn it into a script
+// FIXME: we should also support orgs that use capitalized package
+// index for the item // this could probably be more efficient
+// TODO: This version differs from ioctl by checking whether fcntl exists
+// FIXME: This is temporary since the variable compilers assume we want
+// TODO: eliminate?
+// TODO: confirm expected args are IRubyObject (or similar)
+// TODO: handle writing into original buffer better
+// This is a fairly specific hack for empty string
+// XXX This constructor is a hack to implement the __END__ syntax.
+// method has more than 500 lines
+// The implementations of these are all bonus (see TODO above)  I was going
+// TODO: confirm expected args are IRubyObject (or similar)
+proxy doesn't match. Replace
+// TODO: better algorithm to set precision needed
+ * SSS FIXME: Used anywhere?  I don't see calls to this anywhere
+// TODO: Make this more intelligible value
+// TODO: Split this into two sub-classes so that name and constNode can be specified seperately.
+// Not sure how well this works
+// FIXME: This is copied code from RubyArray.  Both RE, Struct, and Array should share one imp
+// FIXME: No, I don't like it.
+// TODO: Why does that bother me?
+// FIXME: This is currently only here because of some problems with IOOutputStream writing to a "bare" runtime without a proper scope
+// arguments compilers always create IRubyObject[]
+// SSS FIXME: What is the difference between ClassVarAsgnNode & ClassVarDeclNode
+// FIXME: set up a CallConfiguration for this
+// TODO: reads/writes from frame
+// FIXME: Somehow I'd feel better if this could get the appropriate var index from the ArgumentNode
+// FIXME: This is almost entirely duplicated from Main.java
+// we might need to perform a DST correction
+// FIXME: This is currently only here because of some problems with IOOutputStream writing to a "bare" runtime without a proper scope
+// FIXME: We shouldn't use the current scope if it's not actually from the same hierarchy of static scopes
+// FIXME: How much more obtuse can this be?
+since conditional calling #inherited doesn't fit standard ruby semantics
+// XXX: Again, screwy evaling under previous frame's scope
+// SSS FIXME: Maybe this is not really a concern after all …
+// TODO: Why does that bother me?
+// FIXME: when the only autoconversions are primitives
+// FIXME we should probably still be dyncalling 'write' here
+/* FIXME: finalizer should be dupped here */
+// don't bother to check if final method
+// TODO: Generalize this type-checking code into IRubyObject helper.
+// FIXME: needs to be rethought
+// ruby constants for strings (should this be moved somewhere else?)
+// Let's only generate methods for those the user may actually 
+// FIXME: I don't like the null checks here
+// TODO: this could be further optimized
+// TODO: confirm expected args are IRubyObject (or similar)
+// we should try to make LoadPath a special array object.
+// TODO: choose narrowest method by continuing to search
+     * FIXME: Should this be renamed to match its ruby name?
+// FIXME: Why was this using a FullFunctionCallbackMethod before that did callSuper?
+// if body is a rescue node
+     * Fixme:  This does not have exact same semantics as RubyArray.join
+// lame generics issues: making Segment class static and manually
+// FIXME: not very efficient
+// FIXME:  This determine module is in a strange location and should somehow be in block
+// TODO? I think this ends up propagating from normal Java exceptions
+// this seems unlikely to happen unless it's a totally bogus fileno
+// TODO: turn off the negative? will return -0.0 in lax mode
+// TODO: list.subList(from, to).clear() is supposed to clear the sublist from the list
+// SSS FIXME: What is the difference between ClassVarAsgnNode & ClassVarDeclNode
+// see note below re: 2-field kludge
+// We're not setting the provider or anything, but it seems that BouncyCastle does some internal things in its
+// this is a rather ugly hack, but similar to MRI. See hash.c:ruby_setenv and similar in MRI
+// TODO: WRONG - get interfaces from class
+// TODO: Make callCoerced work in block context...then fix downto
+// FIXME: the code below is a copy of RubyIO.puts
+// TODO need to abstract this setup behind another compiler interface
+constructing a bignum just for dumping?
+// TODO: Ruby does not seem to care about invalid numeric mode values
+// FIXME: Obvious issue that not all platforms can display all attributes.  Ugly hacks
+// rb_copy_generic_ivar from DUP_SETUP here ...unlikely..
+// FIXME: this really ought to be in clinit, but it doesn't matter much
+// TODO: callback for value would be more efficient, but unlikely to be a big cost (constants are rarely assigned)
+// using IOChannel may not be the most performant way, but it's easy.
+// TODO this should entry into error handling somewhere
+// TODO: make this do specific-arity calling
+// FIXME: legal here? may want UnsupportedOperationException
+// FIXME: This is an ugly hack to resolve JRUBY-1381
+// TODO: don't bother passing when fcall or vcall, and adjust callsite appropriately
+// SSS FIXME: What happens to the add class in this case??
+// SSS FIXME: Is this correct?
+// FIXME: Big fat hack here
+// ignore...bean doesn't get registered
+// SSS FIXME: Are we guaranteed that we splats dont head to multiple-assignment nodes!  i.e. |*(a,b)|?
+// TODO: NOT_ALLOCATABLE_ALLOCATOR is probably ok here. Confirm. JRUBY-415
+// TODO: catch exception if constant is already set by other
+// TODO: This version differs from ioctl by checking whether fcntl exists
+// TODO: Implement tty? and isatty.  We have no real capability to
+// FIXME: We should be getting this from the runtime rather than assume none?
+// Object#to_a is obsolete.  We match Ruby's hack until to_a goes away.  Then we can
+// end hack
+// TODO: This isn't an exact port of MRI's pipe behavior, so revisit
+// TODO: protected methods.  this is going to require a rework of some of the mechanism.
+// FIXME: This is currently only here because of some problems with IOOutputStream writing to a "bare" runtime without a proper scope
+// TODO: factor this chunk as in MRI/YARV GETASTER
+// FIXME: what should this really be?       assert x instanceof RubyComplex
+// FIXME: This isn't right for within ensured/rescued code
+// SSS FIXME: Token can be final for a method -- implying that the token is only for this particular implementation of the method
+// TODO: It would be nice to throw a better error for this
+// TODO: make this an array so it's not as much class metadata
+// TODO: It would be nice to throw a better error for this
+// TODO: newTypeError does not offer enough for ruby error string...
+// SSS FIXME: I added this in.  Is this correct?
+// TODO: top-level upper-case package was supported in the previous (Ruby-based)
+// TODO: wire into new exception handling mechanism
+// TODO: This is also defined in the MetaClass too...Consolidate somewhere.
+// FIXME: ConstDecl could be two seperate classes (or done differently since constNode and name
+// TODO: NOT_ALLOCATABLE_ALLOCATOR is probably ok here, since we don't intend for people to monkey with
+/* FIXME: finalizer should be dupped here */
+// TODO: number formatting here
+// TODO: need to get this back into the method signature...now is too late...
+// FIXME: possible to make handles do the superclass call?
+// optional args, so we have IRubyObject[]
+// TODO: better error handling
+// FIXME: not very efficient
+// SSS FIXME: Should this be Operand or CompoundString?
+// FIXME: We should really not be creating the dynamic scope for the root
+// TODO: wire into new exception handling mechanism
+// TODO: not sure that we should skip calling join() altogether
+// hack to get right style for input
+// If variables were added then we may need to grow the dynamic scope to match the static
+// SSS FIXME: This method (at least in the context of multiple assignment) is a little weird
+// FIXME: potentially could just use ByteList here?
+// FIXME: This is currently only here because of some problems with IOOutputStream writing to a "bare" runtime without a proper scope
+/* FIXME: Consider fixing node_assign itself rather than single case*/
+// This is perhaps innefficient timewise?  Optimal spacewise
+// end hack
+// FIXME: Is this ok?
+// TODO: proper algorithm to set the precision
+// TODO: exec should replace the current process
+// Sometimes the value can be retrieved at "compile time".  If we succeed, nothing like it!
+// FIXME: NOT_ALLOCATABLE_ALLOCATOR is probably not right here, since we might
+/* Workaround for JRUBY-2326 (MRI does not enter this production for some reason)*/
+// if body is a rescue node, inspect its pieces separately to avoid it disabling all optz
+// TODO: This is probably BAD...
+// FIXME: do we really want 'declared' methods?  includes private/protected, and does _not_
+// FIXME: shouldn't need @__java_ovrd_methods
